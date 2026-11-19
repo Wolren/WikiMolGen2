@@ -1,7 +1,12 @@
 # ADR 0001 — Architecture of the molplate web app
 
-Status: accepted (2026-11-19)
+Status: **superseded by [ADR 0002](ADR-0002-renderer-patinae.md)** (2026-11-19)
 Supersedes: nothing
+
+This record is kept as written, because the reasoning about where the boundary between
+Rust and TypeScript sits still holds — the renderer is separate, the figure post-processing
+and markup are Rust, and the page owns the DOM. What changed is *which* renderer, and how
+pixels come out of it. Read sections 2 and 3 as history.
 
 ## Context
 

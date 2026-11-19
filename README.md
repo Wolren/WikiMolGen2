@@ -3,7 +3,7 @@
 Molecule figures for Wikipedia, rendered in the browser.
 
 Load a compound by name, PubChem CID or SMILES. It is fetched straight from PubChem,
-rendered to a publication-style figure with [molar_vis](https://github.com/yesint/molar_vis)
+rendered to a publication-style figure with [patinae](https://github.com/zmactep/pymol-rs)
 in WebAssembly, and handed back together with the `{{Infobox drug}}`, `{{Chembox}}` and
 Wikimedia Commons markup that goes around it.
 
@@ -15,9 +15,10 @@ An exported figure — aspirin, ball and stick, cropped and padded by the app it
 
 ![Exported ball-and-stick figure of aspirin](docs/example-ball-and-stick.png)
 
-Rendering runs on WebGPU when the browser has it and falls back to WebGL2. The header
-shows which one is live: WebGPU is the target (transparency, ambient occlusion, shadows
-and ray tracing need compute), and the page says so plainly when it is not in use.
+Rendering needs WebGPU. There is no WebGL2 fallback: the renderer is WebGPU-only, and the
+page says so plainly instead of drawing something lesser. Chrome 113+, Edge 113+ and
+Safari 26 on a supported GPU work; anything else gets an explanation, and the markup half
+of the app keeps working.
 
 ## Build
 
@@ -25,7 +26,7 @@ Requirements: a Rust toolchain with the `wasm32-unknown-unknown` target,
 `wasm-bindgen-cli` matching the version `Cargo.lock` pins, and Node 20+.
 
 ```powershell
-# 1. Renderer + bindings (release build; the first one is slow)
+# 1. The Rust half: figure post-processing and markup (release build)
 cargo build --target wasm32-unknown-unknown --release -p molplate_wasm
 wasm-bindgen --target web --out-dir web/pkg `
   target/wasm32-unknown-unknown/release/molplate_wasm.wasm
@@ -56,15 +57,20 @@ node scripts/verify.mjs --dir web/dist --out web/shot.png
 
 * `crates/molplate_core` — presets, image post-processing and the wikitext generators.
   No browser, no GPU, so it is unit-tested natively.
-* `crates/molplate_wasm` — boots the viewer on a `<canvas>`, drives it through its job
-  channel, and returns captured PNGs to JavaScript.
-* `web/` — Vite + TypeScript: lookups, controls, downloads.
+* `crates/molplate_wasm` — the Rust that has to run in the browser: crops a rendered PNG
+  into a figure, and generates the markup. It does not render.
+* `web/` — Vite + TypeScript: lookups, controls, downloads, and the adapter that drives
+  the renderer (`src/renderer.ts`).
+* `web/public/vendor/patinae` — the renderer itself: patinae's web viewer, vendored as a
+  built ES module plus wasm. Provenance and the rebuild command are in
+  [PROVENANCE.md](web/public/vendor/patinae/PROVENANCE.md).
 
-The renderer is the upstream `molar_vis` library, embedded rather than forked, with its
-own sidebar and toolbar hidden. Details and the trade-offs, including why export is a
-screenshot of a resized canvas rather than an offscreen render, are in
-[docs/ADR-0001-architecture.md](docs/ADR-0001-architecture.md); what is in and out of the
-current scope is in [docs/SPEC.md](docs/SPEC.md).
+The renderer is patinae (formerly PyMOL-RS), not `molar_vis`. Why it was swapped, what the
+swap cost, and what it gives up — notably a WebGL2 fallback — are in
+[docs/ADR-0002-renderer-patinae.md](docs/ADR-0002-renderer-patinae.md); the earlier design
+and its reasoning are kept in
+[docs/ADR-0001-architecture.md](docs/ADR-0001-architecture.md), and what is in and out of
+the current scope is in [docs/SPEC.md](docs/SPEC.md).
 
 ## Status
 
@@ -73,10 +79,10 @@ figure, and paste the markup. The gaps that need a chemical toolkit compiled to 
 2D skeletal depiction and conformer generation for SMILES PubChem does not know — are
 not built yet.
 
-WebGPU is the rendering target and the code path is in place, but it has not been
-exercised on this workstation: its GPU exposes no WebGPU adapter to Chrome, so local runs
-and the verification script use the WebGL2 fallback.
+WebGPU is required and the path is exercised: `scripts/verify.mjs --gpu hardware` reports
+the live backend, loads aspirin and exports a figure on real hardware.
 
 ## Licence
 
-MIT OR Apache-2.0. The renderer is Artistic-2.0 and is used unmodified as a dependency.
+MIT OR Apache-2.0. The renderer (patinae) is BSD-3-Clause; its build is vendored
+unmodified under `web/public/vendor/patinae` with the licence beside it.
