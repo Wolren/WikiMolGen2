@@ -1,0 +1,33 @@
+[workspace]
+members = ["crates/molplate_core", "crates/molplate_wasm"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Wolren/molplate"
+
+[workspace.dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+thiserror = "2.0.21"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+
+# The renderer. `molar_vis_core` re-exports the exact `eframe`/`wgpu` it was built
+# against, so the host crate must name those through it rather than pick its own
+# versions — otherwise the types stop unifying.
+#
+# Taken from git rather than crates.io: the published 0.3.0 has no way to hide the
+# viewer's own sidebar/toolbar (`set_ui_visibility`), which an embedded page needs.
+# The rev is pinned so builds are reproducible.
+molar_vis_core = { git = "https://github.com/yesint/molar_vis", rev = "f8d97c7b7200100d385448f7785217f52c0ce341" }
+# Pinned to the release molar_vis_core pins (=2.4.2): anything else gives us a second
+# `Topology`/`State` type that the viewer cannot accept.
+molar = { version = "=2.4.2", default-features = false }
+
+# A browser bundle is shipped, so favour small code over fastest code.
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 1

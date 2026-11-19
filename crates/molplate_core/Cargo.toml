@@ -1,0 +1,17 @@
+[package]
+name = "molplate_core"
+description = "Chemistry, styling and export logic for the molplate browser app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+image.workspace = true
+thiserror.workspace = true
+
+# Only the tests serialise looks to JSON; the library itself never parses JSON, so the
+# dependency stays out of the shipped wasm binary.
+[dev-dependencies]
+serde_json.workspace = true

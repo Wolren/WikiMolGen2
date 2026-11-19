@@ -1,0 +1,19 @@
+# Rust build output
+/target
+**/*.rs.bk
+
+# wasm-pack / trunk output
+/web/pkg
+/web/public/pkg
+
+# Node
+node_modules
+/web/node_modules
+
+# Vite build output
+/web/dist
+
+# Local tooling scratch
+*.log
+.DS_Store
+Thumbs.db

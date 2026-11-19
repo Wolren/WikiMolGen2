@@ -1,0 +1,37 @@
+[package]
+name = "molplate_wasm"
+description = "Browser bindings: embeds the molar_vis viewer and exports figures"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+# `cdylib` is what wasm-bindgen/wasm-pack turns into molplate.js + molplate_bg.wasm;
+# `rlib` keeps `cargo test` on the native host able to build the crate (the wasm-only
+# code is cfg-gated out there).
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+molplate_core = { path = "../molplate_core" }
+molar_vis_core.workspace = true
+molar.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+log = "0.4.35"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.130"
+wasm-bindgen-futures = "0.4.80"
+futures-channel = "0.3"
+js-sys = "0.3.107"
+console_error_panic_hook = "0.1.7"
+console_log = "1.1.0"
+web-sys = { version = "0.3.107", features = [
+    "Document",
+    "Window",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "CssStyleDeclaration",
+] }

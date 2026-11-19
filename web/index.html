@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>molplate — molecule figures for Wikipedia</title>
+    <meta
+      name="description"
+      content="Render 3D molecular structures from PubChem in the browser and get ready-to-paste Wikipedia and Wikimedia Commons markup."
+    />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <h1>molplate</h1>
+      </div>
+      <p class="tagline">Molecule figures for Wikipedia, rendered in your browser.</p>
+    </header>
+
+    <main class="layout">
+      <aside class="panel controls" aria-label="Controls">
+        <form id="lookup" class="block">
+          <label class="field-label" for="identifier">Compound</label>
+          <div class="field-row">
+            <input
+              id="identifier"
+              name="identifier"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="aspirin, 2244, or a SMILES"
+            />
+            <button id="load" type="submit" class="primary">Load</button>
+          </div>
+          <p class="hint">PubChem name, CID or SMILES. Structures come from PubChem's 3D records.</p>
+        </form>
+
+        <dl id="summary" class="summary" hidden></dl>
+
+        <section class="block">
+          <h2>Style</h2>
+          <div id="looks" class="looks" role="radiogroup" aria-label="Representation style"></div>
+        </section>
+
+        <section class="block">
+          <h2>Appearance</h2>
+          <label class="field-label" for="color-preset">Element colours</label>
+          <select id="color-preset">
+            <option value="Default">Default</option>
+            <option value="VMD">VMD</option>
+            <option value="PyMOL">PyMOL</option>
+            <option value="Discovery Studio">Discovery Studio</option>
+            <option value="MOE">MOE</option>
+            <option value="Mol*">Mol*</option>
+          </select>
+
+          <label class="field-label" for="background">Background</label>
+          <input id="background" type="color" value="#ffffff" />
+
+          <label class="field-label" for="projection">Projection</label>
+          <select id="projection">
+            <option value="perspective">Perspective</option>
+            <option value="orthographic">Orthographic</option>
+          </select>
+
+          <button id="frame" type="button" class="secondary">Re-frame view</button>
+        </section>
+
+        <section class="block">
+          <h2>Export</h2>
+          <label class="field-label" for="export-width">Image width</label>
+          <select id="export-width">
+            <option value="1000">1000 px</option>
+            <option value="1600" selected>1600 px</option>
+            <option value="2400">2400 px</option>
+            <option value="3200">3200 px</option>
+          </select>
+          <button id="export" type="button" class="primary" disabled>Download PNG</button>
+          <p id="export-status" class="hint" role="status"></p>
+        </section>
+      </aside>
+
+      <section class="stage" aria-label="Molecular view">
+        <canvas id="viewer"></canvas>
+        <div id="stage-message" class="stage-message" role="status">
+          Loading renderer…
+        </div>
+      </section>
+
+      <aside class="panel output" aria-label="Wikitext">
+        <div class="tabs" role="tablist">
+          <button role="tab" id="tab-drugbox" aria-selected="true" aria-controls="wikitext">
+            Infobox drug
+          </button>
+          <button role="tab" id="tab-chembox" aria-selected="false" aria-controls="wikitext">
+            Chembox
+          </button>
+          <button role="tab" id="tab-commons" aria-selected="false" aria-controls="wikitext">
+            Commons
+          </button>
+        </div>
+
+        <div class="output-header">
+          <code id="file-name" class="file-name">—</code>
+          <button id="copy" type="button" class="secondary">Copy</button>
+        </div>
+
+        <pre id="wikitext" class="wikitext" tabindex="0">Load a compound to generate markup.</pre>
+
+        <a id="upload" class="upload-link" href="#" target="_blank" rel="noreferrer" hidden>
+          Open the Commons upload form with this description
+        </a>
+      </aside>
+    </main>
+  </body>
+</html>
