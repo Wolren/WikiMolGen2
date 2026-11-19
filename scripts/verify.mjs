@@ -34,32 +34,43 @@ const MIME = {
   ".png": "image/png",
 };
 
-const server = createServer(async (request, response) => {
-  const url = new URL(request.url, `http://127.0.0.1:${PORT}`);
-  const path = join(ROOT, decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname));
-  try {
-    const body = await readFile(path);
-    response.writeHead(200, {
-      "content-type": MIME[extname(path)] ?? "application/octet-stream",
-      // WebGPU/WebGL2 do not need COOP/COEP, but the page should still work when a host
-      // serves these headers.
-      "cross-origin-opener-policy": "same-origin",
-      "cross-origin-embedder-policy": "credentialless",
-    });
-    response.end(body);
-  } catch {
-    response.writeHead(404).end("not found");
-  }
-});
+// `--url` checks an already-running server (e.g. `npm run dev`); otherwise this script
+// serves `--dir` itself so a build can be verified without starting anything else.
+let server = null;
+const baseUrl = args.url ?? `http://127.0.0.1:${PORT}/`;
 
-await new Promise((done) => server.listen(PORT, "127.0.0.1", done));
-const baseUrl = `http://127.0.0.1:${PORT}/`;
+if (args.url === undefined) {
+  server = createServer(async (request, response) => {
+    const url = new URL(request.url, `http://127.0.0.1:${PORT}`);
+    const path = join(ROOT, decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname));
+    try {
+      const body = await readFile(path);
+      response.writeHead(200, {
+        "content-type": MIME[extname(path)] ?? "application/octet-stream",
+        // WebGPU/WebGL2 do not need COOP/COEP, but the page should still work when a host
+        // serves these headers.
+        "cross-origin-opener-policy": "same-origin",
+        "cross-origin-embedder-policy": "credentialless",
+      });
+      response.end(body);
+    } catch {
+      response.writeHead(404).end("not found");
+    }
+  });
+  await new Promise((done) => server.listen(PORT, "127.0.0.1", done));
+}
+console.log(`target: ${baseUrl}`);
 
 const profile = join(process.env.TEMP ?? "/tmp", `molplate-verify-${Date.now()}`);
-// Headless Chrome on Windows has no WebGPU adapter, so the WebGPU path can only be
-// exercised by a real browser process. `--headed true` moves it off-screen instead of
-// popping a window in front of the user.
+// Headless Chrome has no WebGPU adapter, so the WebGPU path needs a real browser process.
+// `--headed true` runs it off-screen instead of popping a window in front of the user.
+// `--gpu hardware` drops the SwiftShader overrides — forcing ANGLE's software GL also
+// removes the hardware path that WebGPU needs, so a software run must not claim to test it.
 const headed = args.headed === "true";
+const hardwareGpu = args.gpu === "hardware";
+const gpuFlags = hardwareGpu
+  ? []
+  : ["--enable-unsafe-swiftshader", "--use-angle=swiftshader"];
 const chrome = spawn(
   CHROME,
   [
@@ -69,11 +80,8 @@ const chrome = spawn(
     "--no-first-run",
     "--no-default-browser-check",
     "--disable-extensions",
-    // Software GL so a machine without a usable GPU still renders; WebGPU is offered
-    // when the build supports it.
-    "--enable-unsafe-swiftshader",
-    "--use-angle=swiftshader",
     "--enable-unsafe-webgpu",
+    ...gpuFlags,
     "--window-size=1440,900",
     ...EXTRA_FLAGS,
     "about:blank",
@@ -234,7 +242,15 @@ console.log(
   `renderer: ${stageReady?.hidden ? "started" : "FAILED — " + stageText.trim()}`,
 );
 
-const engine = await evaluate(session, "document.getElementById('engine')?.textContent ?? ''");
+// The badge is filled a tick after the overlay clears (boot sets it right after the
+// renderer resolves), so wait for it instead of racing that one line.
+const engine = await poll(
+  async () => {
+    const text = await evaluate(session, "document.getElementById('engine')?.textContent ?? ''");
+    return text === "" ? null : text;
+  },
+  10_000,
+);
 console.log(`backend: ${engine || "(none reported)"}`);
 if (engine !== "WebGPU" && engine !== "WebGL2") {
   failures.push(`unexpected graphics backend: ${engine || "none"}`);
@@ -379,7 +395,7 @@ if (consoleErrors.length > 0) {
 
 socket.close();
 chrome.kill();
-server.close();
+server?.close();
 
 if (failures.length > 0) {
   console.log("\nFAILED:");

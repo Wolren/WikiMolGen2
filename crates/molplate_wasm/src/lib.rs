@@ -180,6 +180,10 @@ impl Viewer {
             let rep = app.add_rep_default(0).map_err(|error| error.to_string())?;
             app.set_rep_color(0, rep, "element")
                 .map_err(|error| error.to_string())?;
+            // NOTE: enabling ambient occlusion/shadows here (`set_ambient_occlusion`,
+            // `set_shadows`) currently makes the next capture come back empty, because the
+            // extra render cost moves the painted frame past the screenshot request. Fix
+            // the capture handshake before switching those on.
             Ok(atoms)
         })
         .await
