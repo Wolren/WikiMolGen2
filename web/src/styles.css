@@ -20,6 +20,12 @@
   box-sizing: border-box;
 }
 
+/* `hidden` must win over the display values the blocks below set, or a hidden
+   <dl>/<a> stays on the page as an empty box. */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;
@@ -69,6 +75,23 @@ body {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
+}
+
+/* Which GPU path is live. WebGPU is the only one this app starts on. */
+.engine {
+  margin-left: auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.engine:empty {
+  display: none;
 }
 
 .layout {
@@ -177,8 +200,12 @@ button.primary:hover:not(:disabled) {
 }
 
 button.secondary {
-  width: 100%;
   margin-top: 14px;
+}
+
+/* Full-width buttons belong to the stacked control panel, not the output header. */
+.controls button.secondary {
+  width: 100%;
 }
 
 button:disabled {
@@ -280,6 +307,22 @@ button:disabled {
   color: #a3231b;
   background: #fdf4f3;
   pointer-events: auto;
+}
+
+/* Says which backend is live when it is not the one the figures are designed for. */
+.engine-note {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgb(21 24 29 / 0.72);
+  color: #fff;
+  font-size: 11.5px;
+  line-height: 1.4;
+  pointer-events: none;
 }
 
 /* Output --------------------------------------------------------------------- */

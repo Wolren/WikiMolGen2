@@ -23,8 +23,14 @@ use futures_channel::oneshot;
 use molar::prelude::{FileHandler, State, System as MSystem, Topology};
 use molar_vis_core::eframe;
 use molar_vis_core::eframe::egui;
+use molar_vis_core::eframe::wgpu;
 use molar_vis_core::{App, AppJob, AppLaunch, SharedSource};
 use wasm_bindgen::prelude::*;
+
+// Which graphics backend the adapter actually came up on, as reported by wgpu.\n//\n// wgpu prefers WebGPU and falls back to WebGL2; the difference matters to the user\n// (several effects need compute), so the page reports what it got.
+thread_local! {
+    static BACKEND: std::cell::RefCell<Option<wgpu::Backend>> = const { std::cell::RefCell::new(None) };
+}
 
 /// Frames to let egui settle after a resize before asking for the screenshot. The
 /// surface size change lands on the next frame and the 3D pass needs one more to redraw
@@ -101,10 +107,15 @@ impl Host {
             if matches!(*state, Capture::AwaitingScreenshot) {
                 let (width, height) = (image.size[0] as u32, image.size[1] as u32);
                 *state = match molplate_core::image_ops::from_rgba(width, height, image.as_raw()) {
-                    Some(rgba) => match molplate_core::image_ops::encode_png(&rgba) {
-                        Ok(bytes) => Capture::Ready(bytes),
-                        Err(error) => Capture::Failed(error.to_string()),
-                    },
+                    Some(rgba) => {
+                        // The capture includes the viewer's own grey frame; the figure is
+                        // the molecule with an even margin.
+                        let figure = molplate_core::image_ops::frame_figure(&rgba, 0.06);
+                        match molplate_core::image_ops::encode_png(&figure) {
+                            Ok(bytes) => Capture::Ready(bytes),
+                            Err(error) => Capture::Failed(error.to_string()),
+                        }
+                    }
                     None => Capture::Failed("screenshot pixel buffer had an unexpected size".into()),
                 };
             }
@@ -221,12 +232,16 @@ impl Viewer {
         .await
     }
 
-    /// Re-frame the camera around the whole scene (after a style that changed extents,
-    /// such as switching to space filling).
+    /// Re-frame the camera around the whole scene, leaving a margin.
+    ///
+    /// A figure needs air around the molecule — upstream's own framing fills the
+    /// viewport edge to edge, which crops atoms in a picture pasted into an infobox. The
+    /// zoom-out factor is the margin.
     #[wasm_bindgen(js_name = frameScene)]
     pub async fn frame_scene(&self) -> Result<(), JsError> {
         query_job(&self.jobs, |app: &mut App| {
             app.reset_view();
+            app.zoom_view(0.75);
             Ok(())
         })
         .await
@@ -319,8 +334,11 @@ fn parse_structure(name: &str, bytes: Vec<u8>) -> Result<MSystem, String> {
 
 /// Boot the viewer onto `<canvas id=…>` and resolve once graphics are initialized.
 ///
-/// Rejects if the canvas is missing or the GPU backend cannot start, which is how the
-/// page distinguishes "no WebGPU/WebGL2" from "still loading".
+/// Two backends are supported. WebGPU is the one to use — transparency, ambient
+/// occlusion, shadows and the ray tracer all need compute — and wgpu picks it whenever
+/// `navigator.gpu` yields an adapter. WebGL2 is the fallback for browsers or GPUs without
+/// WebGPU; it draws a correct raster image but loses those effects. Which one came up is
+/// reported through [`graphics_backend`] so the page can say so instead of guessing.
 #[wasm_bindgen]
 pub async fn start(canvas_id: String) -> Result<Viewer, JsError> {
     console_error_panic_hook::set_once();
@@ -346,6 +364,11 @@ pub async fn start(canvas_id: String) -> Result<Viewer, JsError> {
             canvas,
             eframe::WebOptions::default(),
             Box::new(move |cc| {
+                // Record the backend wgpu really chose, for the page to report.
+                if let Some(render_state) = cc.wgpu_render_state.as_ref() {
+                    let backend = render_state.adapter.get_info().backend;
+                    BACKEND.with(|slot| *slot.borrow_mut() = Some(backend));
+                }
                 let mut app = App::new(cc, AppLaunch::default())?;
                 // No sidebar, no toolbar: the page provides its own controls.
                 app.set_ui_visibility(false, false);
@@ -359,7 +382,31 @@ pub async fn start(canvas_id: String) -> Result<Viewer, JsError> {
         .await
         .map_err(|error| JsError::new(&molar_vis_core::js_error_chain(&error)))?;
 
+    // The viewer paints its own root surface, so a dark theme would outline every figure
+    // with a dark frame. Queued as a job rather than set in the creation closure: theme
+    // application needs a live frame.
+    let _ = tx.send(Box::new(|app: &mut App| {
+        if let Err(error) = app.set_theme("light") {
+            log::warn!("could not switch the viewer to the light theme: {error}");
+        }
+    }));
+
     Ok(Viewer { capture, jobs: tx })
+}
+
+/// The backend the renderer actually started on, as a name the page can show:
+/// `"WebGPU"`, `"WebGL2"`, or the raw wgpu name for anything unexpected.
+#[wasm_bindgen(js_name = graphicsBackend)]
+pub fn graphics_backend() -> String {
+    BACKEND.with(|slot| match slot.borrow().clone() {
+        Some(wgpu::Backend::BrowserWebGpu) => "WebGPU".to_string(),
+        Some(wgpu::Backend::Gl) => "WebGL2".to_string(),
+        Some(wgpu::Backend::Vulkan) => "Vulkan".to_string(),
+        Some(wgpu::Backend::Dx12) => "DX12".to_string(),
+        Some(wgpu::Backend::Metal) => "Metal".to_string(),
+        Some(wgpu::Backend::Noop) => "none".to_string(),
+        None => String::new(),
+    })
 }
 
 // --- Presets and Wikipedia markup ---------------------------------------------------

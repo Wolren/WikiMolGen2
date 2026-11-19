@@ -13,6 +13,7 @@ import init, {
   commonsInformation,
   commonsUploadUrl,
   drugbox,
+  graphicsBackend,
   looksJson,
   start,
 } from "../pkg/molplate_wasm.js";
@@ -51,6 +52,8 @@ const dom = {
   exportStatus: required<HTMLParagraphElement>("export-status"),
   canvas: required<HTMLCanvasElement>("viewer"),
   stageMessage: required<HTMLDivElement>("stage-message"),
+  engine: required<HTMLElement>("engine"),
+  engineNote: required<HTMLParagraphElement>("engine-note"),
   tabs: {
     drugbox: required<HTMLButtonElement>("tab-drugbox"),
     chembox: required<HTMLButtonElement>("tab-chembox"),
@@ -88,14 +91,28 @@ function required<T extends HTMLElement>(id: string): T {
 }
 
 async function boot(): Promise<void> {
-  state.looks = JSON.parse(looksJson()) as Look[];
-
+  // The module must be initialised before *any* export is called — including the
+  // preset list, which is generated in Rust.
   try {
     await init();
-    state.viewer = await start("viewer");
+  } catch (error) {
+    showStageError("The WebAssembly module failed to load.", error);
+    return;
+  }
+
+  state.looks = JSON.parse(looksJson()) as Look[];
+  // Presets need no GPU, so they are shown even if the renderer cannot start.
+  renderLooks();
+
+  try {
+    state.viewer = await withTimeout(
+      start("viewer"),
+      20_000,
+      "The renderer did not finish starting.",
+    );
   } catch (error) {
     showStageError(
-      "The renderer could not start. This needs a browser with WebGPU or WebGL2 enabled.",
+      "The renderer could not start. This app needs WebGPU, and the browser did not provide it.",
       error,
     );
     return;
@@ -104,7 +121,17 @@ async function boot(): Promise<void> {
   dom.stageMessage.hidden = true;
   // A figure for an article is drawn on white unless the user changes it.
   await state.viewer.setBackground(1, 1, 1);
-  renderLooks();
+
+  // Report which backend came up. WebGPU is the intended one; WebGL2 draws a correct
+  // raster image but loses everything that needs compute, so it is labelled rather than
+  // passed off as equivalent.
+  const backend = graphicsBackend() || "unknown";
+  dom.engine.textContent = backend;
+  if (backend !== "WebGPU") {
+    dom.engineNote.hidden = false;
+    dom.engineNote.textContent =
+      `${backend} backend — transparency, ambient occlusion, shadows and ray tracing need WebGPU.`;
+  }
 }
 
 // --- Compound lookup ---------------------------------------------------------------
@@ -412,6 +439,14 @@ function describe(error: unknown): string {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Reject if `promise` has not settled within `ms`, so a stuck backend is visible. */
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ]);
 }
 
 function nextAnimationFrames(count: number): Promise<void> {

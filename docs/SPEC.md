@@ -25,7 +25,8 @@ allows cross-origin requests; nothing is uploaded anywhere.
 | Styles | Ball and stick, space filling, licorice, stick |
 | Appearance | Element-colour presets (Default/VMD/PyMOL/Discovery Studio/MOE/Mol\*), solid background, perspective or orthographic camera |
 | Navigation | Viewer's own mouse controls (drag to rotate, wheel to zoom) inside the canvas |
-| Export | PNG at a chosen width (1000–3200 px), captured from a resized canvas |
+| Graphics | WebGPU when available, WebGL2 otherwise; the live backend is shown in the header and the limits of the fallback are stated |
+| Export | PNG at a chosen width (1000–3200 px), captured from a resized canvas, cropped to the molecule and padded with an even margin |
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects |
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
 | Commons | File name, `{{Information}}` + licence block, pre-filled upload URL |
@@ -37,7 +38,8 @@ allows cross-origin requests; nothing is uploaded anywhere.
 | --- | --- | --- |
 | 2D skeletal depiction (SVG) | No pure-Rust depiction engine; RDKit-wasm is the candidate | A `wasm` chemistry dependency and its own styling layer |
 | Conformer generation for unknown SMILES | Same | RDKit-wasm embedding + MMFF, or a server |
-| Ray-traced export | Upstream's offscreen path is not reachable from a host | A small upstream patch (`App` export entry point) or a fork |
+| Ray-traced export | Upstream's offscreen path is not reachable from a host, and it needs WebGPU compute | A small upstream patch (`App` export entry point) or a fork |
+| Shadows and ambient occlusion on WebGL2 | The device has no compute | WebGPU, which the page asks for first |
 | Proteins (PDB cartoons) | Viewer supports cartoons; the app's lookup and markup do not | PDB fetch + protein-specific presets and boxes |
 | Physicochemical/experimental data beyond PubChem properties | Wikidata, PUG-View, DailyMed all need CORS-checked endpoints | Extra fetch + merge layer |
 | Transparent background | The canvas has no alpha | Renderer support |

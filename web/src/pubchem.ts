@@ -53,8 +53,10 @@ export interface Compound {
   heavy_atoms?: number;
 }
 
-export interface LoadResult {
-  compound: Compound;
+/** A `Compound` while it is being assembled: keys may be present but undefined. */
+type CompoundFields = { [K in keyof Compound]?: Compound[K] | undefined };
+
+export interface LoadResult {  compound: Compound;
   /** Structure to hand to the renderer, named for its format. */
   structure: { name: string; bytes: Uint8Array };
   /** Things the user should know about, e.g. a missing 3D record. */
@@ -74,7 +76,10 @@ export async function loadCompound(identifier: string): Promise<LoadResult> {
 
   const [synonyms, structure] = await Promise.all([fetchSynonyms(cid), fetchStructure(cid, warnings)]);
 
-  const compound: Compound = {
+  // Built without a `Compound` annotation on purpose: with
+  // `exactOptionalPropertyTypes` the literal would be checked against it before
+  // `compact` could drop the absent properties.
+  const compound = compact({
     cid,
     name: asString(properties.Title) ?? query,
     iupac_name: asString(properties.IUPACName),
@@ -95,9 +100,23 @@ export async function loadCompound(identifier: string): Promise<LoadResult> {
     h_bond_acceptors: asNumber(properties.HBondAcceptorCount),
     rotatable_bonds: asNumber(properties.RotatableBondCount),
     heavy_atoms: asNumber(properties.HeavyAtomCount),
-  };
+  });
 
   return { compound, structure, warnings };
+}
+
+/**
+ * Drop keys whose value is `undefined`.
+ *
+ * PubChem omits properties for some compounds, and `exactOptionalPropertyTypes` forbids
+ * assigning `undefined` to an optional field — so the object is written wide and narrowed
+ * once. `JSON.stringify` would drop these keys anyway; doing it here keeps the type
+ * honest as well.
+ */
+function compact(source: CompoundFields): Compound {
+  return Object.fromEntries(
+    Object.entries(source).filter(([, value]) => value !== undefined),
+  ) as Compound;
 }
 
 /**
@@ -118,9 +137,19 @@ async function fetchProperties(identifier: string): Promise<Record<string, unkno
   }
 
   const byName = await requestOrNull(`${PUG}/compound/name/${encodeURIComponent(identifier)}/property/${PROPERTIES}/JSON`);
-  if (byName !== null) return byName;
+  if (byName !== null) {
+    const row = propertiesRow(byName);
+    if (row === null) throw new LookupError("PubChem returned an unexpected response.");
+    return row;
+  }
 
   throw new LookupError(`PubChem has no compound for “${identifier}”.`);
+}
+
+/** The single row inside PubChem's `PropertyTable` envelope. */
+function propertiesRow(json: Record<string, unknown>): Record<string, unknown> | null {
+  const table = json.PropertyTable as { Properties?: Record<string, unknown>[] } | undefined;
+  return table?.Properties?.[0] ?? null;
 }
 
 /** Resolve a SMILES string to a CID, or `null` if PubChem does not know it. */
@@ -170,9 +199,9 @@ async function request(path: string): Promise<Record<string, unknown>> {
     const detail = await response.text().catch(() => "");
     throw new LookupError(`PubChem request failed (${response.status}). ${firstLine(detail)}`);
   }
-  const json = (await response.json()) as { PropertyTable?: { Properties?: Record<string, unknown>[] } };
-  const properties = json.PropertyTable?.Properties?.[0];
-  if (!properties) throw new LookupError("PubChem returned an unexpected response.");
+  const json = (await response.json()) as Record<string, unknown>;
+  const properties = propertiesRow(json);
+  if (properties === null) throw new LookupError("PubChem returned an unexpected response.");
   return properties;
 }
 

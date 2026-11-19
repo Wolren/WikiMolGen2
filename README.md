@@ -9,6 +9,12 @@ Wikimedia Commons markup that goes around it.
 
 It is a static site: no server, no upload, no install.
 
+![molplate rendering aspirin, with the Commons markup beside it](docs/screenshot.png)
+
+Rendering runs on WebGPU when the browser has it and falls back to WebGL2. The header
+shows which one is live: WebGPU is the target (transparency, ambient occlusion, shadows
+and ray tracing need compute), and the page says so plainly when it is not in use.
+
 ## Build
 
 Requirements: a Rust toolchain with the `wasm32-unknown-unknown` target,
@@ -33,6 +39,13 @@ Tests for everything that can be tested without a browser:
 
 ```powershell
 cargo test -p molplate_core
+```
+
+End-to-end check in a real browser: it serves `web/dist`, loads a compound through the
+page's own controls, asserts the markup and exports a PNG, then writes a screenshot.
+
+```powershell
+node scripts/verify.mjs --dir web/dist --out web/shot.png
 ```
 
 ## How it is put together

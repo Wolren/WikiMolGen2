@@ -88,6 +88,29 @@ fn centred_canvas(img: &RgbaImage, width: u32, height: u32, fill: [u8; 4]) -> Rg
     out
 }
 
+/// Turn a raw canvas capture into a figure.
+///
+/// The embedded viewer paints its own chrome inside the canvas — a grey band around the
+/// 3D view — so a capture is not a figure yet. Two trims and one pad fix that:
+///
+/// 1. trim the uniform outer band (the viewer's frame), which leaves the scene's own
+///    background;
+/// 2. trim that background, which leaves exactly the molecule;
+/// 3. add an even margin, so the same compound comes out the same size whatever the
+///    browser window happened to be.
+///
+/// `margin` is a fraction of the molecule's longer side.
+pub fn frame_figure(img: &RgbaImage, margin: f32) -> RgbaImage {
+    // 1 + 2: the corner colour changes between the two calls (frame, then background),
+    // which is why the same function does both jobs.
+    let without_frame = trim_to_content(img, 6);
+    let content = trim_to_content(&without_frame, 6);
+
+    let longer = content.width().max(content.height()) as f32;
+    let padding = (longer * margin.clamp(0.0, 0.25)).round() as u32;
+    pad(&content, padding.max(1), [255, 255, 255, 255])
+}
+
 pub fn encode_png(img: &RgbaImage) -> Result<Vec<u8>, ImageError> {
     let mut out = std::io::Cursor::new(Vec::new());
     image::codecs::png::PngEncoder::new(&mut out).write_image(
@@ -183,11 +206,41 @@ mod tests {
     }
 
     #[test]
-    fn png_round_trip_preserves_pixels() {
-        let img = canvas_with_block(8, (2, 3), 3);
+    fn png_round_trip_preserves_pixels() {        let img = canvas_with_block(8, (2, 3), 3);
         let bytes = encode_png(&img).expect("encode");
         assert_eq!(&bytes[..8], b"\x89PNG\r\n\x1a\n");
         let back = decode_png(&bytes).expect("decode");
         assert_eq!(back, img);
+    }
+
+    #[test]
+    fn framing_a_capture_drops_the_viewer_chrome_and_adds_a_margin() {
+        // What a capture actually looks like: a grey band (the viewer's own frame), the
+        // scene background, then the molecule.
+        const GREY: [u8; 4] = [198, 198, 198, 255];
+        let mut img = RgbaImage::from_pixel(60, 60, Rgba(GREY));
+        for y in 4..56 {
+            for x in 4..56 {
+                img.put_pixel(x, y, Rgba(WHITE));
+            }
+        }
+        for y in 20..28 {
+            for x in 24..30 {
+                img.put_pixel(x, y, Rgba(RED));
+            }
+        }
+
+        let figure = frame_figure(&img, 0.1);
+        // 6×8 molecule plus 10% of its longer side (8 → 1 px) on each side.
+        assert_eq!(figure.dimensions(), (8, 10));
+        assert_eq!(figure.get_pixel(0, 0), &Rgba(WHITE));
+        assert_eq!(figure.get_pixel(4, 5), &Rgba(RED));
+    }
+
+    #[test]
+    fn framing_an_empty_capture_does_not_panic() {
+        let img = RgbaImage::from_pixel(32, 32, Rgba([198, 198, 198, 255]));
+        let figure = frame_figure(&img, 0.06);
+        assert!(figure.width() >= 1 && figure.height() >= 1);
     }
 }

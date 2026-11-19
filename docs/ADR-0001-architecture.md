@@ -50,19 +50,36 @@ egui API, the answer arrives as an input event, and our host wrapper reads it, e
 PNG, and returns the bytes to JavaScript. Resolution comes from growing the canvas before
 the capture, not from an offscreen target.
 
+The capture is then turned into a figure (`image_ops::frame_figure`): the viewer paints
+its own grey band around the 3D view inside the canvas, and a window-shaped crop is not
+what an infobox wants. Two trims drop the band and the empty background, and a pad adds an
+even margin proportional to the molecule, so the same compound comes out the same way
+whatever the browser window looked like.
+
 Consequences, accepted for v1:
 
-* exports are raster (SSAO and shadows work on WebGPU; the ray tracer does not), so
-  nothing here produces soft shadows or global illumination;
+* exports are raster (SSAO and shadows work where the backend supports them; the ray
+  tracer is not driven), so nothing here produces soft shadows or global illumination;
 * the largest useful export is bounded by the GPU surface limit, and very large canvases
   cost memory;
-* the image is the viewport as drawn, which is what a figure needs anyway.
+* the image is the viewport as drawn, minus its chrome — which is what a figure needs.
 
 The alternative — vendoring and patching `molar_vis_core` to expose a real offscreen
 render entry point — buys ray-traced exports at the cost of carrying a fork of a 50k-line
 crate. The audit of upstream puts that patch at roughly 100–150 lines across three files;
 if ray-traced figures become a requirement, that is the change to make, and it should be
 offered upstream first.
+
+### 2a. Two graphics backends, WebGPU first
+
+The viewer runs on wgpu, which offers WebGPU and WebGL2 in the browser. We take whatever
+wgpu picks — it prefers WebGPU — and report which one is live in the page header.
+
+WebGPU is the target: order-independent transparency, ambient occlusion, shadows and the
+ray tracer all need compute, and WebGL2 has none of them. The fallback exists so the app
+still produces a correct static figure on browsers or GPUs without WebGPU (an old GPU,
+Firefox before its WebGPU rollout); the page says so in a note over the viewport rather
+than pretending the two are equivalent.
 
 ### 3. Chemistry is "whatever PubChem has"
 

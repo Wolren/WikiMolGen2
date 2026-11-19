@@ -120,14 +120,23 @@ impl StructureKind {
 }
 
 /// A licence usable on Commons, with the template Commons expects.
+///
+/// The serialised names are the SPDX-ish identifiers Commons itself uses
+/// (`cc-by-sa-4.0`), not a mechanical case conversion: `CcBySa40` would become
+/// `cc-by-sa40`, which is not a licence anyone recognises.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
 pub enum License {
+    #[serde(rename = "cc-by-sa-4.0")]
     CcBySa40,
+    #[serde(rename = "cc-by-4.0")]
     CcBy40,
+    #[serde(rename = "cc-by-sa-3.0")]
     CcBySa30,
+    #[serde(rename = "cc-zero")]
     CcZero,
+    #[serde(rename = "pd-chem")]
     PdChem,
+    #[serde(rename = "pd-self")]
     PdSelf,
 }
 
