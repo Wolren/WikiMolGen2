@@ -82,4 +82,9 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 * `cargo build --target wasm32-unknown-unknown -p molplate_wasm` produces the module.
 * The page loads, accepts `aspirin`, shows a molecule, and every tab produces markup that
   parses as balanced templates.
-* Export writes a PNG whose pixel width matches the requested width.
+* Export writes a PNG whose border is clean white and whose content is the molecule.
+
+`node scripts/verify.mjs --dir web/dist` checks all of that in a real browser. It runs on
+the WebGL2 fallback on this workstation: its GPU (GeForce GTX 650) exposes no WebGPU
+adapter to Chrome, so the WebGPU path is implemented and reported but not yet exercised
+here.

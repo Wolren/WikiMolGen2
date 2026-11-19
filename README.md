@@ -11,6 +11,10 @@ It is a static site: no server, no upload, no install.
 
 ![molplate rendering aspirin, with the Commons markup beside it](docs/screenshot.png)
 
+An exported figure — aspirin, ball and stick, cropped and padded by the app itself:
+
+![Exported ball-and-stick figure of aspirin](docs/example-ball-and-stick.png)
+
 Rendering runs on WebGPU when the browser has it and falls back to WebGL2. The header
 shows which one is live: WebGPU is the target (transparency, ambient occlusion, shadows
 and ray tracing need compute), and the page says so plainly when it is not in use.
@@ -64,9 +68,14 @@ current scope is in [docs/SPEC.md](docs/SPEC.md).
 
 ## Status
 
-Early. The 3D path, PNG export and all three markup generators work; the 2D skeletal
-depiction and conformer generation for SMILES that PubChem does not know are not built
-yet, and are the two gaps that need a chemical toolkit compiled to wasm.
+Early, but the whole 3D path works end to end: look a compound up, style it, export a
+figure, and paste the markup. The gaps that need a chemical toolkit compiled to wasm —
+2D skeletal depiction and conformer generation for SMILES PubChem does not know — are
+not built yet.
+
+WebGPU is the rendering target and the code path is in place, but it has not been
+exercised on this workstation: its GPU exposes no WebGPU adapter to Chrome, so local runs
+and the verification script use the WebGL2 fallback.
 
 ## Licence
 
