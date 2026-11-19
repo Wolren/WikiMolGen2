@@ -47,16 +47,6 @@
 
         <section class="block">
           <h2>Appearance</h2>
-          <label class="field-label" for="color-preset">Element colours</label>
-          <select id="color-preset">
-            <option value="Default">Default</option>
-            <option value="VMD">VMD</option>
-            <option value="PyMOL">PyMOL</option>
-            <option value="Discovery Studio">Discovery Studio</option>
-            <option value="MOE">MOE</option>
-            <option value="Mol*">Mol*</option>
-          </select>
-
           <label class="field-label" for="background">Background</label>
           <input id="background" type="color" value="#ffffff" />
 
@@ -66,7 +56,11 @@
             <option value="orthographic">Orthographic</option>
           </select>
 
-          <button id="frame" type="button" class="secondary">Re-frame view</button>
+          <div class="button-row">
+            <button id="zoom-out" type="button" class="secondary" aria-label="Zoom out">−</button>
+            <button id="zoom-in" type="button" class="secondary" aria-label="Zoom in">+</button>
+            <button id="frame" type="button" class="secondary">Re-frame view</button>
+          </div>
         </section>
 
         <section class="block">
@@ -79,16 +73,19 @@
             <option value="3200">3200 px</option>
           </select>
           <button id="export" type="button" class="primary" disabled>Download PNG</button>
+          <label class="checkbox">
+            <input id="export-transparent" type="checkbox" />
+            Transparent background
+          </label>
           <p id="export-status" class="hint" role="status"></p>
         </section>
       </aside>
 
       <section class="stage" aria-label="Molecular view">
-        <canvas id="viewer"></canvas>
+        <div id="viewer" class="viewer-host"></div>
         <div id="stage-message" class="stage-message" role="status">
           Loading renderer…
         </div>
-        <p id="engine-note" class="engine-note" hidden></p>
       </section>
 
       <aside class="panel output" aria-label="Wikitext">

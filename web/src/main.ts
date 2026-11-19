@@ -2,9 +2,10 @@
  * Page controller: look a compound up, render it, and turn it into Wikipedia or
  * Commons markup.
  *
- * The renderer is a wasm module that owns a `<canvas>`; everything else is this file.
- * The Rust side is authoritative for presets and markup, so the page asks it for the
- * look list and for every generated string instead of duplicating those rules here.
+ * The renderer is patinae, reached only through `renderer.ts`; everything else here is
+ * DOM. The Rust side is authoritative for presets, figure framing and markup, so the page
+ * asks it for the look list and for every generated string instead of duplicating those
+ * rules here.
  */
 
 import init, {
@@ -13,12 +14,12 @@ import init, {
   commonsInformation,
   commonsUploadUrl,
   drugbox,
-  graphicsBackend,
+  frameFigure,
   looksJson,
-  start,
+  resizePng,
 } from "../pkg/molplate_wasm.js";
-import type { Viewer } from "../pkg/molplate_wasm.js";
 import { LookupError, loadCompound, type Compound } from "./pubchem.js";
+import { Renderer, RendererUnavailable } from "./renderer.js";
 import "./styles.css";
 
 /** Mirrors `molplate_core::style::Look`. */
@@ -36,6 +37,16 @@ type TabId = "drugbox" | "chembox" | "commons";
 const AUTHOR = "molplate";
 const LICENSE_3D = "cc-by-sa-4.0";
 const STRUCTURE_KIND = "three_d";
+/** Margin around a figure, as a fraction of the molecule's longer side. */
+const FIGURE_MARGIN = 0.06;
+/**
+ * Render this many times wider than the figure and scale down in Rust.
+ *
+ * patinae's browser build antialiases with FXAA and nothing else — no MSAA, and its
+ * supersampling setting is declared but unused — so an atom silhouette is about one hard
+ * pixel. Rendering at 2× widens the edge gradient about threefold; 3× adds nothing.
+ */
+const SUPERSAMPLE = 2;
 
 const dom = {
   form: required<HTMLFormElement>("lookup"),
@@ -43,17 +54,18 @@ const dom = {
   loadButton: required<HTMLButtonElement>("load"),
   summary: required<HTMLDListElement>("summary"),
   looks: required<HTMLDivElement>("looks"),
-  colorPreset: required<HTMLSelectElement>("color-preset"),
   background: required<HTMLInputElement>("background"),
   projection: required<HTMLSelectElement>("projection"),
   frame: required<HTMLButtonElement>("frame"),
+  zoomIn: required<HTMLButtonElement>("zoom-in"),
+  zoomOut: required<HTMLButtonElement>("zoom-out"),
   exportWidth: required<HTMLSelectElement>("export-width"),
+  exportTransparent: required<HTMLInputElement>("export-transparent"),
   exportButton: required<HTMLButtonElement>("export"),
   exportStatus: required<HTMLParagraphElement>("export-status"),
-  canvas: required<HTMLCanvasElement>("viewer"),
+  viewerHost: required<HTMLElement>("viewer"),
   stageMessage: required<HTMLDivElement>("stage-message"),
   engine: required<HTMLElement>("engine"),
-  engineNote: required<HTMLParagraphElement>("engine-note"),
   tabs: {
     drugbox: required<HTMLButtonElement>("tab-drugbox"),
     chembox: required<HTMLButtonElement>("tab-chembox"),
@@ -66,7 +78,7 @@ const dom = {
 };
 
 const state: {
-  viewer: Viewer | null;
+  viewer: Renderer | null;
   looks: Look[];
   compound: Compound | null;
   look: Look | null;
@@ -106,32 +118,30 @@ async function boot(): Promise<void> {
 
   try {
     state.viewer = await withTimeout(
-      start("viewer"),
-      20_000,
+      Renderer.create(dom.viewerHost),
+      30_000,
       "The renderer did not finish starting.",
     );
   } catch (error) {
-    showStageError(
-      "The renderer could not start. This app needs WebGPU, and the browser did not provide it.",
-      error,
-    );
+    // RendererUnavailable already carries a sentence a user can act on; anything else
+    // is a surprise and gets the generic line plus the detail.
+    if (error instanceof RendererUnavailable) {
+      showStageError(error.message);
+    } else {
+      showStageError("This app renders with WebGPU, and the renderer did not start.", error);
+    }
     return;
   }
 
   dom.stageMessage.hidden = true;
+
   // A figure for an article is drawn on white unless the user changes it.
   await state.viewer.setBackground(1, 1, 1);
 
-  // Report which backend came up. WebGPU is the intended one; WebGL2 draws a correct
-  // raster image but loses everything that needs compute, so it is labelled rather than
-  // passed off as equivalent.
-  const backend = graphicsBackend() || "unknown";
-  dom.engine.textContent = backend;
-  if (backend !== "WebGPU") {
-    dom.engineNote.hidden = false;
-    dom.engineNote.textContent =
-      `${backend} backend — transparency, ambient occlusion, shadows and ray tracing need WebGPU.`;
-  }
+  // patinae is WebGPU-only: there is no second backend to report. The badge says what
+  // is in use, and the note explains what a figure needs, rather than implying a
+  // fallback that does not exist.
+  dom.engine.textContent = "WebGPU";
 }
 
 // --- Compound lookup ---------------------------------------------------------------
@@ -142,7 +152,6 @@ dom.form.addEventListener("submit", (event) => {
 });
 
 async function loadFromInput(): Promise<void> {
-  if (state.viewer === null) return;
   const identifier = dom.identifier.value.trim();
   if (identifier === "") {
     dom.identifier.focus();
@@ -155,16 +164,20 @@ async function loadFromInput(): Promise<void> {
     state.compound = result.compound;
     state.compoundJson = JSON.stringify(result.compound);
 
-    await state.viewer.loadStructure(result.structure.name, result.structure.bytes);
-    state.look = state.looks[0] ?? null;
-    if (state.look !== null) await state.viewer.applyLook(JSON.stringify(state.look));
-    await state.viewer.setColorPreset(dom.colorPreset.value);
-    await state.viewer.frameScene();
+    // The markup does not need a renderer: looking a compound up and generating wikitext
+    // is the half of this app that works without a GPU, so a failed renderer must not
+    // take it down with it.
+    if (state.viewer !== null) {
+      await state.viewer.loadStructure(result.structure.name, result.structure.bytes);
+      state.look = state.looks[0] ?? null;
+      if (state.look !== null) await state.viewer.applyLook(state.look);
+      await state.viewer.frameScene();
+      dom.exportButton.disabled = false;
+    }
 
     renderLooks();
     renderSummary(result.warnings);
     refreshOutput();
-    dom.exportButton.disabled = false;
     setStatus(result.warnings.join(" "));
   } catch (error) {
     if (error instanceof LookupError) {
@@ -240,25 +253,57 @@ function renderLooks(): void {
 async function chooseLook(look: Look): Promise<void> {
   state.look = look;
   renderLooks();
-  await state.viewer?.applyLook(JSON.stringify(look));
-  await state.viewer?.frameScene();
+  // Nothing to re-style before a structure is loaded, and patinae treats a command
+  // against an empty scene as an error rather than a no-op.
+  if (state.viewer === null || state.compound === null) return;
+  try {
+    await state.viewer.applyLook(look);
+    await state.viewer.frameScene();
+  } catch (error) {
+    setStatus(`Could not apply “${look.label}”: ${describe(error)}`, true);
+  }
 }
-
-dom.colorPreset.addEventListener("change", () => {
-  void state.viewer?.setColorPreset(dom.colorPreset.value);
-});
 
 dom.projection.addEventListener("change", () => {
   void state.viewer?.setProjection(dom.projection.value);
 });
 
 dom.background.addEventListener("change", () => {
-  void state.viewer?.setBackground(...hexToRgb(dom.background.value));
+  const [r, g, b] = hexToBytes(dom.background.value);
+  void state.viewer?.setBackground(r / 255, g / 255, b / 255);
 });
 
 dom.frame.addEventListener("click", () => {
+  if (state.compound === null) return;
   void state.viewer?.frameScene();
 });
+
+/** Zoom around the current framing; a no-op with nothing loaded. */
+function zoomScene(notches: number): void {
+  if (state.viewer === null || state.compound === null) return;
+  void state.viewer
+    .zoomBy(notches)
+    .catch((error) => setStatus(`Zoom failed: ${describe(error)}`, true));
+}
+
+dom.zoomIn.addEventListener("click", () => zoomScene(1));
+dom.zoomOut.addEventListener("click", () => zoomScene(-1));
+
+// The renderer maps a released wheel to clipping-plane changes and only zooms while a
+// button is held, so a plain wheel does nothing visible. A viewer is expected to zoom, so
+// take that case in the capture phase — before the canvas sees it — and leave the
+// wheel-while-dragging case to the renderer.
+dom.viewerHost.addEventListener(
+  "wheel",
+  (event) => {
+    if (event.buttons !== 0) return;
+    if (state.viewer === null || state.compound === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    zoomScene(event.deltaY < 0 ? 1 : -1);
+  },
+  { passive: false, capture: true },
+);
 
 // --- Export ------------------------------------------------------------------------
 
@@ -267,65 +312,51 @@ dom.exportButton.addEventListener("click", () => {
 });
 
 /**
- * Resize the canvas to the wanted pixel size, capture it, put it back.
+ * Render at the wanted width, then crop to the molecule and pad an even margin.
  *
- * The viewer has no offscreen render API, so the surface is the image: growing the
- * canvas is what makes a 1600 px export possible. `devicePixelRatio` is accounted for
- * because eframe sizes the drawing buffer from CSS pixels × DPR.
+ * patinae renders offscreen at whatever size is asked for, so there is no canvas resize,
+ * no device-pixel-ratio correction and no screenshot handshake to wait on. What remains
+ * is the step that makes a viewport capture into a figure — the crop and the margin —
+ * and that stays in Rust where it is tested.
  */
 async function exportPng(): Promise<void> {
   const viewer = state.viewer;
   if (viewer === null) return;
 
   const targetWidth = Number(dom.exportWidth.value);
-  const rect = dom.canvas.getBoundingClientRect();
+  const rect = dom.viewerHost.getBoundingClientRect();
   const aspect = rect.width > 0 && rect.height > 0 ? rect.width / rect.height : 1;
-  const targetHeight = Math.round(targetWidth / aspect);
-  const dpr = window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
+  const targetHeight = Math.max(1, Math.round(targetWidth / aspect));
+  const transparent = dom.exportTransparent.checked;
+  // The margin has to match the scene, or a dark figure gains a white border and a
+  // transparent one stops being transparent as soon as it is cropped.
+  const [red, green, blue] = transparent ? [0, 0, 0] : hexToBytes(dom.background.value);
 
-  const previousStyle = dom.canvas.getAttribute("style");
   setBusy(true, "Rendering…");
   dom.exportButton.disabled = true;
 
   try {
-    dom.canvas.style.width = `${targetWidth / dpr}px`;
-    dom.canvas.style.height = `${targetHeight / dpr}px`;
-
-    // The surface resize lands on the next frame; the capture then needs the scene
-    // redrawn at the new size, which is what the settle count covers.
-    await nextAnimationFrames(3);
-    viewer.requestCapture(2);
-    const png = await takeCapture(viewer);
+    const blob = await viewer.exportPng({
+      width: targetWidth * SUPERSAMPLE,
+      height: targetHeight * SUPERSAMPLE,
+      transparent,
+    });
+    const rendered = new Uint8Array(await blob.arrayBuffer());
+    const scaled = resizePng(rendered, targetWidth, targetHeight);
+    const framed = frameFigure(scaled, FIGURE_MARGIN, red, green, blue, transparent ? 0 : 255);
 
     const name = state.compound === null
       ? "molecule-3D.png"
       : commonsFileName(state.compoundJson, STRUCTURE_KIND);
-    download(name, png);
-    setStatus(`Saved ${name}.`);
+    download(name, framed);
+    setStatus(`Saved ${name}${transparent ? " with a transparent background" : ""}.`);
     dom.fileName.textContent = name;
   } catch (error) {
     setStatus(`Export failed: ${describe(error)}`, true);
   } finally {
-    if (previousStyle === null) {
-      dom.canvas.removeAttribute("style");
-    } else {
-      dom.canvas.setAttribute("style", previousStyle);
-    }
     dom.exportButton.disabled = false;
     setBusy(false);
   }
-}
-
-async function takeCapture(viewer: Viewer): Promise<Uint8Array> {
-  const deadline = performance.now() + 8000;
-  while (performance.now() < deadline) {
-    const bytes = viewer.takeCapture();
-    if (bytes !== undefined) return bytes;
-    const status = viewer.captureStatus();
-    if (status.startsWith("failed")) throw new Error(status);
-    await delay(40);
-  }
-  throw new Error("the renderer did not return an image");
 }
 
 function download(name: string, bytes: Uint8Array): void {
@@ -405,40 +436,43 @@ function setStatus(message: string, isError = false): void {
   dom.exportStatus.style.color = isError ? "#a3231b" : "";
 }
 
+/** The overlay currently says the renderer is unusable; nothing should overwrite it. */
+let rendererFailed = false;
+
 function setBusy(busy: boolean, message?: string): void {
   dom.loadButton.disabled = busy;
-  if (busy && message !== undefined) {
+  if (busy && message !== undefined && !rendererFailed) {
     dom.stageMessage.hidden = false;
     dom.stageMessage.textContent = message;
-  } else if (!busy && state.viewer !== null) {
+  } else if (!busy && !rendererFailed && state.viewer !== null) {
     dom.stageMessage.hidden = true;
   }
 }
 
-function showStageError(message: string, error: unknown): void {
+/**
+ * Say why there is no viewer and disable what needs one.
+ *
+ * `detail` is appended when there is a low-level message worth reading; a
+ * [`RendererUnavailable`] already carries the sentence to show.
+ */
+function showStageError(message: string, detail?: unknown): void {
+  rendererFailed = true;
   dom.stageMessage.hidden = false;
   dom.stageMessage.classList.add("error");
-  dom.stageMessage.textContent = `${message} (${describe(error)})`;
+  dom.stageMessage.textContent =
+    detail === undefined ? message : `${message} (${describe(detail)})`;
   setStatus("The renderer is unavailable, so images cannot be produced. The markup tabs still work.", true);
   dom.exportButton.disabled = true;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
+function hexToBytes(hex: string): [number, number, number] {
   const value = hex.replace("#", "");
   const int = Number.parseInt(value, 16);
-  return [
-    ((int >> 16) & 0xff) / 255,
-    ((int >> 8) & 0xff) / 255,
-    (int & 0xff) / 255,
-  ];
+  return [(int >> 16) & 0xff, (int >> 8) & 0xff, int & 0xff];
 }
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /** Reject if `promise` has not settled within `ms`, so a stuck backend is visible. */
@@ -447,18 +481,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
     promise,
     new Promise<never>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
   ]);
-}
-
-function nextAnimationFrames(count: number): Promise<void> {
-  return new Promise((resolve) => {
-    let remaining = count;
-    const step = (): void => {
-      remaining -= 1;
-      if (remaining <= 0) resolve();
-      else requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  });
 }
 
 void boot();

@@ -1,18 +1,17 @@
 //! Render presets: the styling knobs the UI exposes and the named looks the app ships.
 //!
-//! A [`Look`] is a *description* of a representation, not a viewer handle: the wasm
-//! crate translates it into calls on the embedded viewer. Serialising it as JSON keeps
-//! the TypeScript UI and the Rust core in step without a hand-maintained mirror type —
-//! the page asks Rust for the preset list and sends a chosen preset straight back.
+//! A [`Look`] is a *description* of a representation, not a viewer handle. Serialising it
+//! as JSON keeps the TypeScript UI and the Rust core in step without a hand-maintained
+//! mirror type — the page asks Rust for the preset list and sends a chosen preset
+//! straight back. Translating a look into renderer calls is the adapter's job
+//! (`web/src/renderer.ts`), so this module stays free of any one renderer's vocabulary.
 //!
-//! Only settings the viewer exposes over its job API live here. Atom radii, surface
-//! resolution and cartoon detail are locked inside the viewer's own settings, so a look
-//! cannot pretend to control them; element *colours* come from the viewer's colour
-//! presets (Default / VMD / PyMOL) rather than from a table duplicated here.
+//! Only settings the page can honour live here. Element *palettes* belong to the
+//! renderer, not to molplate.
 
 use serde::{Deserialize, Serialize};
 
-/// Representation geometry, named exactly as `molar_vis_core` parses it.
+/// Representation geometry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RepStyle {
@@ -22,22 +21,6 @@ pub enum RepStyle {
     Vdw,
     Cartoon,
     Surface,
-}
-
-impl RepStyle {
-    /// The string the viewer's `set_rep_style` accepts. These are upstream's names, not
-    /// ours: `"ballstick"` (no underscore) is what `molar_vis_core::geometry` parses, and
-    /// an unmatched name silently falls back to the default style.
-    pub fn viewer_name(self) -> &'static str {
-        match self {
-            RepStyle::Lines => "lines",
-            RepStyle::Licorice => "licorice",
-            RepStyle::BallStick => "ballstick",
-            RepStyle::Vdw => "vdw",
-            RepStyle::Cartoon => "cartoon",
-            RepStyle::Surface => "surface",
-        }
-    }
 }
 
 /// What the representation is coloured by.
@@ -50,21 +33,6 @@ pub enum ColorMode {
     Index,
     SecStruct,
     BFactor,
-}
-
-impl ColorMode {
-    /// The string the viewer's `set_rep_color` accepts. `secstruct` and `beta` are
-    /// upstream's spellings (`"ss"` and `"bfactor"` are aliases of the same modes).
-    pub fn viewer_name(self) -> &'static str {
-        match self {
-            ColorMode::Element => "element",
-            ColorMode::Chain => "chain",
-            ColorMode::Residue => "resid",
-            ColorMode::Index => "index",
-            ColorMode::SecStruct => "secstruct",
-            ColorMode::BFactor => "beta",
-        }
-    }
 }
 
 /// One named look: geometry, colouring and the two sizes the viewer can change from
@@ -122,12 +90,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn viewer_names_match_upstream_parser() {
-        // Upstream parses "ballstick", not "ball_stick"; a rename here makes the rep
-        // silently fall back to the default style, which is hard to notice in a figure.
-        assert_eq!(RepStyle::BallStick.viewer_name(), "ballstick");
-        assert_eq!(RepStyle::Surface.viewer_name(), "surface");
-        assert_eq!(ColorMode::SecStruct.viewer_name(), "secstruct");
+    fn looks_are_distinct_and_named_for_the_ui() {
+        // The adapter matches on `style`; a rename here would silently drop the look.
+        let looks = Look::small_molecule_looks();
+        assert_eq!(looks[0].style, RepStyle::BallStick);
+        assert_eq!(looks[1].style, RepStyle::Vdw);
+        assert!(looks.iter().all(|look| !look.label.is_empty()));
+        // Ball and stick is what the page starts on.
+        assert_eq!(Look::default_small_molecule().style, RepStyle::BallStick);
     }
 
     #[test]
