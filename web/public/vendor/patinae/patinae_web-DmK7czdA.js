@@ -442,6 +442,16 @@ class M {
     o.webviewer_set_picking_enabled(this.__wbg_ptr, e);
   }
   /**
+   * Render at `scale` times the canvas resolution; 1 is upstream behaviour.
+   *
+   * `resize` keeps its meaning — the caller still passes canvas pixels — while the
+   * renderer draws its off-screen targets larger and the FXAA pass downsamples them.
+   * @param {number} scale
+   */
+  set_render_scale(e) {
+    o.webviewer_set_render_scale(this.__wbg_ptr, e);
+  }
+  /**
    * @param {boolean} enabled
    */
   set_selection_overlay_enabled(e) {
@@ -2047,12 +2057,12 @@ function Q() {
   };
 }
 function $(i, e, t, _) {
-  o.__wasm_bindgen_func_elem_18714(i, e, a(t), a(_));
+  o.__wasm_bindgen_func_elem_18720(i, e, a(t), a(_));
 }
 function _e(i, e, t) {
   try {
     const c = o.__wbindgen_add_to_stack_pointer(-16);
-    o.__wasm_bindgen_func_elem_18712(c, i, e, a(t));
+    o.__wasm_bindgen_func_elem_18718(c, i, e, a(t));
     var _ = s().getInt32(c + 0, !0), r = s().getInt32(c + 4, !0);
     if (r)
       throw b(_);
@@ -2063,7 +2073,7 @@ function _e(i, e, t) {
 function re(i, e, t) {
   try {
     const c = o.__wbindgen_add_to_stack_pointer(-16);
-    o.__wasm_bindgen_func_elem_16913(c, i, e, a(t));
+    o.__wasm_bindgen_func_elem_16919(c, i, e, a(t));
     var _ = s().getInt32(c + 0, !0), r = s().getInt32(c + 4, !0);
     if (r)
       throw b(_);
@@ -2074,7 +2084,7 @@ function re(i, e, t) {
 function oe(i, e, t) {
   try {
     const c = o.__wbindgen_add_to_stack_pointer(-16);
-    o.__wasm_bindgen_func_elem_16913_51(c, i, e, a(t));
+    o.__wasm_bindgen_func_elem_16919_52(c, i, e, a(t));
     var _ = s().getInt32(c + 0, !0), r = s().getInt32(c + 4, !0);
     if (r)
       throw b(_);
@@ -2085,7 +2095,7 @@ function oe(i, e, t) {
 function ce(i, e, t) {
   try {
     const c = o.__wbindgen_add_to_stack_pointer(-16);
-    o.__wasm_bindgen_func_elem_16913_52(c, i, e, a(t));
+    o.__wasm_bindgen_func_elem_16919_53(c, i, e, a(t));
     var _ = s().getInt32(c + 0, !0), r = s().getInt32(c + 4, !0);
     if (r)
       throw b(_);

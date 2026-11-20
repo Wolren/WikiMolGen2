@@ -35,7 +35,10 @@ interface PatinaeViewer {
   destroy(): void;
 }
 
-type PatinaeViewerConstructor = new (container: HTMLElement) => PatinaeViewer;
+type PatinaeViewerConstructor = new (
+  container: HTMLElement,
+  options?: { renderScale?: number },
+) => PatinaeViewer;
 
 /** The renderer cannot run here — no WebGPU, or patinae refused to start. */
 export class RendererUnavailable extends Error {}
@@ -139,6 +142,18 @@ function formatOf(name: string): string {
   return extension === "" ? "sdf" : extension;
 }
 
+/**
+ * Draw the viewer canvas at this multiple of its CSS size; the browser downsamples it.
+ *
+ * patinae's browser build antialiases with FXAA only — no MSAA anywhere, and its
+ * supersampling settings are declared but unused — so a silhouette is one hard pixel
+ * (measured: 0.23 px edge ramp, visible stair-steps). Rendering the canvas at 2x and
+ * letting the compositor scale it down is what makes the live view smooth: measured
+ * 0.62 px ramp, roughly 2.7x wider, and the steps are gone. Exports are unaffected —
+ * they supersample again in Rust.
+ */
+const SUPERSAMPLE = 2;
+
 function frames(count: number): Promise<void> {
   return new Promise((resolve) => {
     let remaining = count;
@@ -180,7 +195,7 @@ export class Renderer {
       throw new RendererUnavailable(`The 3D viewer failed to load (${String(error)}).`);
     }
 
-    const viewer = new PatinaeViewerClass(container);
+    const viewer = new PatinaeViewerClass(container, { renderScale: SUPERSAMPLE });
     try {
       await viewer.init();
     } catch (error) {

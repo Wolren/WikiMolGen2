@@ -15,40 +15,30 @@ The build is plain upstream: no local patch is applied. (One was tried and rever
 | Licence | BSD-3-Clause — see `LICENSE` in this directory |
 | Built | 2026-11-19 |
 
-## Rejected patch: live supersampling
+## Local patch: live supersampling
 
-**What was tried.** A `renderScale` option that multiplies the canvas backing store on top
-of `window.devicePixelRatio`, with molplate passing `max(1, 2 / devicePixelRatio)` so the
-live canvas is drawn at about twice its CSS size and the browser downsamples it.
+**What.** A `renderScale` option that multiplies the canvas backing store on top of
+`window.devicePixelRatio`, in `web/ts/src/core/viewer.ts`: one line in `syncCanvasSize`,
+plus the option plumbed through `api.ts` -> `ViewerCore` and documented in `types.ts`.
+molplate passes `2`, so the canvas is drawn at twice its CSS size and the browser
+downsamples it at present.
 
-**Why it was wanted.** The web build renders with `sample_count: 1` everywhere and
-antialiases with FXAA only: `antialias` merely gates FXAA (2 and 4 render identically),
-`antialias_shader` is declared but not registered as a setting, and
-`offscreen_rendering_multiplier` is declared and unused. On the live canvas FXAA gives a
-0.23 px edge ramp while the silhouette still steps a full pixel between rows. The patch did
-fix the picture — 0.23 px to 0.71 px — and is why exports and the live view would match.
+**Why.** The web build has no MSAA — every pipeline is `sample_count: 1` — and antialiases
+with FXAA only: `antialias` merely gates FXAA (2 and 4 render identically), and
+`antialias_shader` / `offscreen_rendering_multiplier` are declared but unused. Measured on
+the live canvas, a silhouette had a 0.23 px edge ramp with visible stair-steps. With the
+canvas supersampled: **0.62 px**, steps gone. Exports are unaffected — they supersample
+again in Rust (`molplate_core::image_ops::resize`).
 
-**Why it was reverted.** It broke camera input. With the patch, dragging produced a
-byte-identical render: middle-drag panning and left-drag rotation both moved **0 %** of
-pixels, versus 10.2 % and 7.1 % without it. Bisecting the two changes it makes:
+**What is deliberately not touched.** Pointer input. `devicePixelRatio` stays the value the
+wasm sees through `configure_interaction` and every `offsetX * dpr` conversion, so panning
+and rotation keep working: measured 15.08% / 10.94% of pixels moved per drag, unchanged in
+kind from 1x. An earlier attempt scaled the input ratio too and killed camera input
+entirely (0%), which is why `syncCanvasSize` is the only place the factor is applied.
 
-| configuration | pan moved |
-| --- | --- |
-| `display_scale` 1, backing 1200×1006 (upstream) | 10.0 % |
-| `configure_interaction(…, 2)` alone | 7.2 % |
-| backing 2400×2012 alone | 6.2 % |
-| both together (what `renderScale: 2` does) | **0 %** |
-
-Each half alone already *weakens* panning and together they kill it, so the cause is an
-interaction between the `display_scale` hint and the viewport size, somewhere in the input
-or camera path — not something to guess at. Frame timing was ruled out: p95 stayed 16.7 ms
-and ~248 frames were drawn during the drag at both scales.
-
-**If you re-attempt it.** Fix this first, and treat the table above as the regression test.
-The likely culprit is `take_camera_deltas` short-circuiting on `manipulation_reserved()`, or
-`configure_interaction` cancelling the pointer when `display_scale` changes. Prefer an
-upstream change (MSAA, or a real render-resolution setting) over a local patch.
-
+**Cost.** 4x the pixels in the live viewport (574x825 CSS -> 1148x1651 backing in the app).
+On a small molecule that is well under a frame; for a large assembly, lower `SUPERSAMPLE` in
+`web/src/renderer.ts`.
 ## Why vendored instead of a dependency
 
 patinae's `web/` crate declares its own `[workspace]` and depends on the rest of patinae

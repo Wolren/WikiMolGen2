@@ -1,12 +1,12 @@
 var ur = Object.defineProperty;
 var hr = (r, e, t) => e in r ? ur(r, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : r[e] = t;
-var k = (r, e, t) => hr(r, typeof e != "symbol" ? e + "" : e, t);
+var b = (r, e, t) => hr(r, typeof e != "symbol" ? e + "" : e, t);
 class pr {
   constructor(e) {
-    k(this, "container");
-    k(this, "pool", []);
-    k(this, "activeCount", 0);
-    k(this, "highlights", []);
+    b(this, "container");
+    b(this, "pool", []);
+    b(this, "activeCount", 0);
+    b(this, "highlights", []);
     this.container = document.createElement("div"), this.container.style.position = "absolute", this.container.style.top = "0", this.container.style.left = "0", this.container.style.width = "100%", this.container.style.height = "100%", this.container.style.pointerEvents = "none", this.container.style.overflow = "hidden", e.appendChild(this.container);
   }
   update(e, t) {
@@ -49,32 +49,42 @@ function at(r) {
 }
 const dr = 25, mr = [0, 1, 2, 3, 4], gr = 240;
 class br {
-  constructor(e) {
-    k(this, "wasm", null);
-    k(this, "canvas");
-    k(this, "animFrameId", 0);
-    k(this, "resizeObserver", null);
-    k(this, "labelOverlay");
-    k(this, "_deferred", !1);
-    k(this, "_revealDuration", 150);
-    k(this, "dpr", 1);
-    k(this, "eventAbort", new AbortController());
-    k(this, "macos", /Mac|iPhone|iPad/.test(navigator.platform));
+  constructor(e, t = 1) {
+    b(this, "wasm", null);
+    b(this, "canvas");
+    b(this, "animFrameId", 0);
+    b(this, "resizeObserver", null);
+    b(this, "labelOverlay");
+    b(this, "_deferred", !1);
+    b(this, "_revealDuration", 150);
+    b(this, "dpr", 1);
+    /**
+     * Render-resolution multiplier (molplate local patch).
+     *
+     * The browser build has no MSAA — every pipeline is sample_count 1 — and FXAA alone
+     * leaves silhouettes quantised to whole pixels. The renderer draws its off-screen
+     * targets that many times larger and the FXAA pass downsamples them to the surface, so
+     * the canvas, its backing store and every pointer coordinate stay exactly as upstream.
+     * Requires picking to be disabled.
+     */
+    b(this, "renderScale");
+    b(this, "eventAbort", new AbortController());
+    b(this, "macos", /Mac|iPhone|iPad/.test(navigator.platform));
     /** `MouseEvent.buttons` bitmask the WASM side currently believes is pressed. */
-    k(this, "buttonMask", 0);
-    k(this, "clickStart", null);
-    k(this, "fatalError", null);
-    k(this, "fatalLabel", null);
-    k(this, "queuedHover", null);
-    k(this, "frameTimes", []);
-    k(this, "lastFrameMs", 0);
-    k(this, "frameCount", 0);
-    k(this, "skipNextFrameTiming", !1);
+    b(this, "buttonMask", 0);
+    b(this, "clickStart", null);
+    b(this, "fatalError", null);
+    b(this, "fatalLabel", null);
+    b(this, "queuedHover", null);
+    b(this, "frameTimes", []);
+    b(this, "lastFrameMs", 0);
+    b(this, "frameCount", 0);
+    b(this, "skipNextFrameTiming", !1);
     /** Called with the raw WASM pick result (PickHitInfo | null) on each click. */
-    k(this, "onPick", null);
+    b(this, "onPick", null);
     /** Called for renderer warnings produced outside direct command execution. */
-    k(this, "onOutput", null);
-    this.container = e, getComputedStyle(e).position === "static" && (e.style.position = "relative"), this.canvas = document.createElement("canvas"), this.canvas.id = "patinae-canvas-" + Math.random().toString(36).slice(2, 8), this.canvas.style.width = "100%", this.canvas.style.height = "100%", this.canvas.style.display = "block", this.canvas.tabIndex = 0, e.appendChild(this.canvas), this.labelOverlay = new pr(e);
+    b(this, "onOutput", null);
+    this.container = e, this.renderScale = Number.isFinite(t) ? Math.min(4, Math.max(1, t)) : 1, getComputedStyle(e).position === "static" && (e.style.position = "relative"), this.canvas = document.createElement("canvas"), this.canvas.id = "patinae-canvas-" + Math.random().toString(36).slice(2, 8), this.canvas.style.width = "100%", this.canvas.style.height = "100%", this.canvas.style.display = "block", this.canvas.tabIndex = 0, e.appendChild(this.canvas), this.labelOverlay = new pr(e);
   }
   /**
    * Initialise the viewer.
@@ -90,7 +100,7 @@ class br {
    *   "performance", "balanced", "lite", "manual:<MiB>", or "auto".
    */
   async init(e = {}) {
-    const t = await import("./patinae_web-DBivj6-U.js");
+    const t = await import("./patinae_web-DmK7czdA.js");
     await t.default(), this.syncCanvasSize();
     const n = e.picking ?? !1, s = e.selectionOverlay ?? n, a = e.memoryProfile ?? "auto", c = t.WebViewer, u = a === "auto" ? await c.create(
       this.canvas.id,
@@ -367,7 +377,7 @@ class br {
     );
   }
   syncCanvasSize() {
-    const e = window.devicePixelRatio || 1, t = this.canvas.getBoundingClientRect();
+    const e = (window.devicePixelRatio || 1) * this.renderScale, t = this.canvas.getBoundingClientRect();
     this.canvas.width = Math.round(t.width * e), this.canvas.height = Math.round(t.height * e);
   }
 }
@@ -397,7 +407,7 @@ function Hn(r, e) {
 }
 class kr {
   constructor() {
-    k(this, "listeners", /* @__PURE__ */ new Map());
+    b(this, "listeners", /* @__PURE__ */ new Map());
   }
   on(e, t) {
     this.listeners.has(e) || this.listeners.set(e, /* @__PURE__ */ new Set()), this.listeners.get(e).add(t);
@@ -523,9 +533,9 @@ function ai(r, e, t) {
 }
 var ht = class {
   constructor(r) {
-    k(this, "options");
-    k(this, "rules");
-    k(this, "lexer");
+    b(this, "options");
+    b(this, "rules");
+    b(this, "lexer");
     this.options = r || Te;
   }
   space(r) {
@@ -581,8 +591,8 @@ var ht = class {
         n = n ? `${n}
 ${g}` : g, s = s ? `${s}
 ${f}` : f;
-        let b = this.lexer.state.top;
-        if (this.lexer.state.top = !0, this.lexer.blockTokens(f, a, !0), this.lexer.state.top = b, t.length === 0) break;
+        let k = this.lexer.state.top;
+        if (this.lexer.state.top = !0, this.lexer.blockTokens(f, a, !0), this.lexer.state.top = k, t.length === 0) break;
         let d = a.at(-1);
         if ((d == null ? void 0 : d.type) === "code") break;
         if ((d == null ? void 0 : d.type) === "blockquote") {
@@ -613,10 +623,10 @@ ${f}` : f;
         let o = !1, g = "", f = "";
         if (!(e = a.exec(r)) || this.rules.block.hr.test(r)) break;
         g = e[0], r = r.substring(g.length);
-        let b = ii(e[2].split(`
+        let k = ii(e[2].split(`
 `, 1)[0], e[1].length), d = r.split(`
-`, 1)[0], T = !b.trim(), w = 0;
-        if (this.options.pedantic ? (w = 2, f = b.trimStart()) : T ? w = e[1].length + 1 : (w = b.search(this.rules.other.nonSpaceChar), w = w > 4 ? 1 : w, f = b.slice(w), w += e[1].length), T && this.rules.other.blankLine.test(d) && (g += d + `
+`, 1)[0], T = !k.trim(), w = 0;
+        if (this.options.pedantic ? (w = 2, f = k.trimStart()) : T ? w = e[1].length + 1 : (w = k.search(this.rules.other.nonSpaceChar), w = w > 4 ? 1 : w, f = k.slice(w), w += e[1].length), T && this.rules.other.blankLine.test(d) && (g += d + `
 `, r = r.substring(d.length + 1), o = !0), !o) {
           let C = this.rules.other.nextBulletRegex(w), $ = this.rules.other.hrRegex(w), D = this.rules.other.fencesBeginRegex(w), Y = this.rules.other.headingBeginRegex(w), Z = this.rules.other.htmlBeginRegex(w), ae = this.rules.other.blockquoteBeginRegex(w);
           for (; r; ) {
@@ -626,12 +636,12 @@ ${f}` : f;
             if (te.search(this.rules.other.nonSpaceChar) >= w || !d.trim()) f += `
 ` + te.slice(w);
             else {
-              if (T || b.replace(this.rules.other.tabCharGlobal, "    ").search(this.rules.other.nonSpaceChar) >= 4 || D.test(b) || Y.test(b) || $.test(b)) break;
+              if (T || k.replace(this.rules.other.tabCharGlobal, "    ").search(this.rules.other.nonSpaceChar) >= 4 || D.test(k) || Y.test(k) || $.test(k)) break;
               f += `
 ` + d;
             }
             T = !d.trim(), g += ee + `
-`, r = r.substring(ee.length + 1), b = te.slice(w);
+`, r = r.substring(ee.length + 1), k = te.slice(w);
           }
         }
         s.loose || (c ? s.loose = !0 : this.rules.other.doubleBlankLine.test(g) && (c = !0)), s.items.push({ type: "list_item", raw: g, task: !!this.options.gfm && this.rules.other.listIsTask.test(f), loose: !1, text: f, tokens: [] }), s.raw += g;
@@ -645,19 +655,19 @@ ${f}` : f;
         let g = o.tokens[0];
         if (o.task && ((g == null ? void 0 : g.type) === "text" || (g == null ? void 0 : g.type) === "paragraph")) {
           o.text = o.text.replace(this.rules.other.listReplaceTask, ""), g.raw = g.raw.replace(this.rules.other.listReplaceTask, ""), g.text = g.text.replace(this.rules.other.listReplaceTask, "");
-          for (let b = this.lexer.inlineQueue.length - 1; b >= 0; b--) if (this.rules.other.listIsTask.test(this.lexer.inlineQueue[b].src)) {
-            this.lexer.inlineQueue[b].src = this.lexer.inlineQueue[b].src.replace(this.rules.other.listReplaceTask, "");
+          for (let k = this.lexer.inlineQueue.length - 1; k >= 0; k--) if (this.rules.other.listIsTask.test(this.lexer.inlineQueue[k].src)) {
+            this.lexer.inlineQueue[k].src = this.lexer.inlineQueue[k].src.replace(this.rules.other.listReplaceTask, "");
             break;
           }
           let f = this.rules.other.listTaskCheckbox.exec(o.raw);
           if (f) {
-            let b = { type: "checkbox", raw: f[0] + " ", checked: f[0] !== "[ ]" };
-            o.checked = b.checked, s.loose ? o.tokens[0] && ["paragraph", "text"].includes(o.tokens[0].type) && "tokens" in o.tokens[0] && o.tokens[0].tokens ? (o.tokens[0].raw = b.raw + o.tokens[0].raw, o.tokens[0].text = b.raw + o.tokens[0].text, o.tokens[0].tokens.unshift(b)) : o.tokens.unshift({ type: "paragraph", raw: b.raw, text: b.raw, tokens: [b] }) : o.tokens.unshift(b);
+            let k = { type: "checkbox", raw: f[0] + " ", checked: f[0] !== "[ ]" };
+            o.checked = k.checked, s.loose ? o.tokens[0] && ["paragraph", "text"].includes(o.tokens[0].type) && "tokens" in o.tokens[0] && o.tokens[0].tokens ? (o.tokens[0].raw = k.raw + o.tokens[0].raw, o.tokens[0].text = k.raw + o.tokens[0].text, o.tokens[0].tokens.unshift(k)) : o.tokens.unshift({ type: "paragraph", raw: k.raw, text: k.raw, tokens: [k] }) : o.tokens.unshift(k);
           }
         } else o.task && (o.task = !1);
         if (!s.loose) {
-          let f = o.tokens.filter((d) => d.type === "space"), b = f.length > 0 && f.some((d) => this.rules.other.anyLine.test(d.raw));
-          s.loose = b;
+          let f = o.tokens.filter((d) => d.type === "space"), k = f.length > 0 && f.some((d) => this.rules.other.anyLine.test(d.raw));
+          s.loose = k;
         }
       }
       if (s.loose) for (let o of s.items) {
@@ -774,13 +784,13 @@ ${f}` : f;
         }
         if (u -= c, u > 0) continue;
         c = Math.min(c, c + u + o);
-        let f = [...n[0]][0].length, b = r.slice(0, s + n.index + f + c);
+        let f = [...n[0]][0].length, k = r.slice(0, s + n.index + f + c);
         if (Math.min(s, c) % 2) {
-          let T = b.slice(1, -1);
-          return { type: "em", raw: b, text: T, tokens: this.lexer.inlineTokens(T) };
+          let T = k.slice(1, -1);
+          return { type: "em", raw: k, text: T, tokens: this.lexer.inlineTokens(T) };
         }
-        let d = b.slice(2, -2);
-        return { type: "strong", raw: b, text: d, tokens: this.lexer.inlineTokens(d) };
+        let d = k.slice(2, -2);
+        return { type: "strong", raw: k, text: d, tokens: this.lexer.inlineTokens(d) };
       }
     }
   }
@@ -807,8 +817,8 @@ ${f}` : f;
         }
         if (u -= c, u > 0) continue;
         c = Math.min(c, c + u);
-        let g = [...n[0]][0].length, f = r.slice(0, s + n.index + g + c), b = f.slice(s, -s);
-        return { type: "del", raw: f, text: b, tokens: this.lexer.inlineTokens(b) };
+        let g = [...n[0]][0].length, f = r.slice(0, s + n.index + g + c), k = f.slice(s, -s);
+        return { type: "del", raw: f, text: k, tokens: this.lexer.inlineTokens(k) };
       }
     }
   }
@@ -844,11 +854,11 @@ ${f}` : f;
   }
 }, Q = class Qt {
   constructor(e) {
-    k(this, "tokens");
-    k(this, "options");
-    k(this, "state");
-    k(this, "inlineQueue");
-    k(this, "tokenizer");
+    b(this, "tokens");
+    b(this, "options");
+    b(this, "state");
+    b(this, "inlineQueue");
+    b(this, "tokenizer");
     this.tokens = [], this.tokens.links = /* @__PURE__ */ Object.create(null), this.options = e || Te, this.options.tokenizer = this.options.tokenizer || new ht(), this.tokenizer = this.options.tokenizer, this.tokenizer.options = this.options, this.tokenizer.lexer = this, this.inlineQueue = [], this.state = { inLink: !1, inRawBlock: !1, top: !0 };
     let t = { other: W, block: ot.normal, inline: Be.normal };
     this.options.pedantic ? (t.block = ot.pedantic, t.inline = Be.pedantic) : this.options.gfm && (t.block = ot.gfm, this.options.breaks ? t.inline = Be.breaks : t.inline = Be.gfm), this.tokenizer.rules = t;
@@ -942,9 +952,9 @@ ${f}` : f;
       }
       let g = e;
       if ((u = this.options.extensions) != null && u.startBlock) {
-        let f = 1 / 0, b = e.slice(1), d;
+        let f = 1 / 0, k = e.slice(1), d;
         this.options.extensions.startBlock.forEach((T) => {
-          d = T.call({ lexer: this }, b), typeof d == "number" && d >= 0 && (f = Math.min(f, d));
+          d = T.call({ lexer: this }, k), typeof d == "number" && d >= 0 && (f = Math.min(f, d));
         }), f < 1 / 0 && f >= 0 && (g = e.substring(0, f + 1));
       }
       if (this.state.top && (o = this.tokenizer.paragraph(g))) {
@@ -975,7 +985,7 @@ ${f}` : f;
     return this.inlineQueue.push({ src: e, tokens: t }), t;
   }
   inlineTokens(e, t = []) {
-    var u, o, g, f, b;
+    var u, o, g, f, k;
     this.tokenizer.lexer = this;
     let n = e;
     if (this.tokens.links) {
@@ -1039,7 +1049,7 @@ ${f}` : f;
         continue;
       }
       let T = e;
-      if ((b = this.options.extensions) != null && b.startInline) {
+      if ((k = this.options.extensions) != null && k.startInline) {
         let w = 1 / 0, C = e.slice(1), $;
         this.options.extensions.startInline.forEach((D) => {
           $ = D.call({ lexer: this }, C), typeof $ == "number" && $ >= 0 && (w = Math.min(w, $));
@@ -1065,8 +1075,8 @@ ${f}` : f;
   }
 }, pt = class {
   constructor(r) {
-    k(this, "options");
-    k(this, "parser");
+    b(this, "options");
+    b(this, "parser");
     this.options = r || Te;
   }
   space(r) {
@@ -1214,9 +1224,9 @@ ${r}</tr>
   }
 }, J = class Jt {
   constructor(e) {
-    k(this, "options");
-    k(this, "renderer");
-    k(this, "textRenderer");
+    b(this, "options");
+    b(this, "renderer");
+    b(this, "textRenderer");
     this.options = e || Te, this.options.renderer = this.options.renderer || new pt(), this.renderer = this.options.renderer, this.renderer.options = this.options, this.renderer.parser = this, this.textRenderer = new hn();
   }
   static parse(e, t) {
@@ -1367,8 +1377,8 @@ ${r}</tr>
   }
 }, ct, Ve = (ct = class {
   constructor(r) {
-    k(this, "options");
-    k(this, "block");
+    b(this, "options");
+    b(this, "block");
     this.options = r || Te;
   }
   preprocess(r) {
@@ -1389,18 +1399,18 @@ ${r}</tr>
   provideParser(r = this.block) {
     return r ? J.parse : J.parseInline;
   }
-}, k(ct, "passThroughHooks", /* @__PURE__ */ new Set(["preprocess", "postprocess", "processAllTokens", "emStrongMask"])), k(ct, "passThroughHooksRespectAsync", /* @__PURE__ */ new Set(["preprocess", "postprocess", "processAllTokens"])), ct), oi = class {
+}, b(ct, "passThroughHooks", /* @__PURE__ */ new Set(["preprocess", "postprocess", "processAllTokens", "emStrongMask"])), b(ct, "passThroughHooksRespectAsync", /* @__PURE__ */ new Set(["preprocess", "postprocess", "processAllTokens"])), ct), oi = class {
   constructor(...r) {
-    k(this, "defaults", nn());
-    k(this, "options", this.setOptions);
-    k(this, "parse", this.parseMarkdown(!0));
-    k(this, "parseInline", this.parseMarkdown(!1));
-    k(this, "Parser", J);
-    k(this, "Renderer", pt);
-    k(this, "TextRenderer", hn);
-    k(this, "Lexer", Q);
-    k(this, "Tokenizer", ht);
-    k(this, "Hooks", Ve);
+    b(this, "defaults", nn());
+    b(this, "options", this.setOptions);
+    b(this, "parse", this.parseMarkdown(!0));
+    b(this, "parseInline", this.parseMarkdown(!1));
+    b(this, "Parser", J);
+    b(this, "Renderer", pt);
+    b(this, "TextRenderer", hn);
+    b(this, "Lexer", Q);
+    b(this, "Tokenizer", ht);
+    b(this, "Hooks", Ve);
     this.use(...r);
   }
   walkTokens(r, e) {
@@ -1481,15 +1491,15 @@ ${r}</tr>
           let c = a, u = t.hooks[c], o = s[c];
           Ve.passThroughHooks.has(a) ? s[c] = (g) => {
             if (this.defaults.async && Ve.passThroughHooksRespectAsync.has(a)) return (async () => {
-              let b = await u.call(s, g);
-              return o.call(s, b);
+              let k = await u.call(s, g);
+              return o.call(s, k);
             })();
             let f = u.call(s, g);
             return o.call(s, f);
           } : s[c] = (...g) => {
             if (this.defaults.async) return (async () => {
-              let b = await u.apply(s, g);
-              return b === !1 && (b = await o.apply(s, g)), b;
+              let k = await u.apply(s, g);
+              return k === !1 && (k = await o.apply(s, g)), k;
             })();
             let f = u.apply(s, g);
             return f === !1 && (f = o.apply(s, g)), f;
@@ -2445,11 +2455,11 @@ function Cs() {
   r.DocumentFragment;
   const a = r.HTMLTemplateElement, c = r.Node, u = r.Element, o = r.NodeFilter;
   r.NamedNodeMap === void 0 && (r.NamedNodeMap || r.MozNamedAttrMap), r.HTMLFormElement;
-  const g = r.DOMParser, f = r.trustedTypes, b = u.prototype, d = X(b, "cloneNode"), T = X(b, "remove"), w = X(b, "removeAttributeNode"), C = X(b, "nextSibling"), $ = X(b, "childNodes"), D = X(b, "parentNode"), Y = X(b, "shadowRoot"), Z = X(b, "attributes"), ae = c && c.prototype ? X(c.prototype, "nodeType") : null, ee = c && c.prototype ? X(c.prototype, "nodeName") : null, te = c && c.prototype ? X(c.prototype, "ownerDocument") : null, V = function(i) {
+  const g = r.DOMParser, f = r.trustedTypes, k = u.prototype, d = X(k, "cloneNode"), T = X(k, "remove"), w = X(k, "removeAttributeNode"), C = X(k, "nextSibling"), $ = X(k, "childNodes"), D = X(k, "parentNode"), Y = X(k, "shadowRoot"), Z = X(k, "attributes"), ae = c && c.prototype ? X(c.prototype, "nodeType") : null, ee = c && c.prototype ? X(c.prototype, "nodeName") : null, te = c && c.prototype ? X(c.prototype, "ownerDocument") : null, V = function(i) {
     return ae ? ae(i) : i.nodeType;
   }, $e = function(i) {
     return ee ? ee(i) : i.nodeName;
-  }, pn = xi(b, "namespaceURI"), mt = function(i) {
+  }, pn = xi(k, "namespaceURI"), mt = function(i) {
     return pn ? pn(i) : i.namespaceURI;
   };
   if (typeof a == "function") {
@@ -3103,12 +3113,12 @@ function Cs() {
 var Fi = Cs();
 class ds {
   constructor(e, t) {
-    k(this, "container");
-    k(this, "viewer");
-    k(this, "output");
-    k(this, "input");
-    k(this, "history", []);
-    k(this, "historyIdx", -1);
+    b(this, "container");
+    b(this, "viewer");
+    b(this, "output");
+    b(this, "input");
+    b(this, "history", []);
+    b(this, "historyIdx", -1);
     this.container = e, this.viewer = t, e.innerHTML = `
       <div class="repl-header">Command Line</div>
       <div class="repl-output"></div>
@@ -3165,10 +3175,10 @@ class ds {
 const Wi = ["lines", "sticks", "cartoon", "spheres", "surface"];
 class Ui {
   constructor(e, t) {
-    k(this, "container");
-    k(this, "viewer");
-    k(this, "list");
-    k(this, "selectedObject", null);
+    b(this, "container");
+    b(this, "viewer");
+    b(this, "list");
+    b(this, "selectedObject", null);
     this.container = e, this.viewer = t, e.innerHTML = `
       <div class="panel-header">Objects</div>
       <div class="object-list"></div>
@@ -3179,10 +3189,10 @@ class Ui {
     this.list.innerHTML = "";
     for (const n of e) {
       const s = n.name, a = document.createElement("div");
-      a.className = `object-row${n.parent_group ? " grouped" : ""}${this.selectedObject === s ? " selected" : ""}`, a.dataset.objectName = s, a.setAttribute("role", "button"), a.setAttribute("aria-selected", String(this.selectedObject === s)), n.focus_disabled_reason && a.setAttribute("aria-description", n.focus_disabled_reason), a.tabIndex = 0, a.addEventListener("click", (b) => {
-        b.target.closest("button, select") || this.selectObject(s);
-      }), a.addEventListener("keydown", (b) => {
-        (b.key === "Enter" || b.key === " ") && (b.preventDefault(), this.selectObject(s));
+      a.className = `object-row${n.parent_group ? " grouped" : ""}${this.selectedObject === s ? " selected" : ""}`, a.dataset.objectName = s, a.setAttribute("role", "button"), a.setAttribute("aria-selected", String(this.selectedObject === s)), n.focus_disabled_reason && a.setAttribute("aria-description", n.focus_disabled_reason), a.tabIndex = 0, a.addEventListener("click", (k) => {
+        k.target.closest("button, select") || this.selectObject(s);
+      }), a.addEventListener("keydown", (k) => {
+        (k.key === "Enter" || k.key === " ") && (k.preventDefault(), this.selectObject(s));
       }), a.addEventListener("dblclick", () => {
         n.can_focus && this.viewer.execute(`zoom ${s}`);
       });
@@ -3200,22 +3210,22 @@ class Ui {
       ].filter(Boolean).join(" · ");
       const g = document.createElement("span");
       if (g.className = "obj-metadata", n.object_type === "molecule" ? (g.textContent = n.storage_mode === "instanced" ? `${n.displayed_atom_count} (${n.instance_count} copies)` : `${n.atom_count}`, g.title = n.storage_mode === "instanced" ? `${n.atom_count} stored atoms · ${n.displayed_atom_count} displayed atoms · shared colors and representations` : `${n.atom_count} atoms`) : n.object_type === "measurement" ? (g.textContent = `${n.entity_count}`, g.title = `${n.entity_count} measurement ${ms(n.entity_count, "entity", "entities")}`) : n.object_type === "label" ? (g.textContent = `${n.entity_count}`, g.title = `${n.entity_count} ${ms(n.entity_count, "label", "labels")}`) : g.textContent = "map", a.appendChild(c), a.appendChild(u), a.appendChild(o), a.appendChild(g), n.has_unresolved_entities) {
-        const b = document.createElement("span");
-        b.className = "obj-warning", b.textContent = "!", b.title = "One or more annotation entities are unresolved", b.setAttribute("aria-label", b.title), a.appendChild(b);
+        const k = document.createElement("span");
+        k.className = "obj-warning", k.textContent = "!", k.title = "One or more annotation entities are unresolved", k.setAttribute("aria-label", k.title), a.appendChild(k);
       }
       if (n.has_representations) {
-        const b = document.createElement("span");
-        b.className = "obj-reps";
+        const k = document.createElement("span");
+        k.className = "obj-reps";
         for (const d of Wi) {
           const T = document.createElement("button");
           T.className = "rep-btn", T.textContent = d.charAt(0).toUpperCase(), T.title = d, T.addEventListener("click", () => {
             this.viewer.execute(`show ${d}, ${s}`);
-          }), b.appendChild(T);
+          }), k.appendChild(T);
         }
-        a.appendChild(b);
+        a.appendChild(k);
       }
-      const f = ji(n, (b) => {
-        this.runObjectAction(n, b);
+      const f = ji(n, (k) => {
+        this.runObjectAction(n, k);
       });
       f && a.appendChild(f), this.list.appendChild(a);
     }
@@ -3346,9 +3356,9 @@ function ms(r, e, t) {
 }
 class Gi {
   constructor(e, t) {
-    k(this, "container");
-    k(this, "viewer");
-    k(this, "content");
+    b(this, "container");
+    b(this, "viewer");
+    b(this, "content");
     this.container = e, this.viewer = t, e.innerHTML = `
       <div class="panel-header">Sequence</div>
       <div class="sequence-content"></div>
@@ -3383,11 +3393,11 @@ class Gi {
 }
 class Yi {
   constructor(e, t) {
-    k(this, "container");
-    k(this, "viewer");
-    k(this, "frameLabel", null);
-    k(this, "slider", null);
-    k(this, "playBtn", null);
+    b(this, "container");
+    b(this, "viewer");
+    b(this, "frameLabel", null);
+    b(this, "slider", null);
+    b(this, "playBtn", null);
     this.container = e, this.viewer = t, e.innerHTML = `
       <div class="panel-header">Movie</div>
       <div class="movie-controls">
@@ -3440,18 +3450,18 @@ class Yi {
 }
 class Vi {
   constructor(e, t = {}) {
-    k(this, "core");
-    k(this, "events", new kr());
-    k(this, "panels", /* @__PURE__ */ new Map());
-    k(this, "options");
+    b(this, "core");
+    b(this, "events", new kr());
+    b(this, "panels", /* @__PURE__ */ new Map());
+    b(this, "options");
     /** This facade reads the viewer's Rust registry; it stores no task state. */
-    k(this, "tasks", {
+    b(this, "tasks", {
       get: async (e) => this.core.requestWasm("get_task", (t) => t.get_task(e)),
       list: async (e = {}) => this.core.requestWasm("list_tasks", (t) => t.list_tasks(e)),
       cancel: async (e) => this.core.requestWasm("cancel_task", (t) => t.cancel_task(e)),
       wait: async (e, t) => await this.core.requestWasm("wait_task", (n) => n.wait_task(e, t))
     });
-    this.options = t, this.core = new br(e), t.defer && this.core.setDeferred(!0, t.revealDuration ?? 150);
+    this.options = t, this.core = new br(e, t.renderScale ?? 1), t.defer && this.core.setDeferred(!0, t.revealDuration ?? 150);
   }
   async init() {
     const e = await this.core.init({
@@ -3665,17 +3675,17 @@ function Zi(r = "patinae-viewer") {
     class extends HTMLElement {
       constructor() {
         super(...arguments);
-        k(this, "viewer", null);
+        b(this, "viewer", null);
       }
       async connectedCallback() {
         var w;
         const t = this.attachShadow({ mode: "open" }), n = document.createElement("div");
         n.style.width = "100%", n.style.height = "100%", n.style.position = "relative", t.appendChild(n);
-        const s = this.getAttribute("panels"), a = s ? s.split(",").map((C) => C.trim()) : [], c = this.getAttribute("src"), u = this.getAttribute("command"), o = this.getAttribute("defer"), g = o !== null ? o !== "false" : !!(c || u), f = this.getAttribute("selection-overlay"), b = f === null ? void 0 : f !== "false", d = (w = this.getAttribute("memory-profile")) == null ? void 0 : w.trim(), T = d === "performance" || d === "balanced" || d === "lite" || /^manual:[1-9]\d*$/.test(d ?? "") || d === "auto" ? d : void 0;
+        const s = this.getAttribute("panels"), a = s ? s.split(",").map((C) => C.trim()) : [], c = this.getAttribute("src"), u = this.getAttribute("command"), o = this.getAttribute("defer"), g = o !== null ? o !== "false" : !!(c || u), f = this.getAttribute("selection-overlay"), k = f === null ? void 0 : f !== "false", d = (w = this.getAttribute("memory-profile")) == null ? void 0 : w.trim(), T = d === "performance" || d === "balanced" || d === "lite" || /^manual:[1-9]\d*$/.test(d ?? "") || d === "auto" ? d : void 0;
         if (this.viewer = new Vi(n, {
           panels: a,
           defer: g,
-          selectionOverlay: b,
+          selectionOverlay: k,
           memoryProfile: T
         }), await this.viewer.init(), c) {
           const C = c.split(/\s+/).filter(Boolean);
