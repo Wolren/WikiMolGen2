@@ -2,7 +2,7 @@
 //!
 //! A [`Look`] is a *description* of a representation, not a viewer handle. Serialising it
 //! as JSON keeps the TypeScript UI and the Rust core in step without a hand-maintained
-//! mirror type — the page asks Rust for the preset list and sends a chosen preset
+//! mirror type, the page asks Rust for the preset list and sends a chosen preset
 //! straight back. Translating a look into renderer calls is the adapter's job
 //! (`web/src/renderer.ts`), so this module stays free of any one renderer's vocabulary.
 //!

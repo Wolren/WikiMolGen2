@@ -42,8 +42,8 @@ const FIGURE_MARGIN = 0.06;
 /**
  * Render this many times wider than the figure and scale down in Rust.
  *
- * patinae's browser build antialiases with FXAA and nothing else — no MSAA, and its
- * supersampling setting is declared but unused — so an atom silhouette is about one hard
+ * patinae's browser build antialiases with FXAA and nothing else, no MSAA, and its
+ * supersampling setting is declared but unused, so an atom silhouette is about one hard
  * pixel. Rendering at 2× widens the edge gradient about threefold; 3× adds nothing.
  */
 const SUPERSAMPLE = 2;
@@ -103,7 +103,7 @@ function required<T extends HTMLElement>(id: string): T {
 }
 
 async function boot(): Promise<void> {
-  // The module must be initialised before *any* export is called — including the
+  // The module must be initialised before *any* export is called, including the
   // preset list, which is generated in Rust.
   try {
     await init();
@@ -291,7 +291,7 @@ dom.zoomOut.addEventListener("click", () => zoomScene(-1));
 
 // The renderer maps a released wheel to clipping-plane changes and only zooms while a
 // button is held, so a plain wheel does nothing visible. A viewer is expected to zoom, so
-// take that case in the capture phase — before the canvas sees it — and leave the
+// take that case in the capture phase, before the canvas sees it, and leave the
 // wheel-while-dragging case to the renderer.
 dom.viewerHost.addEventListener(
   "wheel",
@@ -316,7 +316,7 @@ dom.exportButton.addEventListener("click", () => {
  *
  * patinae renders offscreen at whatever size is asked for, so there is no canvas resize,
  * no device-pixel-ratio correction and no screenshot handshake to wait on. What remains
- * is the step that makes a viewport capture into a figure — the crop and the margin —
+ * is the step that makes a viewport capture into a figure, the crop and the margin : 
  * and that stays in Rust where it is tested.
  */
 async function exportPng(): Promise<void> {
@@ -387,7 +387,7 @@ function refreshOutput(): void {
   if (state.compound === null) {
     currentText = "";
     dom.wikitext.textContent = "Load a compound to generate markup.";
-    dom.fileName.textContent = "—";
+    dom.fileName.textContent = ": ";
     return;
   }
 

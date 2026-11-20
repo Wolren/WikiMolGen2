@@ -91,7 +91,7 @@ fn centred_canvas(img: &RgbaImage, width: u32, height: u32, fill: [u8; 4]) -> Rg
 /// Turn a rendered viewport into a figure.
 ///
 /// A render is the whole viewport: a flat background with the molecule somewhere inside
-/// it. A figure is the opposite — the molecule, and an even margin, at a size that does
+/// it. A figure is the opposite, the molecule, and an even margin, at a size that does
 /// not depend on the window. One trim and one pad does that:
 ///
 /// 1. trim the uniform background, which leaves exactly the molecule;
@@ -100,7 +100,7 @@ fn centred_canvas(img: &RgbaImage, width: u32, height: u32, fill: [u8; 4]) -> Rg
 /// This used to trim twice, because the previous renderer painted its own grey frame
 /// around the scene, so a capture had two background layers. patinae draws no chrome, and
 /// a second trim on a single-background image crops to whatever the molecule's corner
-/// pixel happens to be — a bug the transparent-capture test caught.
+/// pixel happens to be, a bug the transparent-capture test caught.
 pub fn frame_figure(img: &RgbaImage, margin: f32) -> RgbaImage {
     frame_figure_with(img, margin, [255, 255, 255, 255])
 }
@@ -120,8 +120,8 @@ pub fn frame_figure_with(img: &RgbaImage, margin: f32, fill: [u8; 4]) -> RgbaIma
 
 /// Scale an image down with a good resampling filter.
 ///
-/// The renderer antialiases with FXAA only — there is no MSAA and no built-in supersampling
-/// in its web build — so a silhouette is roughly one hard pixel. Rendering larger and
+/// The renderer antialiases with FXAA only, there is no MSAA and no built-in supersampling
+/// in its web build, so a silhouette is roughly one hard pixel. Rendering larger and
 /// scaling down here is what actually smooths it: at 2× the edge gradient is about three
 /// times wider, and going beyond 2× adds nothing.
 ///
@@ -142,7 +142,7 @@ pub fn resize(img: &RgbaImage, width: u32, height: u32) -> RgbaImage {
         width.max(1),
         height.max(1),
         // Triangle, not Lanczos: at a 2:1 downscale it is close to an area average and,
-        // unlike the windowed-sinc filters, it has no negative lobes — so a hard silhouette
+        // unlike the windowed-sinc filters, it has no negative lobes, so a hard silhouette
         // does not gain a bright halo ring on the background side.
         image::imageops::FilterType::Triangle,
     );
@@ -310,7 +310,7 @@ mod tests {
 
         let out = resize(&img, 2, 1);
         let edge = out.get_pixel(0, 0);
-        // Downscaling blends the boundary, so alpha need not be a hard 255 — what matters
+        // Downscaling blends the boundary, so alpha need not be a hard 255, what matters
         // is that the colour was not dragged towards the transparent side's black.
         assert!(edge.0[3] > 200, "the opaque half lost its opacity: {:?}", edge);
         assert!(edge.0[0] > 240, "edge colour was darkened to {:?}", edge);

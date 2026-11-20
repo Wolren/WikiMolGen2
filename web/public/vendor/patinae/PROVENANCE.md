@@ -1,18 +1,18 @@
 # Vendored: patinae web viewer 0.5.4
 
 These files are a **build output**, copied here verbatim from the build described below.
-Nothing in this directory is edited by hand — to change it, rebuild from source and copy
+Nothing in this directory is edited by hand, to change it, rebuild from source and copy
 again.
 
-The build is plain upstream: no local patch is applied. (One was tried and reverted; see
-[Rejected patch](#rejected-patch-live-supersampling) — read it before re-attempting.)
+The build carries **one local patch**: the live canvas is supersampled. Everything else is
+upstream as built. See [Local patch](#local-patch-live-supersampling) below.
 
 | | |
 | --- | --- |
 | Upstream | <https://github.com/zmactep/pymol-rs> (formerly PyMOL-RS; "patinae") |
 | Commit | `a52a315618bb1476fb250c2f4e1f26d5a759ab6c` |
 | Version | 0.5.4 (`web/package.json`) |
-| Licence | BSD-3-Clause — see `LICENSE` in this directory |
+| Licence | BSD-3-Clause, see `LICENSE` in this directory |
 | Built | 2026-11-19 |
 
 ## Local patch: live supersampling
@@ -23,11 +23,11 @@ plus the option plumbed through `api.ts` -> `ViewerCore` and documented in `type
 molplate passes `2`, so the canvas is drawn at twice its CSS size and the browser
 downsamples it at present.
 
-**Why.** The web build has no MSAA — every pipeline is `sample_count: 1` — and antialiases
+**Why.** The web build has no MSAA, every pipeline is `sample_count: 1`, and antialiases
 with FXAA only: `antialias` merely gates FXAA (2 and 4 render identically), and
 `antialias_shader` / `offscreen_rendering_multiplier` are declared but unused. Measured on
 the live canvas, a silhouette had a 0.23 px edge ramp with visible stair-steps. With the
-canvas supersampled: **0.62 px**, steps gone. Exports are unaffected — they supersample
+canvas supersampled: **0.62 px**, steps gone. Exports are unaffected, they supersample
 again in Rust (`molplate_core::image_ops::resize`).
 
 **What is deliberately not touched.** Pointer input. `devicePixelRatio` stays the value the
@@ -44,7 +44,7 @@ On a small molecule that is well under a frame; for a large assembly, lower `SUP
 patinae's `web/` crate declares its own `[workspace]` and depends on the rest of patinae
 by **path** (`../crates/patinae-render`, …). That means:
 
-* it cannot be consumed as a `cargo` git dependency — cargo resolves a git dependency
+* it cannot be consumed as a `cargo` git dependency, cargo resolves a git dependency
   through the manifest at the repository root, and this package is not a member of that
   workspace;
 * depending on it by path would tie this repo to a checkout outside it;
@@ -77,10 +77,10 @@ patinae_web-<hash>.js   # wasm-bindgen glue; the hash changes between builds
 
 `patinae-viewer.js` resolves `patinae_web_bg.wasm` relative to its own URL, so all three
 files must stay together under the same path. The facade also imports its glue chunk by
-relative path — keep it alongside.
+relative path, keep it alongside.
 
 ## What the vendored build does not include
 
-* No native plugins (`plugins/raytracer` is a native cdylib) — so no ray tracing here.
+* No native plugins (`plugins/raytracer` is a native cdylib), so no ray tracing here.
 * `wasm-pack build --no-opt` is what `npm run build` runs, so the wasm is **not**
   wasm-opt'd. A production deploy would add that pass for a smaller payload.

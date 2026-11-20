@@ -1,10 +1,10 @@
-# ADR 0001 — Architecture of the molplate web app
+# ADR 0001, Architecture of the molplate web app
 
 Status: **superseded by [ADR 0002](ADR-0002-renderer-patinae.md)** (2026-11-19)
 Supersedes: nothing
 
 This record is kept as written, because the reasoning about where the boundary between
-Rust and TypeScript sits still holds — the renderer is separate, the figure post-processing
+Rust and TypeScript sits still holds, the renderer is separate, the figure post-processing
 and markup are Rust, and the page owns the DOM. What changed is *which* renderer, and how
 pixels come out of it. Read sections 2 and 3 as history.
 
@@ -12,7 +12,7 @@ pixels come out of it. Read sections 2 and 3 as history.
 
 The goal is a browser tool with the job WikiMolGen does on the desktop: take a compound
 (PubChem name, CID or SMILES), produce a publication-quality structural image, and hand
-back the Wikipedia/Commons markup that goes with it — without a server, an install, or a
+back the Wikipedia/Commons markup that goes with it, without a server, an install, or a
 Python environment.
 
 Two constraints shape everything:
@@ -47,7 +47,7 @@ generator wants its own controls, not a molecule browser.
 ### 2. Image export is a screenshot of a resized surface
 
 Upstream can render an image to a file, but on wasm that path is menu-driven, raster-only,
-and hands the PNG to a browser download — the bytes are dropped. There is no offscreen
+and hands the PNG to a browser download, the bytes are dropped. There is no offscreen
 render API a host can call, because `App`'s renderer, camera and scene are private.
 
 We therefore capture through egui: `ViewportCommand::Screenshot` is part of the public
@@ -67,10 +67,10 @@ Consequences, accepted for v1:
   tracer is not driven), so nothing here produces soft shadows or global illumination;
 * the largest useful export is bounded by the GPU surface limit, and very large canvases
   cost memory;
-* the image is the viewport as drawn, minus its chrome — which is what a figure needs.
+* the image is the viewport as drawn, minus its chrome, which is what a figure needs.
 
-The alternative — vendoring and patching `molar_vis_core` to expose a real offscreen
-render entry point — buys ray-traced exports at the cost of carrying a fork of a 50k-line
+The alternative, vendoring and patching `molar_vis_core` to expose a real offscreen
+render entry point, buys ray-traced exports at the cost of carrying a fork of a 50k-line
 crate. The audit of upstream puts that patch at roughly 100–150 lines across three files;
 if ray-traced figures become a requirement, that is the change to make, and it should be
 offered upstream first.
@@ -78,7 +78,7 @@ offered upstream first.
 ### 2a. Two graphics backends, WebGPU first
 
 The viewer runs on wgpu, which offers WebGPU and WebGL2 in the browser. We take whatever
-wgpu picks — it prefers WebGPU — and report which one is live in the page header.
+wgpu picks, it prefers WebGPU, and report which one is live in the page header.
 
 WebGPU is the target: order-independent transparency, ambient occlusion, shadows and the
 ray tracer all need compute, and WebGL2 has none of them. The fallback exists so the app
@@ -111,11 +111,11 @@ a numeric zero is kept (`charge = 0` is information, not an empty value), and a
 
 ### 5. Two crates and a Vite frontend
 
-* `molplate_core` — presets, image post-processing, wikitext. No browser, no GPU. This is
+* `molplate_core`, presets, image post-processing, wikitext. No browser, no GPU. This is
   where behaviour is tested.
-* `molplate_wasm` — `wasm32` only. Boots the viewer, queues jobs, captures images,
+* `molplate_wasm`, `wasm32` only. Boots the viewer, queues jobs, captures images,
   exports the JSON functions.
-* `web/` — Vite + TypeScript. DOM, state, PubChem requests, download.
+* `web/`, Vite + TypeScript. DOM, state, PubChem requests, download.
 
 No framework: the page has one canvas, two dozen controls and some text output. React or
 Svelte would add a build dependency and a render loop for no benefit at this size.

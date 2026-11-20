@@ -1,4 +1,4 @@
-# molplate — scope and contracts
+# molplate, scope and contracts
 
 What the app does, what it deliberately does not do yet, and the contracts between its
 parts. Architecture rationale lives in [ADR-0001](ADR-0001-architecture.md).
@@ -22,7 +22,7 @@ allows cross-origin requests; nothing is uploaded anywhere.
 | --- | --- |
 | Lookup by name, CID or SMILES | Name and CID resolve directly; a SMILES is resolved through PubChem's structure search, so only compounds PubChem knows work |
 | 3D structure | PubChem's 3D record; a compound without one falls back to its 2D record and says so |
-| Styles | Ball and stick, space filling, licorice, stick — composed from patinae's sticks/spheres/lines, since it has no compound `ballstick` or `licorice` representation |
+| Styles | Ball and stick, space filling, licorice, stick, composed from patinae's sticks/spheres/lines, since it has no compound `ballstick` or `licorice` representation |
 | Appearance | Solid background, perspective or orthographic camera. Element colours are the renderer's palette; the per-preset palettes the previous renderer exposed are gone |
 | Navigation | Viewer's own mouse controls (drag to rotate, middle/right drag to pan, wheel to zoom) inside the canvas |
 | Graphics | WebGPU only. There is no WebGL2 fallback, so a browser without an adapter gets an explanation instead of a lesser image |
@@ -54,7 +54,7 @@ Field names are `snake_case` on both sides because serde maps them directly.
 ### `Look` (Rust → TypeScript)
 
 `looksJson()` returns the preset list; the page renders it and hands a chosen preset to
-`Renderer.applyLook(look)` unchanged. The object is `molplate_core::style::Look` — the same
+`Renderer.applyLook(look)` unchanged. The object is `molplate_core::style::Look`, the same
 type in both directions, so a renamed field breaks one test rather than two
 implementations. The adapter, not the core, knows how a style becomes renderer commands.
 

@@ -1,4 +1,4 @@
-# ADR 0002 — Replace molar_vis with patinae as the 3D renderer
+# ADR 0002, Replace molar_vis with patinae as the 3D renderer
 
 Status: accepted (2026-11-19)
 Supersedes: [ADR 0001](ADR-0001-architecture.md)
@@ -15,7 +15,7 @@ own animation-frame loop, no winit or egui, a typed TypeScript facade and
 `exportPng({width, height, transparent})` that renders offscreen. It is smaller, exports
 without a screenshot, and supports transparency.
 
-It is also **WebGPU-only** — `instance_descriptor.backends = wgpu::Backends::BROWSER_WEBGPU`,
+It is also **WebGPU-only**, `instance_descriptor.backends = wgpu::Backends::BROWSER_WEBGPU`,
 with no WebGL2 path anywhere in its web host. `molar_vis` had a WebGL2 fallback.
 
 ## Decision
@@ -28,7 +28,7 @@ measured at a 1600 px request:
 | | molar_vis (before) | patinae (after) |
 | --- | --- | --- |
 | figure | 1774×1548, content 89.3% of width, 5.4–6.1% margin | 1432×1244, content 89.2%, 5.4–6.2% margin |
-| outermost atoms | **clipped flat** — a 108 px straight ink run at both crop edges | complete — longest run at the content edge is 19 px, i.e. a sphere's tangent |
+| outermost atoms | **clipped flat**, a 108 px straight ink run at both crop edges | complete, longest run at the content edge is 19 px, i.e. a sphere's tangent |
 | bundle (raw / gzip) | 17.78 MB / 5.47 MB | 4.96 MB / ~1.5 MB |
 | transparent export | not reachable (opaque surface) | RGBA, corner alpha 0, compositing over white is pixel-identical to the opaque render |
 | export at 1600 px | resize + 3 settle frames + screenshot poll (8 s ceiling) | 97–124 ms, offscreen |
@@ -42,7 +42,7 @@ without the clipping.
 
 * **Support matrix narrows to WebGPU.** Browsers without an adapter cannot see a molecule.
   The page detects this before importing the viewer, says so in the stage overlay, disables
-  export, and keeps the markup half working — that last part was previously promised by
+  export, and keeps the markup half working, that last part was previously promised by
   the error text but not true, because the lookup returned early with no renderer.
 * **The renderer is vendored, not a dependency.** patinae's `web/` is its own cargo
   workspace with internal path dependencies, so cargo cannot resolve it as a git
@@ -64,7 +64,7 @@ without the clipping.
   nothing visible. The page takes the released-wheel case in the capture phase and drives
   `zoom all, buffer=<Å>` itself, and exposes +/− buttons; the wheel-while-dragging case is
   still the renderer's. Zoom is therefore expressed in Ångström of framing buffer, not as a
-  camera handle — its range is clamped so a user cannot silently clip atoms.
+  camera handle, its range is clamped so a user cannot silently clip atoms.
 * **Antialiasing is ours, for exports only.** The web build antialiases with FXAA only:
   every pipeline is `sample_count: 1`, `antialias` merely gates FXAA on or off (2 and 4
   render identically), `antialias_shader` is declared but not registered, and

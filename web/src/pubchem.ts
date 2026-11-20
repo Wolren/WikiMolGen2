@@ -2,7 +2,7 @@
  * PubChem lookups, straight from the browser.
  *
  * PUG REST sends `Access-Control-Allow-Origin: *`, so no proxy is needed and the
- * compound never touches a server of ours — the page talks to NCBI directly.
+ * compound never touches a server of ours, the page talks to NCBI directly.
  */
 
 const PUG = "https://pubchem.ncbi.nlm.nih.gov/rest/pug";
@@ -109,7 +109,7 @@ export async function loadCompound(identifier: string): Promise<LoadResult> {
  * Drop keys whose value is `undefined`.
  *
  * PubChem omits properties for some compounds, and `exactOptionalPropertyTypes` forbids
- * assigning `undefined` to an optional field — so the object is written wide and narrowed
+ * assigning `undefined` to an optional field, so the object is written wide and narrowed
  * once. `JSON.stringify` would drop these keys anyway; doing it here keeps the type
  * honest as well.
  */

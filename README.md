@@ -11,7 +11,7 @@ It is a static site: no server, no upload, no install.
 
 ![molplate rendering aspirin, with the Commons markup beside it](docs/screenshot.png)
 
-An exported figure — aspirin, ball and stick, cropped and padded by the app itself:
+An exported figure, aspirin, ball and stick, cropped and padded by the app itself:
 
 ![Exported ball-and-stick figure of aspirin](docs/example-ball-and-stick.png)
 
@@ -55,18 +55,18 @@ node scripts/verify.mjs --dir web/dist --out web/shot.png
 
 ## How it is put together
 
-* `crates/molplate_core` — presets, image post-processing and the wikitext generators.
+* `crates/molplate_core`, presets, image post-processing and the wikitext generators.
   No browser, no GPU, so it is unit-tested natively.
-* `crates/molplate_wasm` — the Rust that has to run in the browser: crops a rendered PNG
+* `crates/molplate_wasm`, the Rust that has to run in the browser: crops a rendered PNG
   into a figure, and generates the markup. It does not render.
-* `web/` — Vite + TypeScript: lookups, controls, downloads, and the adapter that drives
+* `web/`, Vite + TypeScript: lookups, controls, downloads, and the adapter that drives
   the renderer (`src/renderer.ts`).
-* `web/public/vendor/patinae` — the renderer itself: patinae's web viewer, vendored as a
+* `web/public/vendor/patinae`, the renderer itself: patinae's web viewer, vendored as a
   built ES module plus wasm. Provenance and the rebuild command are in
   [PROVENANCE.md](web/public/vendor/patinae/PROVENANCE.md).
 
 The renderer is patinae (formerly PyMOL-RS), not `molar_vis`. Why it was swapped, what the
-swap cost, and what it gives up — notably a WebGL2 fallback — are in
+swap cost, and what it gives up, notably a WebGL2 fallback, are in
 [docs/ADR-0002-renderer-patinae.md](docs/ADR-0002-renderer-patinae.md); the earlier design
 and its reasoning are kept in
 [docs/ADR-0001-architecture.md](docs/ADR-0001-architecture.md), and what is in and out of
@@ -75,8 +75,8 @@ the current scope is in [docs/SPEC.md](docs/SPEC.md).
 ## Status
 
 Early, but the whole 3D path works end to end: look a compound up, style it, export a
-figure, and paste the markup. The gaps that need a chemical toolkit compiled to wasm —
-2D skeletal depiction and conformer generation for SMILES PubChem does not know — are
+figure, and paste the markup. The gaps that need a chemical toolkit compiled to wasm : 
+2D skeletal depiction and conformer generation for SMILES PubChem does not know, are
 not built yet.
 
 WebGPU is required and the path is exercised: `scripts/verify.mjs --gpu hardware` reports

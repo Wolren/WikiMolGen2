@@ -3,7 +3,7 @@
  *
  * patinae owns the canvas, its own animation-frame loop and the command engine; this
  * file is the only place that knows either of those facts. Everything the page asks for
- * is expressed as a method here, so the rest of `src/` stays renderer-agnostic — the same
+ * is expressed as a method here, so the rest of `src/` stays renderer-agnostic, the same
  * property `molplate_core` has on the Rust side.
  *
  * The viewer is loaded from `public/vendor/patinae` (see the PROVENANCE.md there) rather
@@ -40,7 +40,7 @@ type PatinaeViewerConstructor = new (
   options?: { renderScale?: number },
 ) => PatinaeViewer;
 
-/** The renderer cannot run here — no WebGPU, or patinae refused to start. */
+/** The renderer cannot run here, no WebGPU, or patinae refused to start. */
 export class RendererUnavailable extends Error {}
 
 /** Where patinae's build lives, relative to the served page. */
@@ -145,11 +145,11 @@ function formatOf(name: string): string {
 /**
  * Draw the viewer canvas at this multiple of its CSS size; the browser downsamples it.
  *
- * patinae's browser build antialiases with FXAA only — no MSAA anywhere, and its
- * supersampling settings are declared but unused — so a silhouette is one hard pixel
+ * patinae's browser build antialiases with FXAA only, no MSAA anywhere, and its
+ * supersampling settings are declared but unused, so a silhouette is one hard pixel
  * (measured: 0.23 px edge ramp, visible stair-steps). Rendering the canvas at 2x and
  * letting the compositor scale it down is what makes the live view smooth: measured
- * 0.62 px ramp, roughly 2.7x wider, and the steps are gone. Exports are unaffected —
+ * 0.62 px ramp, roughly 2.7x wider, and the steps are gone. Exports are unaffected : 
  * they supersample again in Rust.
  */
 const SUPERSAMPLE = 2;
@@ -223,7 +223,7 @@ export class Renderer {
   /**
    * Replace the current scene with one structure.
    *
-   * `loadData` parses synchronously, so this is not a promise of a painted frame —
+   * `loadData` parses synchronously, so this is not a promise of a painted frame : 
    * callers that need pixels should rely on {@link exportPng}, which settles first.
    */
   async loadStructure(name: string, bytes: Uint8Array): Promise<number> {
@@ -284,7 +284,7 @@ export class Renderer {
    *
    * patinae's export is offscreen and independent of the visible canvas size, so unlike
    * the surface-screenshot path this replaces, the wanted width can be passed directly.
-   * With only a width, its aspect follows the *live* canvas — so callers that care about
+   * With only a width, its aspect follows the *live* canvas, so callers that care about
    * the shape pass both dimensions.
    */
   async exportPng(options: { width: number; height: number; transparent: boolean }): Promise<Blob> {

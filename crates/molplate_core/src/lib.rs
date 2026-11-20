@@ -1,4 +1,4 @@
-//! molplate_core — the parts of the app that are neither the GPU viewer nor the DOM:
+//! molplate_core: the parts of the app that are neither the GPU viewer nor the DOM:
 //! render presets, image post-processing and the Wikipedia markup.
 //!
 //! Everything here is target-independent on purpose. It compiles native, so the
