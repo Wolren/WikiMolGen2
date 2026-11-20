@@ -65,18 +65,19 @@ without the clipping.
   `zoom all, buffer=<Å>` itself, and exposes +/− buttons; the wheel-while-dragging case is
   still the renderer's. Zoom is therefore expressed in Ångström of framing buffer, not as a
   camera handle — its range is clamped so a user cannot silently clip atoms.
-* **Antialiasing is ours.** The web build antialiases with FXAA only: every pipeline is
-  `sample_count: 1`, `antialias` merely gates FXAA on or off (2 and 4 render identically),
-  `antialias_shader` is declared but not registered, and `offscreen_rendering_multiplier` is
-  declared and unused. Measured on aspirin, a silhouette had a 0.26 px edge ramp and stepped
-  a full pixel between rows. Two fixes, both ours: exports render at 2× and scale down in
-  Rust (`image_ops::resize`, premultiplied so transparent edges do not darken), taking the
-  ramp to about 1 px; and the live canvas is supersampled through a small patch to the
-  vendored viewer (`renderScale`, canvas drawn at 2× its CSS size and downsampled by the
-  browser), taking the live ramp from 0.23 px to 0.71 px. 3× adds nothing to either.
-* **The vendored build carries that one patch.** It is no longer byte-for-byte upstream:
-  `web/public/vendor/patinae/PROVENANCE.md` records the three files touched and what a
-  rebase must re-apply. If upstream ships MSAA or a resolution option, drop the patch.
+* **Antialiasing is ours, for exports only.** The web build antialiases with FXAA only:
+  every pipeline is `sample_count: 1`, `antialias` merely gates FXAA on or off (2 and 4
+  render identically), `antialias_shader` is declared but not registered, and
+  `offscreen_rendering_multiplier` is declared and unused. Measured on aspirin, a
+  silhouette had a 0.26 px edge ramp and stepped a full pixel between rows. Exports are
+  therefore rendered at 2× and scaled down in Rust (`image_ops::resize`, premultiplied so
+  transparent edges do not darken), taking the ramp to about 1 px; 3× adds nothing.
+  The **live view stays FXAA-only**, which is a visible regression against the previous
+  renderer's MSAA. Supersampling the live canvas was implemented and reverted: it fixed the
+  edges (0.23 px → 0.71 px ramp) but broke camera input, leaving panning and rotation
+  moving 0 % of pixels. The measurements and the bisect that localised it are recorded in
+  the vendored build's `PROVENANCE.md`, so this is a known open defect rather than a
+  forgotten one.
 * Ray tracing is not available: patinae's ray tracer is a native cdylib plugin and is not
   in the wasm build.
 

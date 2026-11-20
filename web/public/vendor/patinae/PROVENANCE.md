@@ -4,8 +4,8 @@ These files are a **build output**, copied here verbatim from the build describe
 Nothing in this directory is edited by hand — to change it, rebuild from source and copy
 again.
 
-The build is upstream's, **with one local patch** (see [Local patch](#local-patch)). That
-is the one place this directory is not a pure upstream artifact.
+The build is plain upstream: no local patch is applied. (One was tried and reverted; see
+[Rejected patch](#rejected-patch-live-supersampling) — read it before re-attempting.)
 
 | | |
 | --- | --- |
@@ -15,39 +15,39 @@ is the one place this directory is not a pure upstream artifact.
 | Licence | BSD-3-Clause — see `LICENSE` in this directory |
 | Built | 2026-11-19 |
 
-## Local patch
+## Rejected patch: live supersampling
 
-**What.** A `renderScale` option that multiplies the canvas backing store on top of
-`window.devicePixelRatio`. molplate passes `max(1, 2 / devicePixelRatio)`, so the live
-canvas is always drawn at about twice its CSS size and the browser downsamples it — a 2×
-display keeps `renderScale: 1`, because it antialiases when it downsamples anyway.
+**What was tried.** A `renderScale` option that multiplies the canvas backing store on top
+of `window.devicePixelRatio`, with molplate passing `max(1, 2 / devicePixelRatio)` so the
+live canvas is drawn at about twice its CSS size and the browser downsamples it.
 
-**Why.** The web build renders with `sample_count: 1` everywhere and antialiases with FXAA
-only: `antialias` merely gates FXAA (2 and 4 render identically), `antialias_shader` is
-declared but not registered as a setting, and `offscreen_rendering_multiplier` is declared
-and unused. Measured on the live canvas, FXAA gives a 0.23 px edge ramp while the
-silhouette still steps a full pixel between rows — visibly worse than the MSAA the previous
-renderer got for free. Supersampling the canvas is the same fix the export already uses.
+**Why it was wanted.** The web build renders with `sample_count: 1` everywhere and
+antialiases with FXAA only: `antialias` merely gates FXAA (2 and 4 render identically),
+`antialias_shader` is declared but not registered as a setting, and
+`offscreen_rendering_multiplier` is declared and unused. On the live canvas FXAA gives a
+0.23 px edge ramp while the silhouette still steps a full pixel between rows. The patch did
+fix the picture — 0.23 px to 0.71 px — and is why exports and the live view would match.
 
-**Where.** Three files in `web/ts/src/core/`:
+**Why it was reverted.** It broke camera input. With the patch, dragging produced a
+byte-identical render: middle-drag panning and left-drag rotation both moved **0 %** of
+pixels, versus 10.2 % and 7.1 % without it. Bisecting the two changes it makes:
 
-* `viewer.ts` — a `renderScale` constructor argument (clamped to 1…4), a `pixelRatio()`
-  helper, and three `window.devicePixelRatio` readers replaced by it: `bindEvents`,
-  `resizeViewport` and `syncCanvasSize`.
-* `api.ts` — passes `options.renderScale ?? 1` into `ViewerCore`.
-* `types.ts` — documents `renderScale` on `ViewerOptions`.
+| configuration | pan moved |
+| --- | --- |
+| `display_scale` 1, backing 1200×1006 (upstream) | 10.0 % |
+| `configure_interaction(…, 2)` alone | 7.2 % |
+| backing 2400×2012 alone | 6.2 % |
+| both together (what `renderScale: 2` does) | **0 %** |
 
-Input is unaffected: the same factor reaches the wasm side through
-`configure_interaction(macos, dpr)` and through every `offsetX * this.dpr` conversion, so
-picking and dragging stay aligned with what is drawn. `renderScale: 1` reproduces
-upstream behaviour exactly.
+Each half alone already *weakens* panning and together they kill it, so the cause is an
+interaction between the `display_scale` hint and the viewport size, somewhere in the input
+or camera path — not something to guess at. Frame timing was ruled out: p95 stayed 16.7 ms
+and ~248 frames were drawn during the drag at both scales.
 
-**Cost.** 4× the pixels in the live viewport. For a small molecule that is a fraction of a
-millisecond; for a large assembly it is the first thing to lower.
-
-**Upgrading.** Re-apply the three edits after a rebase. If upstream gains MSAA or a real
-resolution option, drop the patch instead — it exists only to compensate for their absence.
-
+**If you re-attempt it.** Fix this first, and treat the table above as the regression test.
+The likely culprit is `take_camera_deltas` short-circuiting on `manipulation_reserved()`, or
+`configure_interaction` cancelling the pointer when `display_scale` changes. Prefer an
+upstream change (MSAA, or a real render-resolution setting) over a local patch.
 
 ## Why vendored instead of a dependency
 

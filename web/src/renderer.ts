@@ -35,10 +35,7 @@ interface PatinaeViewer {
   destroy(): void;
 }
 
-type PatinaeViewerConstructor = new (
-  container: HTMLElement,
-  options?: { renderScale?: number },
-) => PatinaeViewer;
+type PatinaeViewerConstructor = new (container: HTMLElement) => PatinaeViewer;
 
 /** The renderer cannot run here — no WebGPU, or patinae refused to start. */
 export class RendererUnavailable extends Error {}
@@ -142,24 +139,6 @@ function formatOf(name: string): string {
   return extension === "" ? "sdf" : extension;
 }
 
-/**
- * How many device pixels the viewer draws per CSS pixel.
- *
- * patinae's browser build has no MSAA — every pipeline is one sample — so FXAA alone
- * leaves a silhouette snapped to whole pixels (measured: 0.23 px of edge ramp, with the
- * silhouette still stepping one pixel between rows). Drawing the canvas at 2× and letting
- * the browser scale it down is the same supersampling the export does, and it is what
- * makes the live view match the saved figure.
- *
- * It is a multiple of the *CSS* pixel, not of `devicePixelRatio`: a 2× display already
- * antialiases when it downsamples, so multiplying that by two again would cost 16× the
- * pixels for no visible gain.
- */
-function renderScale(): number {
-  const dpr = window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
-  return Math.max(1, 2 / dpr);
-}
-
 function frames(count: number): Promise<void> {
   return new Promise((resolve) => {
     let remaining = count;
@@ -201,7 +180,7 @@ export class Renderer {
       throw new RendererUnavailable(`The 3D viewer failed to load (${String(error)}).`);
     }
 
-    const viewer = new PatinaeViewerClass(container, { renderScale: renderScale() });
+    const viewer = new PatinaeViewerClass(container);
     try {
       await viewer.init();
     } catch (error) {
