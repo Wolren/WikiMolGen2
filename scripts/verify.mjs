@@ -436,6 +436,13 @@ if (!isProtein) {
   }
 }
 
+// Each box carries its copy action in its own top-right corner.
+const copyButtons = await evaluate(
+  session,
+  "document.querySelectorAll('.code-box .copy-button').length",
+);
+if (copyButtons !== 3) failures.push(`there are ${copyButtons} copy buttons, not one per box`);
+
 // The upload action sits under the Commons text, in flow, and never overlaps it.
 const uploads = JSON.parse(
   await evaluate(

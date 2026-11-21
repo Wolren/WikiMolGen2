@@ -258,7 +258,6 @@
 .output-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
 }
 
@@ -271,10 +270,27 @@
   text-transform: uppercase;
 }
 
-.output-title button {
-  flex: none;
-  padding: 4px 9px;
+/* The copy action floats in the box's top-right corner, over the text it copies. */
+.code-box {
+  position: relative;
+  margin-top: 8px;
+}
+
+.copy-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
   font-size: 11px;
+  line-height: 1.4;
+}
+
+.copy-button:hover {
+  color: var(--ink);
 }
 
 .file-name {
@@ -300,7 +316,7 @@
 
 .wikitext {
   max-height: 220px;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 12px;
   overflow: auto;
   border: 1px solid var(--line);
