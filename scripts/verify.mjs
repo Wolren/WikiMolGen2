@@ -286,7 +286,8 @@ const sections = JSON.parse(
   ),
 );
 console.log(`sections: ${sections.order.join(' > ')}, all folded: ${!sections.style && !sections.colour && !sections.appearance && !sections.export}`);
-if (sections.order[0] !== "section-export") failures.push(`the first section is ${sections.order[0]}`);
+if (sections.order[0] !== "catalogue") failures.push(`the first section is ${sections.order[0]}`);
+if (sections.order[1] !== "section-export") failures.push(`export is ${sections.order[1]}, not second`);
 for (const id of ["style", "colour", "appearance", "export"]) {
   if (sections[id] !== false) failures.push(`the ${id} section starts open`);
 }
@@ -338,15 +339,30 @@ if (finish.fogStart !== "1") failures.push(`fog start starts at ${finish.fogStar
 if (finish.aoRadius !== "0.5") failures.push(`AO radius starts at ${finish.aoRadius}`);
 if (finish.shadow !== "0.5") failures.push(`shadow strength starts at ${finish.shadow}`);
 
-// 2. Load a compound through the page's own form.
+// 2. Load through the catalogue: search a name, click the row, and the page loads it
+//    without the user typing a CID. The form path is exercised by the protein run.
+const catalogueReady = await evaluate(
+  session,
+  "document.getElementById('catalogue').open === true",
+);
+if (catalogueReady !== true) failures.push("the catalogue starts folded");
 await evaluate(
   session,
   `(() => {
-     const input = document.getElementById('identifier');
-     input.value = ${JSON.stringify(COMPOUND)};
-     document.getElementById('lookup').requestSubmit();
+     const search = document.getElementById('catalogue-search');
+     search.value = ${JSON.stringify(COMPOUND)};
+     search.dispatchEvent(new Event('input', { bubbles: true }));
      return true;
    })()`,
+);
+const rows = await evaluate(
+  session,
+  "document.querySelectorAll('#catalogue-list button.catalogue-item').length",
+);
+if (rows !== 1) failures.push(`the catalogue shows ${rows} rows for ${COMPOUND}`);
+await evaluate(
+  session,
+  "document.querySelector('#catalogue-list button.catalogue-item')?.click(), true",
 );
 
 // The status line under the figure is the page's one progress report, so it is what

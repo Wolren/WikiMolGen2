@@ -468,6 +468,67 @@ button:disabled {
   color: var(--faint);
 }
 
+/* Catalogue ---------------------------------------------------------------------- */
+
+/* The search box spans the panel; the list below it is its own scroll area. */
+#catalogue-search {
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* A scrollable list, with sticky group headings: the list is longer than the panel. */
+.catalogue-list {
+  max-height: 280px;
+  margin-top: 10px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.catalogue-group {
+  position: sticky;
+  top: 0;
+  margin: 0;
+  padding: 7px 10px 5px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.catalogue-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  text-align: left;
+}
+
+.catalogue-item:hover {
+  background: var(--accent-soft);
+}
+
+.catalogue-name {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.catalogue-hint {
+  color: var(--faint);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.catalogue-empty {
+  margin: 0;
+  padding: 12px 10px;
+}
+
 /* Style picker ------------------------------------------------------------------ */
 
 .looks {

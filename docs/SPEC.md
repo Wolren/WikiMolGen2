@@ -50,6 +50,7 @@ reach; a load then scrolls the figure into view.
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, full screen, and keyboard shortcuts |
 | Links | A lookup is written to `?q=` and read back on boot, so a figure can be shared or reloaded |
 | Export | The download button sits in the figure toolbar. PNG at any width from 400 to 4096 px; a 4 to 9 percent margin; 3x supersampling by default, 2x and 4x selectable; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
+| Catalogue | 58 compounds and 13 proteins, each verified against PubChem or RCSB PDB. The search matches names, synonyms, formulas and codes; a row fills the identifier and loads it. The section starts open |
 | Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields and an openFDA drug label, merged into the infobox and chembox fields. The page does not display them in a panel |
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects, including ATC, routes and legal status |
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
@@ -195,6 +196,7 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 * `cargo build --target wasm32-unknown-unknown -p wikimolgen2_wasm` produces the module.
 * The page loads, accepts `aspirin`, shows a molecule, and all three outputs produce markup
   that parses as balanced templates.
+* The catalogue finds aspirin and 1CRN by name, and a row click loads the entry.
 * Export at 1600 px writes a 1600 px wide PNG with 6 percent margins and no clipped atoms.
 * The 2D view draws a transparent RDKit SVG under 100 KB and downloads it.
 * A 1CRN lookup draws a cartoon coloured by secondary structure in under three seconds.

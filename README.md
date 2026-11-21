@@ -11,6 +11,9 @@ It is a static site: no server, no upload, no install.
 
 What it offers:
 
+* **Lookup without codes.** A catalogue of 58 common compounds and 13 PDB proteins,
+  searchable by name, synonym, formula, CID or PDB ID. Pick a row and the figure loads, so
+  a reader never needs to know the codes.
 * **2D and 3D.** RDKit's MinimalLib draws the skeletal SVG with no background, plus
   element colours and stereo. Ball-and-stick, space-filling, licorice, stick and protein
   cartoons cover 3D.

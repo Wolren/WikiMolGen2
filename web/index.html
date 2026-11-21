@@ -70,6 +70,20 @@
           <p class="hint">PubChem name, CID or SMILES, or a PDB ID such as 1CRN for a protein cartoon.</p>
         </form>
 
+        <details id="catalogue" class="block section" open>
+          <summary><h2>Catalogue</h2></summary>
+          <p class="hint">Pick a name and the page loads it. No codes needed.</p>
+          <input
+            id="catalogue-search"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Search compounds and proteins"
+            aria-label="Search the catalogue"
+          />
+          <div id="catalogue-list" class="catalogue-list" aria-label="Catalogue"></div>
+        </details>
+
         <details id="section-export" class="block section">
           <summary><h2>Export</h2></summary>
           <label class="field-label" for="export-width">Image width</label>
