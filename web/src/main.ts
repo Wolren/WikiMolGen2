@@ -10,134 +10,37 @@
 
 import init, {
   chembox,
-  commonsFileName,
   commonsInformation,
   commonsUploadUrl,
-  composeFigure,
   defaultLicense,
   drugbox,
-  elementColor,
   looksJson,
   proteinLooksJson,
 } from "../pkg/molplate_wasm.js";
+import { appliedLook, bindAppearance, syncAppearance } from "./appearance.js";
 import {
-  buildDepiction,
-  clearDepiction,
-  depictionBytes,
-  downloadSvg,
-  showDepiction,
-  type Depiction,
-} from "./depiction.js";
-import { enrichCompound, LookupError, loadCompound, type Compound } from "./pubchem.js";
+  describe,
+  dom,
+  figureName,
+  isRendererFailed,
+  setBusy,
+  setStatus,
+  showStageError,
+  state,
+  structureKind,
+  type Look,
+  type TabId,
+  type ViewMode,
+} from "./context.js";
+import { buildDepiction, clearDepiction, showDepiction } from "./depiction.js";
+import { bindExport, exportFigure } from "./figure.js";
+import { bindKeyboard } from "./keyboard.js";
+import { enrichCompound, LookupError, loadCompound } from "./pubchem.js";
 import { ProteinError, loadProtein, pdbIdOf } from "./protein.js";
-import { Renderer, RendererUnavailable, type Appearance, type ElementColor } from "./renderer.js";
-import type { SourceStatus } from "./sources.js";
+import { Renderer, RendererUnavailable } from "./renderer.js";
 import "./styles.css";
 
-/** Mirrors `molplate_core::style::Look`. */
-interface Look {
-  id: string;
-  label: string;
-  style: string;
-  color_mode: string;
-  material: string | null;
-  line_width: number | null;
-  appearance: Appearance;
-}
-
-type TabId = "drugbox" | "chembox" | "commons";
-type StructureKindId = "two_d" | "three_d" | "protein";
-type ViewMode = "3d" | "2d";
-
 const AUTHOR = "molplate";
-/**
- * Render this many times wider than the figure and scale down in Rust.
- *
- * patinae's browser build antialiases with FXAA and nothing else, no MSAA, and its
- * supersampling setting is declared but unused, so an atom silhouette is about one hard
- * pixel. Rendering at 2× widens the edge gradient about threefold; 3× adds nothing.
- */
-const SUPERSAMPLE = 2;
-
-const dom = {
-  form: required<HTMLFormElement>("lookup"),
-  identifier: required<HTMLInputElement>("identifier"),
-  loadButton: required<HTMLButtonElement>("load"),
-  summary: required<HTMLDListElement>("summary"),
-  looks: required<HTMLDivElement>("looks"),
-  background: required<HTMLInputElement>("background"),
-  gradient: required<HTMLSelectElement>("gradient"),
-  gradientBottom: required<HTMLInputElement>("gradient-bottom"),
-  stickRadius: required<HTMLInputElement>("stick-radius"),
-  stickRadiusValue: required<HTMLOutputElement>("stick-radius-value"),
-  sphereScale: required<HTMLInputElement>("sphere-scale"),
-  sphereScaleValue: required<HTMLOutputElement>("sphere-scale-value"),
-  transparency: required<HTMLInputElement>("transparency"),
-  transparencyValue: required<HTMLOutputElement>("transparency-value"),
-  ambient: required<HTMLInputElement>("ambient"),
-  ambientValue: required<HTMLOutputElement>("ambient-value"),
-  direct: required<HTMLInputElement>("direct"),
-  directValue: required<HTMLOutputElement>("direct-value"),
-  specular: required<HTMLInputElement>("specular"),
-  specularValue: required<HTMLOutputElement>("specular-value"),
-  ambientOcclusion: required<HTMLInputElement>("ambient-occlusion"),
-  silhouettes: required<HTMLInputElement>("silhouettes"),
-  depthCue: required<HTMLInputElement>("depth-cue"),
-  elementColors: required<HTMLDivElement>("element-colors"),
-  resetColors: required<HTMLButtonElement>("reset-colors"),
-  projection: required<HTMLSelectElement>("projection"),
-  frame: required<HTMLButtonElement>("frame"),
-  zoomIn: required<HTMLButtonElement>("zoom-in"),
-  zoomOut: required<HTMLButtonElement>("zoom-out"),
-  exportWidth: required<HTMLSelectElement>("export-width"),
-  exportMargin: required<HTMLInputElement>("export-margin"),
-  exportMarginValue: required<HTMLOutputElement>("export-margin-value"),
-  exportTransparent: required<HTMLInputElement>("export-transparent"),
-  exportLabels: required<HTMLInputElement>("export-labels"),
-  exportScaleBar: required<HTMLInputElement>("export-scalebar"),
-  exportButton: required<HTMLButtonElement>("export"),
-  exportStatus: required<HTMLParagraphElement>("export-status"),
-  viewerHost: required<HTMLElement>("viewer"),
-  depiction: required<HTMLDivElement>("depiction"),
-  mode3d: required<HTMLButtonElement>("mode-3d"),
-  mode2d: required<HTMLButtonElement>("mode-2d"),
-  stageNote: required<HTMLElement>("stage-note"),
-  stageMessage: required<HTMLDivElement>("stage-message"),
-  engine: required<HTMLElement>("engine"),
-  tabs: {
-    drugbox: required<HTMLButtonElement>("tab-drugbox"),
-    chembox: required<HTMLButtonElement>("tab-chembox"),
-    commons: required<HTMLButtonElement>("tab-commons"),
-  },
-  fileName: required<HTMLElement>("file-name"),
-  copy: required<HTMLButtonElement>("copy"),
-  wikitext: required<HTMLElement>("wikitext"),
-  upload: required<HTMLAnchorElement>("upload"),
-};
-
-const state: {
-  viewer: Renderer | null;
-  looks: Look[];
-  compound: Compound | null;
-  look: Look | null;
-  tab: TabId;
-  compoundJson: string;
-  mode: ViewMode;
-  depiction: Depiction | null;
-  protein: { id: string; atoms: number; residues: number; chains: number; seconds: number } | null;
-  sources: SourceStatus[];
-} = {
-  viewer: null,
-  looks: [],
-  compound: null,
-  look: null,
-  tab: "drugbox",
-  compoundJson: "{}",
-  mode: "3d",
-  depiction: null,
-  protein: null,
-  sources: [],
-};
 
 /** The markup currently shown, for the copy button. */
 let currentText = "";
@@ -153,12 +56,6 @@ if (import.meta.env.DEV) {
     count: (selection: string) => state.viewer?.count(selection) ?? -1,
     camera: () => state.viewer?.cameraView() ?? null,
   };
-}
-
-function required<T extends HTMLElement>(id: string): T {
-  const node = document.getElementById(id);
-  if (node === null) throw new Error(`index.html is missing #${id}`);
-  return node as T;
 }
 
 async function boot(): Promise<void> {
@@ -194,8 +91,6 @@ async function boot(): Promise<void> {
 
   dom.stageMessage.hidden = true;
 
-  // `Renderer.create` already paints the stage white, which is what a figure wants.
-
   // patinae is WebGPU-only: there is no second backend to report. The badge says what
   // is in use, and the note explains what a figure needs, rather than implying a
   // fallback that does not exist.
@@ -207,8 +102,10 @@ async function boot(): Promise<void> {
   const viewer = state.viewer;
   if (viewer !== null) {
     dom.stageMessage.hidden = false;
-    dom.stageMessage.textContent = "Preparing the 3D view…";
+    dom.stageMessage.classList.add("busy");
+    dom.stageText.textContent = "Preparing the 3D view…";
     await viewer.startWarmup();
+    dom.stageMessage.classList.remove("busy");
     dom.stageMessage.hidden = true;
   }
 }
@@ -279,6 +176,8 @@ async function loadFromInput(): Promise<void> {
     const seconds = (performance.now() - started) / 1000;
     const loadedName = state.compound?.name ?? identifier;
     setStatus(`Loaded ${loadedName} in ${seconds.toFixed(2)} s.`);
+    // The field is no longer the thing to type into; shortcuts should work now.
+    dom.identifier.blur();
 
     // The figure is already on the stage; the other sources fill the summary after.
     void enrichCompound(result.compound)
@@ -374,6 +273,7 @@ async function loadProteinInput(id: string): Promise<void> {
     renderProteinSummary();
     applyMode();
     dom.exportButton.disabled = false;
+    dom.identifier.blur();
     setStatus(
       `Loaded ${id}: ${atoms} atoms, ${sequence.residues} residues in ${seconds.toFixed(2)} s ` +
         `(fetch ${((fetched - started) / 1000).toFixed(2)}, load ${((parsed - fetched) / 1000).toFixed(2)}, ` +
@@ -466,7 +366,7 @@ function renderSummary(warnings: string[]): void {
   }
 }
 
-// --- Style, appearance, camera ------------------------------------------------------
+// --- Style and camera ---------------------------------------------------------------
 
 function renderLooks(): void {
   dom.looks.replaceChildren(
@@ -510,16 +410,11 @@ async function chooseLook(look: Look): Promise<void> {
 
 // --- View mode ---------------------------------------------------------------------
 
-/** Which image the markup describes: the flat drawing, the 3D render or a protein. */
-function structureKind(): StructureKindId {
-  if (state.protein !== null) return "protein";
-  return state.mode === "2d" ? "two_d" : "three_d";
-}
-
-/** The Commons file name for a kind. A 2D figure is vector, so it ends in `.svg`. */
-function figureName(kind: StructureKindId): string {
-  const png = commonsFileName(state.compoundJson, kind);
-  return kind === "two_d" ? png.replace(/\.png$/, ".svg") : png;
+/** Switch the stage, and ignore 2D when the record has no flat coordinates. */
+function setMode(mode: ViewMode): void {
+  if (mode === "2d" && dom.mode2d.disabled) return;
+  state.mode = mode;
+  applyMode();
 }
 
 /** Swap the stage between the 3D viewer and the inline drawing. */
@@ -542,232 +437,25 @@ function applyMode(): void {
       dom.depiction.textContent = "Load a compound to see its 2D drawing.";
       dom.stageNote.textContent = "";
     }
+    // The drawing needs no GPU, so it can cover an error about the 3D viewer.
+    dom.stageMessage.hidden = true;
   } else {
     dom.stageNote.textContent =
       state.protein === null
         ? ""
         : `${state.protein.id} cartoon, secondary structure colours`;
+    if (isRendererFailed()) dom.stageMessage.hidden = false;
   }
 
   dom.exportButton.textContent = twoDimensional ? "Download SVG" : "Download PNG";
+  dom.exportButton.disabled =
+    state.compound === null ||
+    (twoDimensional ? state.depiction === null : state.viewer === null);
   refreshOutput();
 }
 
-dom.mode3d.addEventListener("click", () => {
-  state.mode = "3d";
-  applyMode();
-});
-
-dom.mode2d.addEventListener("click", () => {
-  if (dom.mode2d.disabled) return;
-  state.mode = "2d";
-  applyMode();
-});
-
-// --- Appearance controls ------------------------------------------------------------
-
-/** Apply appearance changes once per frame, not once per input event. */
-let applyScheduled = false;
-
-/**
- * The look with overrides reduced to elements the structure has.
- *
- * An override for an absent element makes patinae log "0 atoms colored", so a look that
- * names common elements is filtered to the current molecule first.
- */
-function appliedLook(): Look | null {
-  const look = state.look;
-  if (look === null) return null;
-  const present = new Set(elementsOf(state.compound));
-  if (present.size === 0) return look;
-  return {
-    ...look,
-    appearance: {
-      ...look.appearance,
-      element_colors: look.appearance.element_colors.filter((entry) => present.has(entry.element)),
-    },
-  };
-}
-
-function scheduleApply(): void {
-  if (applyScheduled) return;
-  applyScheduled = true;
-  requestAnimationFrame(() => {
-    applyScheduled = false;
-    const look = appliedLook();
-    if (state.viewer === null || state.compound === null || look === null) return;
-    void state.viewer.applyAppearance(look).catch((error) => {
-      setStatus(`Could not update the look: ${describe(error)}`, true);
-    });
-  });
-}
-
-/** Copy the current look into the controls. */
-function syncAppearance(): void {
-  const look = state.look;
-  if (look === null) return;
-  const appearance = look.appearance;
-  dom.background.value = appearance.background;
-  dom.gradient.value = appearance.gradient === null ? "none" : "vertical";
-  dom.gradientBottom.hidden = appearance.gradient === null;
-  dom.gradientBottom.value = appearance.gradient?.[1] ?? "#dfe7f2";
-  dom.stickRadius.value = String(appearance.stick_radius);
-  dom.sphereScale.value = String(appearance.sphere_scale);
-  const transparency = Math.max(
-    appearance.stick_transparency,
-    appearance.sphere_transparency,
-    appearance.cartoon_transparency,
-  );
-  dom.transparency.value = String(transparency);
-  dom.ambient.value = String(appearance.ambient);
-  dom.direct.value = String(appearance.direct);
-  dom.specular.value = String(appearance.specular);
-  dom.ambientOcclusion.checked = appearance.ambient_occlusion;
-  dom.silhouettes.checked = appearance.silhouettes;
-  dom.depthCue.checked = appearance.depth_cue;
-  syncOutputs();
-  renderElementColors();
-}
-
-/** Update the numeric readouts without rebuilding the element chips. */
-function syncOutputs(): void {
-  const look = state.look;
-  if (look === null) return;
-  const appearance = look.appearance;
-  dom.stickRadiusValue.textContent = appearance.stick_radius.toFixed(2);
-  dom.sphereScaleValue.textContent = appearance.sphere_scale.toFixed(2);
-  dom.ambientValue.textContent = appearance.ambient.toFixed(2);
-  dom.directValue.textContent = appearance.direct.toFixed(2);
-  dom.specularValue.textContent = appearance.specular.toFixed(2);
-  const transparency = Math.max(
-    appearance.stick_transparency,
-    appearance.sphere_transparency,
-    appearance.cartoon_transparency,
-  );
-  dom.transparencyValue.textContent = `${Math.round(transparency * 100)}%`;
-}
-
-/** Read every control into the current look. */
-function readAppearance(): void {
-  const look = state.look;
-  if (look === null) return;
-  const appearance = look.appearance;
-  appearance.background = dom.background.value;
-  appearance.gradient =
-    dom.gradient.value === "vertical" ? [appearance.background, dom.gradientBottom.value] : null;
-  appearance.stick_radius = Number(dom.stickRadius.value);
-  appearance.sphere_scale = Number(dom.sphereScale.value);
-  const transparency = Number(dom.transparency.value);
-  appearance.stick_transparency = transparency;
-  appearance.sphere_transparency = transparency;
-  appearance.cartoon_transparency = transparency;
-  appearance.ambient = Number(dom.ambient.value);
-  appearance.direct = Number(dom.direct.value);
-  appearance.specular = Number(dom.specular.value);
-  appearance.ambient_occlusion = dom.ambientOcclusion.checked;
-  appearance.silhouettes = dom.silhouettes.checked;
-  appearance.depth_cue = dom.depthCue.checked;
-}
-
-for (const input of [
-  dom.stickRadius,
-  dom.sphereScale,
-  dom.transparency,
-  dom.ambient,
-  dom.direct,
-  dom.specular,
-]) {
-  input.addEventListener("input", () => {
-    readAppearance();
-    syncOutputs();
-    scheduleApply();
-  });
-}
-
-dom.background.addEventListener("input", () => {
-  readAppearance();
-  scheduleApply();
-});
-
-dom.gradient.addEventListener("change", () => {
-  dom.gradientBottom.hidden = dom.gradient.value !== "vertical";
-  readAppearance();
-  scheduleApply();
-});
-
-dom.gradientBottom.addEventListener("input", () => {
-  readAppearance();
-  scheduleApply();
-});
-
-for (const toggle of [dom.ambientOcclusion, dom.silhouettes, dom.depthCue]) {
-  toggle.addEventListener("change", () => {
-    readAppearance();
-    // Depth cue is invisible at zero fog, so switching it on adds a light haze.
-    if (state.look !== null && state.look.appearance.depth_cue && state.look.appearance.fog === 0) {
-      state.look.appearance.fog = 0.25;
-    }
-    scheduleApply();
-  });
-}
-
-/** Parse the heavy elements out of a molecular formula, in formula order. */
-function elementsOf(compound: Compound | null): string[] {
-  const formula = compound?.molecular_formula ?? "";
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const match of formula.matchAll(/([A-Z][a-z]?)/g)) {
-    const symbol = match[1] ?? "";
-    if (symbol === "H" || seen.has(symbol)) continue;
-    seen.add(symbol);
-    out.push(symbol);
-  }
-  return out.slice(0, 10);
-}
-
-/** One chip per heavy element, showing the override or the default element colour. */
-function renderElementColors(): void {
-  const look = state.look;
-  if (look === null) {
-    dom.elementColors.replaceChildren();
-    return;
-  }
-  const elements = elementsOf(state.compound);
-  dom.elementColors.replaceChildren(
-    ...elements.map((element) => {
-      const override = look.appearance.element_colors.find((entry) => entry.element === element);
-      const input = document.createElement("input");
-      input.type = "color";
-      input.value = override?.color ?? elementColor(element);
-      input.setAttribute("aria-label", `${element} colour`);
-      input.addEventListener("input", () => setElementColor(element, input.value));
-
-      const label = document.createElement("label");
-      label.className = "element-color";
-      const symbol = document.createElement("span");
-      symbol.textContent = element;
-      label.append(symbol, input);
-      return label;
-    }),
-  );
-}
-
-function setElementColor(element: string, color: string): void {
-  const look = state.look;
-  if (look === null) return;
-  look.appearance.element_colors = look.appearance.element_colors.filter(
-    (entry) => entry.element !== element,
-  );
-  look.appearance.element_colors.push({ element, color } satisfies ElementColor);
-  scheduleApply();
-}
-
-dom.resetColors.addEventListener("click", () => {
-  if (state.look === null) return;
-  state.look.appearance.element_colors = [];
-  renderElementColors();
-  scheduleApply();
-});
+dom.mode3d.addEventListener("click", () => setMode("3d"));
+dom.mode2d.addEventListener("click", () => setMode("2d"));
 
 dom.projection.addEventListener("change", () => {
   void state.viewer?.setProjection(dom.projection.value);
@@ -804,152 +492,6 @@ dom.viewerHost.addEventListener(
   },
   { passive: false, capture: true },
 );
-
-// --- Export ------------------------------------------------------------------------
-
-dom.exportMargin.addEventListener("input", () => {
-  dom.exportMarginValue.textContent = `${dom.exportMargin.value}%`;
-});
-
-dom.exportButton.addEventListener("click", () => {
-  void exportFigure();
-});
-
-/** Download what the stage shows: the vector drawing in 2D mode, a PNG in 3D mode. */
-async function exportFigure(): Promise<void> {
-  if (state.mode === "2d") {
-    exportSvg();
-    return;
-  }
-  await exportPng();
-}
-
-/** Save the inline SVG. It is already the full document, so no work is needed here. */
-function exportSvg(): void {
-  if (state.depiction === null) {
-    setStatus("Load a compound before downloading a 2D drawing.", true);
-    return;
-  }
-  const name = figureName("two_d");
-  downloadSvg(name, state.depiction.svg);
-  dom.fileName.textContent = name;
-  setStatus(`Saved ${name} (${depictionBytes(state.depiction.svg)} bytes).`);
-}
-
-/** A figure spec, mirrored from `molplate_core::figure::FigureSpec`. */
-interface FigureSpec {
-  width: number;
-  margin: number;
-  background: [number, number, number, number];
-  gradient: [[number, number, number], [number, number, number]] | null;
-  scale_bar: { angstrom_per_pixel: number } | null;
-}
-
-/**
- * Render at twice the wanted width, then compose the figure at an exact width.
- *
- * patinae renders offscreen at whatever size is asked for, so there is no canvas resize,
- * no device-pixel-ratio correction and no screenshot handshake to wait on. The compose
- * step trims the viewport, scales the molecule to the inner width and pads the margin in
- * Rust, so the exported width is the number the user chose.
- */
-async function exportPng(): Promise<void> {
-  const viewer = state.viewer;
-  if (viewer === null) return;
-
-  const targetWidth = Number(dom.exportWidth.value);
-  const margin = Number(dom.exportMargin.value) / 100;
-  const rect = dom.viewerHost.getBoundingClientRect();
-  const aspect = rect.width > 0 && rect.height > 0 ? rect.width / rect.height : 1;
-  const targetHeight = Math.max(1, Math.round(targetWidth / aspect));
-  const renderWidth = targetWidth * SUPERSAMPLE;
-  const renderHeight = targetHeight * SUPERSAMPLE;
-  const transparent = dom.exportTransparent.checked;
-  const labels = dom.exportLabels.checked;
-
-  setBusy(true, "Rendering…");
-  dom.exportButton.disabled = true;
-
-  try {
-    if (labels) {
-      await viewer.setLabels(true);
-      // The label is measured in render pixels; the figure scales it down with the scene.
-      await viewer.setLabelSize(Math.round(18 * (targetWidth / 1600) * SUPERSAMPLE));
-    } else {
-      await viewer.setLabels(false);
-    }
-
-    let scaleBar: { angstrom_per_pixel: number } | null = null;
-    if (dom.exportScaleBar.checked) {
-      const camera = await viewer.cameraView();
-      if (camera !== null) {
-        scaleBar = { angstrom_per_pixel: camera.viewHeight / renderHeight };
-      }
-    }
-
-    // A gradient cannot be keyed out of an opaque render: the content rectangle would
-    // show its own flat background. Render with alpha and composite the gradient behind.
-    const gradient: [[number, number, number], [number, number, number]] | null =
-      transparent || state.look === null || state.look.appearance.gradient === null
-        ? null
-        : [
-            hexToBytes(state.look.appearance.gradient[0]),
-            hexToBytes(state.look.appearance.gradient[1]),
-          ];
-
-    const blob = await viewer.exportPng({
-      width: renderWidth,
-      height: renderHeight,
-      transparent: transparent || gradient !== null,
-    });
-    const rendered = new Uint8Array(await blob.arrayBuffer());
-    const [red, green, blue] = hexToBytes(state.look?.appearance.background ?? dom.background.value);
-
-    const spec: FigureSpec = {
-      width: targetWidth,
-      margin,
-      background: transparent ? [0, 0, 0, 0] : [red, green, blue, 255],
-      gradient,
-      scale_bar: scaleBar,
-    };
-    const framed = composeFigure(rendered, JSON.stringify(spec));
-    const size = pngSize(framed);
-
-    const name = state.compound === null
-      ? "molecule-3D.png"
-      : figureName(structureKind());
-    download(name, framed);
-    dom.fileName.textContent = name;
-    setStatus(
-      `Saved ${name} at ${size.width}x${size.height} px, ${dom.exportMargin.value}% margin` +
-        `${transparent ? ", transparent" : ""}${scaleBar === null ? "" : ", with a scale bar"}.`,
-    );
-  } catch (error) {
-    setStatus(`Export failed: ${describe(error)}`, true);
-  } finally {
-    if (labels) await viewer.setLabelSize(14).catch(() => undefined);
-    dom.exportButton.disabled = false;
-    setBusy(false);
-  }
-}
-
-/** Width and height from a PNG header, without a decoder. */
-function pngSize(bytes: Uint8Array): { width: number; height: number } {
-  if (bytes.length < 24) return { width: 0, height: 0 };
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  return { width: view.getUint32(16), height: view.getUint32(20) };
-}
-
-function download(name: string, bytes: Uint8Array): void {
-  const blob = new Blob([bytes as BlobPart], { type: "image/png" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
-  // Revoking immediately can race the download in some browsers.
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
 
 // --- Wikitext ----------------------------------------------------------------------
 
@@ -1020,50 +562,6 @@ dom.copy.addEventListener("click", () => {
 
 // --- Small helpers -----------------------------------------------------------------
 
-function setStatus(message: string, isError = false): void {
-  dom.exportStatus.textContent = message;
-  dom.exportStatus.style.color = isError ? "#a3231b" : "";
-}
-
-/** The overlay currently says the renderer is unusable; nothing should overwrite it. */
-let rendererFailed = false;
-
-function setBusy(busy: boolean, message?: string): void {
-  dom.loadButton.disabled = busy;
-  if (busy && message !== undefined && !rendererFailed) {
-    dom.stageMessage.hidden = false;
-    dom.stageMessage.textContent = message;
-  } else if (!busy && !rendererFailed && state.viewer !== null) {
-    dom.stageMessage.hidden = true;
-  }
-}
-
-/**
- * Say why there is no viewer and disable what needs one.
- *
- * `detail` is appended when there is a low-level message worth reading; a
- * [`RendererUnavailable`] already carries the sentence to show.
- */
-function showStageError(message: string, detail?: unknown): void {
-  rendererFailed = true;
-  dom.stageMessage.hidden = false;
-  dom.stageMessage.classList.add("error");
-  dom.stageMessage.textContent =
-    detail === undefined ? message : `${message} (${describe(detail)})`;
-  setStatus("The renderer is unavailable, so images cannot be produced. The markup tabs still work.", true);
-  dom.exportButton.disabled = true;
-}
-
-function hexToBytes(hex: string): [number, number, number] {
-  const value = hex.replace("#", "");
-  const int = Number.parseInt(value, 16);
-  return [(int >> 16) & 0xff, (int >> 8) & 0xff, int & 0xff];
-}
-
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 /** Reject if `promise` has not settled within `ms`, so a stuck backend is visible. */
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   return Promise.race([
@@ -1071,5 +569,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
     new Promise<never>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
   ]);
 }
+
+bindAppearance();
+bindExport();
+bindKeyboard({
+  load: () => void loadFromInput(),
+  setMode,
+  exportFigure: () => void exportFigure(),
+  frame: () => {
+    if (state.compound !== null) void state.viewer?.frameScene();
+  },
+  zoom: zoomScene,
+});
 
 void boot();

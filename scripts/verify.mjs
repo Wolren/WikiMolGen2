@@ -288,11 +288,9 @@ for (const tab of ["drugbox", "chembox", "commons"]) {
   console.log(`${tab}: ${length} chars${balanced ? "" : " — UNBALANCED"}`);
 }
 
-// 4. Export a PNG through the app's own path. Reading the canvas back in-page is
-//    meaningless for WebGL (no preserveDrawingBuffer), so the product's export — which
-//    goes through egui's screenshot — is what gets checked.
-const downloadDir = join(process.env.TEMP ?? "/tmp", `molplate-download-${Date.now()}`);
-await mkdir(downloadDir, { recursive: true });
+// 4. Export a PNG through the app's own path. The renderer draws offscreen and the page
+//    composes the figure in Rust, so the downloaded file is the product, not a canvas read.
+const downloadDir = join(process.env.TEMP ?? "/tmp", `molplate-download-${Date.now()}`);await mkdir(downloadDir, { recursive: true });
 await send("Browser.setDownloadBehavior", {
   behavior: "allow",
   downloadPath: downloadDir,
@@ -305,7 +303,7 @@ const completion = new Promise((resolve) => {
 
 await evaluate(session, `(() => {
   const width = document.getElementById('export-width');
-  width.value = '1000';
+  width.value = '1200';
   width.dispatchEvent(new Event('change'));
   document.getElementById('export').click();
   return true;

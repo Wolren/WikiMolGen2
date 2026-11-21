@@ -243,17 +243,27 @@ button:disabled {
 
 .looks {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
 .look {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 11px;
+  gap: 7px;
+  min-width: 0;
+  padding: 7px 9px;
   border: 1px solid var(--line);
   border-radius: 8px;
+  font-size: 12px;
   cursor: pointer;
+}
+
+.look span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .look:hover {
@@ -375,6 +385,72 @@ button:disabled {
 
 .stage-message[hidden] {
   display: none;
+}
+
+.stage-message p {
+  margin: 0;
+  max-width: 34ch;
+}
+
+/* A slow step says what it is doing and shows that work is in flight. */
+.stage-progress {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.spinner {
+  display: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+}
+
+.progress-track {
+  display: none;
+  width: 180px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.progress-track span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--accent);
+  animation: slide 1200ms ease-in-out infinite;
+}
+
+.stage-message.busy .spinner,
+.stage-message.busy .progress-track {
+  display: block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .progress-track span {
+    animation: none;
+  }
 }
 
 .stage-message.error {
@@ -575,7 +651,54 @@ input[type="range"] {
   text-decoration: underline;
 }
 
-/* Narrow screens: stack the columns, keep the molecule usable. */
+/* Keyboard help -------------------------------------------------------------- */
+
+.shortcuts {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.shortcuts summary {
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.shortcuts dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  margin: 10px 0 0;
+}
+
+.shortcuts dt {
+  white-space: nowrap;
+}
+
+.shortcuts dd {
+  margin: 0;
+  color: var(--faint);
+}
+
+kbd {
+  padding: 1px 4px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+@media (max-width: 560px) {
+  .looks {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Narrow screens: stack the columns, and put the molecule above the long control list. */
 @media (max-width: 1100px) {
   .layout {
     grid-template-columns: 1fr;
@@ -584,6 +707,7 @@ input[type="range"] {
   }
 
   .stage {
+    order: -1;
     height: min(60vh, 520px);
   }
 

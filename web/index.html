@@ -140,6 +140,19 @@
           <button id="export" type="button" class="primary" disabled>Download PNG</button>
           <p id="export-status" class="hint" role="status"></p>
         </section>
+
+        <details id="shortcuts" class="shortcuts">
+          <summary>Keyboard shortcuts</summary>
+          <dl>
+            <dt><kbd>/</kbd></dt><dd>Focus the compound field</dd>
+            <dt><kbd>Ctrl</kbd> + <kbd>Enter</kbd></dt><dd>Load the compound</dd>
+            <dt><kbd>2</kbd> / <kbd>3</kbd></dt><dd>Switch between 2D and 3D</dd>
+            <dt><kbd>E</kbd></dt><dd>Download the figure</dd>
+            <dt><kbd>F</kbd></dt><dd>Re-frame the view</dd>
+            <dt><kbd>+</kbd> / <kbd>−</kbd></dt><dd>Zoom in and out</dd>
+            <dt><kbd>?</kbd></dt><dd>Show or hide this list</dd>
+          </dl>
+        </details>
       </aside>
 
       <section class="stage" aria-label="Molecular view">
@@ -152,8 +165,12 @@
         </div>
         <div id="viewer" class="viewer-host"></div>
         <div id="depiction" class="depiction" hidden></div>
-        <div id="stage-message" class="stage-message" role="status">
-          Loading renderer…
+        <div id="stage-message" class="stage-message" role="status" aria-live="polite">
+          <div class="stage-progress">
+            <span class="spinner" aria-hidden="true"></span>
+            <p id="stage-text">Loading renderer…</p>
+            <span class="progress-track" aria-hidden="true"><span></span></span>
+          </div>
         </div>
       </section>
 
