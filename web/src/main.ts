@@ -18,6 +18,7 @@ import init, {
   elementColor,
   frameFigure,
   looksJson,
+  proteinLooksJson,
   resizePng,
 } from "../pkg/molplate_wasm.js";
 import {
@@ -29,6 +30,7 @@ import {
   type Depiction,
 } from "./depiction.js";
 import { LookupError, loadCompound, type Compound } from "./pubchem.js";
+import { ProteinError, loadProtein, pdbIdOf } from "./protein.js";
 import { Renderer, RendererUnavailable, type Appearance, type ElementColor } from "./renderer.js";
 import "./styles.css";
 
@@ -120,6 +122,7 @@ const state: {
   compoundJson: string;
   mode: ViewMode;
   depiction: Depiction | null;
+  protein: { id: string; atoms: number; residues: number; chains: number; seconds: number } | null;
 } = {
   viewer: null,
   looks: [],
@@ -129,10 +132,21 @@ const state: {
   compoundJson: "{}",
   mode: "3d",
   depiction: null,
+  protein: null,
 };
 
 /** The markup currently shown, for the copy button. */
 let currentText = "";
+
+// A development-only handle: the end-to-end harness reads state from it. The production
+// build tree-shakes this branch because `import.meta.env.DEV` is false there.
+if (import.meta.env.DEV) {
+  (window as unknown as { __molplate?: unknown }).__molplate = {
+    state,
+    count: (selection: string) => state.viewer?.count(selection) ?? -1,
+    camera: () => state.viewer?.cameraView() ?? null,
+  };
+}
 
 function required<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -180,6 +194,16 @@ async function boot(): Promise<void> {
   // fallback that does not exist.
   dom.engine.textContent = "WebGPU";
   applyMode();
+
+  // Compile the cartoon pipelines before the first request. The first cartoon frame
+  // costs 3 s of pipeline compilation; paying it here keeps a protein load responsive.
+  const viewer = state.viewer;
+  if (viewer !== null) {
+    dom.stageMessage.hidden = false;
+    dom.stageMessage.textContent = "Preparing the 3D view…";
+    await viewer.startWarmup();
+    dom.stageMessage.hidden = true;
+  }
 }
 
 // --- Compound lookup ---------------------------------------------------------------
@@ -196,11 +220,22 @@ async function loadFromInput(): Promise<void> {
     return;
   }
 
+  const pdb = pdbIdOf(identifier);
+  if (pdb !== null) {
+    await loadProteinInput(pdb);
+    return;
+  }
+
   setBusy(true, "Looking up…");
   try {
     const result = await loadCompound(identifier);
     state.compound = result.compound;
     state.compoundJson = JSON.stringify(result.compound);
+    // A compound load leaves the protein mode: restore the small-molecule looks and tabs.
+    if (state.protein !== null) {
+      state.protein = null;
+      state.looks = JSON.parse(looksJson()) as Look[];
+    }
 
     // The markup does not need a renderer: looking a compound up and generating wikitext
     // is the half of this app that works without a GPU, so a failed renderer must not
@@ -240,6 +275,99 @@ async function loadFromInput(): Promise<void> {
   } finally {
     setBusy(false);
   }
+}
+
+/** Resolve after `count` painted frames, so a timing claim includes the first image. */
+function nextFrames(count: number): Promise<void> {
+  return new Promise((resolve) => {
+    let left = count;
+    const step = (): void => {
+      left -= 1;
+      if (left <= 0) resolve();
+      else requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+/**
+ * Fetch a PDB entry and show it as a cartoon coloured by secondary structure.
+ *
+ * The timer covers the fetch, the parse, the first styled frame and one more frame. That
+ * is the interval a user waits for an image, not just for a parse.
+ */
+async function loadProteinInput(id: string): Promise<void> {
+  const viewer = state.viewer;
+  if (viewer === null) {
+    setStatus("The 3D viewer is not available, so a protein cartoon cannot be drawn.", true);
+    return;
+  }
+  setBusy(true, `Fetching PDB ${id}…`);
+  dom.exportButton.disabled = true;
+  const started = performance.now();
+  try {
+    const record = await loadProtein(id);
+    const fetched = performance.now();
+    setBusy(true, `Building ${id}…`);
+    const atoms = await viewer.loadStructure(record.name, record.bytes);
+    const parsed = performance.now();
+    state.looks = JSON.parse(proteinLooksJson()) as Look[];
+    state.look = state.looks[0] ?? null;
+    if (state.look !== null) await viewer.applyLook(state.look);
+    const styled = performance.now();
+    await viewer.frameScene();
+    await nextFrames(2);
+    const drawn = performance.now();
+    const seconds = (drawn - started) / 1000;
+    const sequence = viewer.sequenceSummary();
+
+    state.protein = { id, atoms, residues: sequence.residues, chains: sequence.chains, seconds };
+    state.compound = { name: id, synonyms: [id] };
+    state.compoundJson = JSON.stringify(state.compound);
+    state.depiction = null;
+    state.mode = "3d";
+    state.tab = "commons";
+    dom.mode2d.disabled = true;
+
+    renderLooks();
+    syncAppearance();
+    renderProteinSummary();
+    applyMode();
+    dom.exportButton.disabled = false;
+    setStatus(
+      `Loaded ${id}: ${atoms} atoms, ${sequence.residues} residues in ${seconds.toFixed(2)} s ` +
+        `(fetch ${((fetched - started) / 1000).toFixed(2)}, load ${((parsed - fetched) / 1000).toFixed(2)}, ` +
+        `style ${((styled - parsed) / 1000).toFixed(2)}, draw ${((drawn - styled) / 1000).toFixed(2)}).`,
+    );
+  } catch (error) {
+    if (error instanceof ProteinError) setStatus(error.message, true);
+    else setStatus(`Could not load ${id}: ${describe(error)}`, true);
+  } finally {
+    setBusy(false);
+  }
+}
+
+function renderProteinSummary(): void {
+  const protein = state.protein;
+  if (protein === null) return;
+  const rows: [string, string][] = [
+    ["Name", `PDB ${protein.id}`],
+    ["Atoms", String(protein.atoms)],
+    ["Residues", String(protein.residues)],
+    ["Chains", String(protein.chains)],
+    ["Load", `${protein.seconds.toFixed(2)} s`],
+  ];
+  dom.summary.replaceChildren(
+    ...rows.flatMap(([label, value]) => {
+      const term = document.createElement("dt");
+      term.textContent = label;
+      const detail = document.createElement("dd");
+      detail.textContent = value;
+      return [term, detail];
+    }),
+  );
+  dom.summary.hidden = false;
+  for (const old of document.querySelectorAll(".summary-note")) old.remove();
 }
 
 function renderSummary(warnings: string[]): void {
@@ -321,8 +449,9 @@ async function chooseLook(look: Look): Promise<void> {
 
 // --- View mode ---------------------------------------------------------------------
 
-/** Which image the markup describes: the flat drawing or the 3D render. */
+/** Which image the markup describes: the flat drawing, the 3D render or a protein. */
 function structureKind(): StructureKindId {
+  if (state.protein !== null) return "protein";
   return state.mode === "2d" ? "two_d" : "three_d";
 }
 
@@ -334,9 +463,12 @@ function figureName(kind: StructureKindId): string {
 
 /** Swap the stage between the 3D viewer and the inline drawing. */
 function applyMode(): void {
+  // A protein has no flat record, so the drawing mode is not offered.
+  if (state.protein !== null) state.mode = "3d";
   const twoDimensional = state.mode === "2d";
   dom.mode3d.setAttribute("aria-selected", String(!twoDimensional));
   dom.mode2d.setAttribute("aria-selected", String(twoDimensional));
+  dom.mode2d.disabled = state.depiction === null || state.protein !== null;
   dom.viewerHost.hidden = twoDimensional;
   dom.depiction.hidden = !twoDimensional;
 
@@ -350,7 +482,10 @@ function applyMode(): void {
       dom.stageNote.textContent = "";
     }
   } else {
-    dom.stageNote.textContent = "";
+    dom.stageNote.textContent =
+      state.protein === null
+        ? ""
+        : `${state.protein.id} cartoon, secondary structure colours`;
   }
 
   dom.exportButton.textContent = twoDimensional ? "Download SVG" : "Download PNG";
@@ -672,7 +807,7 @@ async function exportPng(): Promise<void> {
 
     const name = state.compound === null
       ? "molecule-3D.png"
-      : figureName("three_d");
+      : figureName(structureKind());
     download(name, framed);
     setStatus(`Saved ${name}${transparent ? " with a transparent background" : ""}.`);
     dom.fileName.textContent = name;
@@ -705,6 +840,12 @@ for (const tab of Object.keys(dom.tabs) as TabId[]) {
 }
 
 function refreshOutput(): void {
+  // A protein has no drug or chem box; its Commons description is the useful output.
+  const protein = state.protein !== null;
+  dom.tabs.drugbox.hidden = protein;
+  dom.tabs.chembox.hidden = protein;
+  if (protein) state.tab = "commons";
+
   for (const tab of Object.keys(dom.tabs) as TabId[]) {
     dom.tabs[tab].setAttribute("aria-selected", String(tab === state.tab));
   }

@@ -255,9 +255,14 @@ impl Look {
                 reflect: 0.25,
                 specular: 0.30,
                 shininess: 40.0,
-                ambient_occlusion: true,
-                ao_strength: 0.6,
+                // A cartoon is a lit surface, not a crowded pocket. Ambient occlusion adds
+                // a full-screen pass and its first-use pipeline for no visible gain.
+                ambient_occlusion: false,
                 silhouettes: false,
+                // Keep the renderer's default depth cue on with no fog. The image is the
+                // same, and the first frame avoids a shader reload.
+                depth_cue: true,
+                fog: 0.0,
                 ..Appearance::default()
             }),
             Look {
@@ -270,9 +275,10 @@ impl Look {
                 reflect: 0.25,
                 specular: 0.30,
                 shininess: 40.0,
-                ambient_occlusion: true,
-                ao_strength: 0.6,
+                ambient_occlusion: false,
                 silhouettes: false,
+                depth_cue: true,
+                fog: 0.0,
                 ..Appearance::default()
             }),
         ]
@@ -342,7 +348,7 @@ mod tests {
         let looks = Look::protein_looks();
         assert_eq!(looks[0].style, RepStyle::Cartoon);
         assert_eq!(looks[0].color_mode, ColorMode::SecStruct);
-        assert!(looks[0].appearance.ambient_occlusion);
+        assert_eq!(looks[0].appearance.background, "#ffffff");
     }
 
     #[test]

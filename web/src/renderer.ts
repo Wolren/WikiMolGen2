@@ -73,6 +73,7 @@ interface PatinaeViewer {
   execute(command: string): Promise<Receipt>;
   exportPng(options: { width?: number; height?: number; transparent?: boolean }): Promise<Blob>;
   countAtoms(selection?: string): number;
+  getSequenceData(): { chain_id: string; residues: unknown[] }[];
   destroy(): void;
 }
 
@@ -148,28 +149,30 @@ function representationCommands(look: LookSpec): string[] {
 /**
  * molplate's colour modes → patinae's scheme names.
  *
- * `spectrum` is not a colour scheme here; patinae spells the N→C rainbow
- * `residue_index`, and maps `b_factor` from `beta`.
+ * `color ss` colours this scene uniformly, although the `ss` selection reports helix,
+ * sheet and loop atoms correctly. The three named palette colours plus the `ss` selection
+ * give the documented PyMOL cartoon look.
  */
-function colorCommand(mode: string): string {
+function colourCommands(mode: string): string[] {
   switch (mode) {
     case "chain":
-      return "color chain";
+      return ["color chain"];
     case "residue":
     case "resid":
-      return "color residue";
+      return ["color residue"];
     case "index":
-      return "color index";
+      return ["color index"];
     case "secstruct":
+    case "sec_struct":
     case "ss":
-      return "color ss";
+      return ["color ss_loop, all", "color ss_helix, ss H", "color ss_sheet, ss S"];
     case "b_factor":
     case "bfactor":
     case "beta":
-      return "color b_factor";
+      return ["color b_factor"];
     case "element":
     default:
-      return "color atomic";
+      return ["color atomic"];
   }
 }
 
@@ -184,6 +187,41 @@ function rgbOf(hex: string): [number, number, number] {
 /** Fixed-point form for a command argument, with a safe fallback. */
 function decimal(value: number): string {
   return Number.isFinite(value) ? value.toFixed(3) : "0";
+}
+
+/** A four-atom backbone per residue, used for the cartoon pipeline warm-up. */
+const PROBE_BACKBONE: [string, string, number, number][] = [
+  [" N  ", " N", -0.6, 0.8],
+  [" CA ", " C", 0.0, 0.0],
+  [" C  ", " C", 0.6, 0.8],
+  [" O  ", " O", 1.1, 1.6],
+];
+
+/**
+ * Build a six-residue polyalanine probe.
+ *
+ * The first cartoon frame compiles the cartoon pipelines, which costs seconds in the
+ * browser. A probe with the same representation pays that cost before the user asks for
+ * a protein. Six residues are enough to build a cartoon trace.
+ */
+function warmupPdb(): string {
+  const lines: string[] = [];
+  let serial = 1;
+  for (let residue = 1; residue <= 6; residue += 1) {
+    const base = (residue - 1) * 3.8;
+    for (const [atom, element, dx, dy] of PROBE_BACKBONE) {
+      const x = (base + dx).toFixed(3).padStart(8);
+      const y = dy.toFixed(3).padStart(8);
+      const z = (0).toFixed(3).padStart(8);
+      const residueNumber = String(residue).padStart(4);
+      lines.push(
+        `ATOM  ${String(serial).padStart(5)} ${atom} ALA A${residueNumber}    ${x}${y}${z}  1.00 20.00           ${element}`,
+      );
+      serial += 1;
+    }
+  }
+  lines.push("END");
+  return lines.join("\n");
 }
 
 /** Extension of a structure name, which patinae's parser keys the format off. */
@@ -221,12 +259,16 @@ export class Renderer {
   /** Current camera buffer in Å, tracked so zoom is relative rather than absolute. */
   private frameBuffer = FRAME_BUFFER_ANGSTROM;
 
-  // Last values of the settings whose change reloads a shader or a pipeline.
+  /** In-flight pipeline warm-up, awaited before the first real structure load. */
+  private warmup: Promise<void> | null = null;
+
+  // Last values of the settings whose change reloads a shader or a pipeline. They start
+  // at the renderer's defaults, so the first look does not reload a shader for nothing.
   private lastBackground = "";
-  private lastShading = "";
-  private lastAo: boolean | null = null;
-  private lastSilhouettes: boolean | null = null;
-  private lastDepthCue: boolean | null = null;
+  private lastShading = "classic";
+  private lastAo = false;
+  private lastSilhouettes = false;
+  private lastDepthCue = true;
 
   private constructor(private readonly viewer: PatinaeViewer) {}
 
@@ -284,6 +326,12 @@ export class Renderer {
    * callers that need pixels should rely on {@link exportPng}, which settles first.
    */
   async loadStructure(name: string, bytes: Uint8Array): Promise<number> {
+    // A warm-up probe may still own the scene; let it finish before replacing it.
+    const warming = this.warmup;
+    if (warming !== null) await warming;
+    // `loadData` inserts an object and keeps the scene, so a second lookup would stack
+    // two molecules. Clearing first makes every load an independent figure.
+    await this.runQuiet("delete all");
     const receipt = this.viewer.loadData(bytes, name, formatOf(name));
     if (receipt.result && "Err" in receipt.result) {
       throw new Error(`Could not parse ${name}: ${receipt.result.Err}`);
@@ -291,11 +339,55 @@ export class Renderer {
     return this.viewer.countAtoms("all");
   }
 
+  /**
+   * Compile the cartoon pipelines on a probe, before a user asks for a protein.
+   *
+   * Measured on 1CRN: the first cartoon frame takes 3.1-3.5 s of pipeline compilation.
+   * A six-residue probe at startup moves that cost off the load path. The caller hides
+   * the canvas, so the probe is never visible.
+   */
+  startWarmup(): Promise<void> {
+    if (this.warmup === null) {
+      this.warmup = this.warmCartoon()
+        .catch(() => {
+          // A warm-up is an optimisation; a failure must not block a real load.
+        })
+        .finally(() => {
+          this.warmup = null;
+        });
+    }
+    return this.warmup;
+  }
+
+  private async warmCartoon(): Promise<void> {
+    const probe = new TextEncoder().encode(warmupPdb());
+    const receipt = this.viewer.loadData(probe, "warmup.pdb", "pdb");
+    if (receipt.result && "Err" in receipt.result) return;
+    await this.run("show cartoon");
+    await this.run("color ss");
+    await frames(4);
+    await this.runQuiet("delete all");
+  }
+
+  /** Atoms in a selection, for summaries and for label targeting. */
+  count(selection: string): number {
+    return this.viewer.countAtoms(selection);
+  }
+
+  /** Chains and residues in the scene, for a protein summary. */
+  sequenceSummary(): { chains: number; residues: number } {
+    const chains = this.viewer.getSequenceData();
+    return {
+      chains: chains.length,
+      residues: chains.reduce((total, chain) => total + chain.residues.length, 0),
+    };
+  }
+
   /** Apply a look: geometry plus its colouring, then the appearance. */
   async applyLook(look: LookSpec): Promise<void> {
     await this.run("hide");
     for (const command of representationCommands(look)) await this.run(command);
-    await this.run(colorCommand(look.color_mode));
+    for (const command of colourCommands(look.color_mode)) await this.run(command);
     await this.applyAppearance(look);
   }
 
