@@ -11,14 +11,18 @@ It is a static site: no server, no upload, no install.
 
 What it offers:
 
-* **2D and 3D.** A vector skeletal drawing with element colours, and ball-and-stick,
-  space-filling, licorice, stick and protein cartoon styles.
+* **2D and 3D.** RDKit's MinimalLib draws the skeletal SVG, with element colours and
+  stereo. Ball-and-stick, space-filling, licorice, stick and protein cartoons cover 3D.
 * **Named looks and controls.** Publication, Flat and Dark finishes, plus light, outline,
   ambient occlusion, depth cue, transparency and per-element colour overrides.
 * **Figures, not screenshots.** PNG at exactly 1200, 1600 or 2000 px wide, with a 4 to 9
   percent margin, optional atom labels, a scale bar, transparency and a gradient.
 * **Metadata beside PubChem.** Wikidata identifiers and ATC codes, Wikipedia clinical
   fields, and an openFDA drug label.
+
+The 2D engine is RDKit.js, 7.39 MB, loaded only when the 2D view first opens. Until then
+the page stays at about 624 KB of wasm. A Rust V2000 parser is the fallback if the RDKit
+module cannot load.
 
 ![molplate rendering aspirin, with the Commons markup beside it](docs/screenshot.png)
 
@@ -72,9 +76,8 @@ node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardwar
   composes a rendered PNG into a figure, and generates the markup. It does not render.
 * `web/src/`, Vite + TypeScript: lookups, metadata, controls, downloads, and the adapter
   that drives the renderer (`renderer.ts`).
-* `web/public/vendor/patinae`, the renderer itself: patinae's web viewer, vendored as a
-  built ES module plus wasm. Provenance and the rebuild command are in
-  [PROVENANCE.md](web/public/vendor/patinae/PROVENANCE.md).
+* `web/public/vendor/`, the renderer (patinae) and the 2D engine (RDKit). Both are
+  vendored builds with provenance notes beside them.
 
 The renderer is patinae (formerly PyMOL-RS), not `molar_vis`. Why it was swapped, what the
 swap cost, and what it gives up, notably a WebGL2 fallback, are in
@@ -89,9 +92,10 @@ The 2D and 3D paths work end to end: look a compound up, pick a look, export a f
 and paste the markup. A protein cartoon works from a PDB ID, and the metadata from
 Wikidata, Wikipedia and openFDA fills the summary and the infobox fields.
 
-Known gaps are listed in [docs/SPEC.md](docs/SPEC.md): V3000 records, conformer
-generation for a SMILES that PubChem does not know, ray tracing, MSAA in the live view,
-a live background gradient, and a direct DailyMed read (openFDA serves the same labels).
+Known gaps are listed in [docs/SPEC.md](docs/SPEC.md): conformer generation for a SMILES
+that PubChem does not know, ray tracing, MSAA in the live view, a live background
+gradient, and a direct DailyMed read (openFDA serves the same labels). The Rust 2D
+fallback reads V2000 only; the RDKit path also reads V3000.
 
 WebGPU is required for 3D and the path is exercised: `scripts/verify.mjs --gpu hardware`
 reports the live backend, loads aspirin and exports a figure on real hardware. The 2D SVG

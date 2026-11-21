@@ -285,12 +285,27 @@ for (const tab of ["drugbox", "chembox", "commons"]) {
   if (length < 40) failures.push(`${tab} produced ${length} characters of markup`);
   const balanced = typeof text === "string" && countUnbalanced(text) === 0;
   if (!balanced) failures.push(`${tab} markup has unbalanced braces`);
-  console.log(`${tab}: ${length} chars${balanced ? "" : " — UNBALANCED"}`);
+  console.log(`${tab}: ${length} chars${balanced ? "" : ": UNBALANCED"}`);
 }
+
+// 3b. The 2D view. The first open loads RDKit (7.39 MB) and draws an inline SVG.
+await evaluate(session, "document.getElementById('mode-2d').click(), true");
+const svgSize = await poll(async () => {
+  const size = await evaluate(
+    session,
+    "document.querySelector('#depiction svg')?.outerHTML.length ?? 0",
+  );
+  return typeof size === "number" && size > 500 ? size : null;
+}, 60_000);
+if (svgSize === null) failures.push("the 2D view did not render an SVG");
+else console.log(`2d: ${svgSize} chars`);
+await evaluate(session, "document.getElementById('mode-3d').click(), true");
+await new Promise((done) => setTimeout(done, 300));
 
 // 4. Export a PNG through the app's own path. The renderer draws offscreen and the page
 //    composes the figure in Rust, so the downloaded file is the product, not a canvas read.
-const downloadDir = join(process.env.TEMP ?? "/tmp", `molplate-download-${Date.now()}`);await mkdir(downloadDir, { recursive: true });
+const downloadDir = join(process.env.TEMP ?? "/tmp", `molplate-download-${Date.now()}`);
+await mkdir(downloadDir, { recursive: true });
 await send("Browser.setDownloadBehavior", {
   behavior: "allow",
   downloadPath: downloadDir,

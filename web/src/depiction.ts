@@ -1,28 +1,60 @@
-/** Inline 2D depiction: build the SVG in Rust, show it, and offer it as a file. */
+/**
+ * Inline 2D depiction: RDKit first, the Rust V2000 parser as the fallback.
+ *
+ * RDKit gives the canonical depiction, stereo wedges and a layout for records without
+ * coordinates. It costs a 7.39 MB wasm download on first use. If that module cannot load,
+ * the Rust parser still draws the PubChem record.
+ */
 
 import { depictSvg } from "../pkg/molplate_wasm.js";
+import { depictWithRdkit } from "./rdkit.js";
 
-/** Nominal canvas width. The drawing is vector, so this only sets the viewBox. */
+/** Nominal canvas size. The drawing is vector, so this only sets the viewBox. */
 const DEPICTION_WIDTH = 900;
-/** Empty border as a fraction of the width, matching the 3D figure margin. */
+const DEPICTION_HEIGHT = 700;
+/** Empty border as a fraction of the width, for the Rust fallback. */
 const DEPICTION_MARGIN = 0.06;
+
+export type DepictionEngine = "rdkit" | "rust";
 
 export interface Depiction {
   /** The SVG document, ready to inline or download. */
   svg: string;
+  /** Which engine drew it, for the stage note and the report. */
+  engine: DepictionEngine;
 }
 
+export interface DepictionResult {
+  depiction: Depiction | null;
+  error: string | null;
+}
+
+/** A failed RDKit load is not retried for every drawing in the session. */
+let rdkitUnavailable = false;
+
 /**
- * Build a skeletal SVG from a V2000 record.
+ * Build a skeletal SVG from a 2D record.
  *
- * Returns `null` when the record cannot be drawn, with a sentence for the stage note.
+ * Returns `null` when neither engine can draw, with a sentence for the status line.
  */
-export function buildDepiction(name: string, sdf: Uint8Array): { depiction: Depiction | null; error: string | null } {
+export async function buildDepiction(name: string, sdf: Uint8Array): Promise<DepictionResult> {
+  let rdkitError = "RDKit was skipped after an earlier failure";
+  if (!rdkitUnavailable) {
+    try {
+      const svg = await depictWithRdkit(sdf, DEPICTION_WIDTH, DEPICTION_HEIGHT);
+      return { depiction: { svg, engine: "rdkit" }, error: null };
+    } catch (error) {
+      rdkitUnavailable = true;
+      rdkitError = error instanceof Error ? error.message : String(error);
+    }
+  }
+
   try {
     const svg = depictSvg(sdf, DEPICTION_WIDTH, DEPICTION_MARGIN, false, false, name);
-    return { depiction: { svg }, error: null };
+    return { depiction: { svg, engine: "rust" }, error: null };
   } catch (error) {
-    return { depiction: null, error: error instanceof Error ? error.message : String(error) };
+    const rustError = error instanceof Error ? error.message : String(error);
+    return { depiction: null, error: `${rdkitError}; ${rustError}` };
   }
 }
 

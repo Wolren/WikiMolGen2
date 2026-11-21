@@ -13,7 +13,7 @@ sources and offers a keyboard path from load to export.
 
 | Workstream | Acceptance | Result |
 | --- | --- | --- |
-| A. 2D depiction | Aspirin SVG under 100 KB, element colours, downloads from the UI | 2298 bytes, 4 oxygen labels in `#d42a1e`, `aspirin-2D.svg` |
+| A. 2D depiction | Aspirin SVG under 100 KB, element colours, downloads from the UI | RDKit SVG 8757 bytes, `#FF0000` oxygen, `aspirin-2D.svg` |
 | B. 3D quality | Artwork, three named looks, pair against `/classic/` | Publication, Flat and Dark look data in Rust; images below |
 | C. Protein cartoons | 1CRN cartoon in under 3 s, colour by secondary structure | 0.09 to 1.82 s, 327 atoms, 46 residues, 131 helix atoms in pink |
 | D. Composition | 1600 px wide, margins 5 to 7 percent, no clipped atoms | 1600x1393, 6.00 percent on all sides, 0 edge ink |
@@ -49,21 +49,24 @@ ground. Ambient occlusion and depth cue are on.
 
 ## A. 2D depiction
 
-The app now draws a skeletal SVG from PubChem's 2D record. `molplate_core::depict` parses
-the V2000 atom and bond tables and hides hydrogens. It writes a vector document with Jmol
-element colours. Double bonds, triple bonds, wedge bonds and formal charges are drawn.
+The 2D view uses RDKit's official MinimalLib build, `@rdkit/rdkit` 2026.9.2. The module
+loads on the first 2D open, so the initial page stays at 623.61 KB of wasm. RDKit reads
+the mol block and removes the explicit hydrogens. It lays the molecule out with
+`set_new_coords`, then returns an SVG with element colours and stereo wedges.
 
-Tradeoff: RDKit-wasm would add several megabytes and a worker to the bundle. PubChem
-already publishes 2D coordinates and a bond table, so the browser-side parser covers the
-records the app can load. The cost is a V3000 gap, no conformer generation, and no
-implicit-hydrogen inference. The SVG is 2298 bytes for aspirin. The parser is covered by
-six integration tests and the core suite.
+The module is 7.39 MB of wasm. It is a classic script, so the page loads it with a script
+tag from `web/public/vendor/rdkit`. The wasm sits beside the script. A Rust V2000 parser
+stays as the fallback when the module cannot load.
 
-![The 2D mode with aspirin](upgrade/after-2d.png)
+The first cut used only the Rust parser. This revision restores RDKit as the primary
+engine. The project notes named it, and it is the right tool for depiction.
 
-Measured: `aspirin-2D.svg` is 2298 bytes and the canvas is 900x748. Four oxygen labels use
-`#d42a1e`. The file downloads from the same button that exports the PNG. The inline
-drawing is a parsed SVG document, not an image tag.
+![The 2D mode with aspirin, drawn by RDKit](upgrade/after-2d.png)
+
+Measured: `aspirin-2D.svg` is 8757 bytes and the inline SVG is 8821 characters. Oxygen is
+`#FF0000` and carbon is black. The file downloads from the same button that exports the
+PNG. The first 2D open shows the engine load in the stage overlay. The Rust fallback is
+covered by six integration tests and the core suite.
 
 ## B. 3D quality controls
 
@@ -219,20 +222,22 @@ SwiftShader, which removes the hardware adapter this renderer needs.
 | `cargo test -p molplate_core` | 37 unit tests pass |
 | Depiction integration tests | 6 tests pass |
 | `cd web; npm run build` | TypeScript clean, Vite build OK |
-| `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware` | OK, export 1200x1045 at 6 percent |
+| `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware` | OK, 2D SVG 8821 chars, export 1200x1045 at 6 percent |
 | `pwsh -File scripts/build-dual.ps1 -NoServe` | classic and current builds OK |
 | Keyboard export | completed, 637313 bytes |
 | Layout overflow | none at 1280 or 800 |
 
-Bundle: the page is 41.27 KB of JavaScript and 8.65 KB of CSS. The wasm grows from 531.77
-KB to 623.61 KB. The final wasm gzips to 222.40 KB. The depiction, the composer and the
-scale bar font live there. The classic renderer's wasm is 17.6 MB for comparison.
+Bundle: the page is 43.02 KB of JavaScript and 8.65 KB of CSS. The app's wasm grows from
+531.77 KB to 623.61 KB, and it gzips to 222.40 KB. The 2D engine is a separate 7.39 MB
+wasm, loaded only when 2D opens. The fallback depiction, the composer and the scale bar
+font live in the app wasm. The classic renderer's wasm is 17.6 MB for comparison.
 
 ## Gaps that remain
 
 * MSAA in the live view. patinae has no MSAA. The 2x canvas and FXAA remain the substitute.
   The measured live edge ramp is 0.62 px from commit `6c56ec2`.
-* V3000 mol blocks. The 2D parser handles V2000 only and says so when it refuses a record.
+* V3000 mol blocks in the Rust fallback. RDKit handles V3000; the fallback parser does not.
+* The first 2D open downloads 7.39 MB. The browser caches it, and the page states the cost.
 * Conformer generation for a SMILES that PubChem does not know. PubChem resolves the
   structures today, so the gap is invisible until a lookup misses.
 * Ray tracing. The ray tracer is a native plugin and is absent from the wasm build.

@@ -12,7 +12,7 @@ frames it:
 
 ```
 name / CID / SMILES ──► PubChem ──► 3D SDF ──► patinae ──► PNG
-        │                  └─────► 2D SDF ──► Rust depict ──► SVG
+        │                  └─────► 2D SDF ──► RDKit MinimalLib ──► SVG
         │                  └─────► Wikidata, Wikipedia, openFDA ──► metadata
         │                                                              │
         └─────────────────────────────────────────────────────► wikitext
@@ -29,7 +29,7 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | Lookup by name, CID or SMILES | Name and CID resolve directly; a SMILES is resolved through PubChem's structure search, so only compounds PubChem knows work |
 | Protein lookup | A four-character PDB ID (for example `1CRN`) or a `pdb:` prefix fetches the entry from RCSB and draws a cartoon |
 | 3D structure | PubChem's 3D record; a compound without one falls back to its 2D record and says so |
-| 2D depiction | Rust parses the V2000 table, hides hydrogens and writes a skeletal SVG with element colours; no chemistry toolkit in the bundle |
+| 2D depiction | RDKit's MinimalLib draws the skeletal SVG with canonical layout, stereo and element colours. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback |
 | Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by secondary structure or chain |
 | Appearance | Background, stick and sphere size, transparency, ambient and direct light, specular, ambient occlusion, outline, depth cue, per-element colour overrides |
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, and keyboard shortcuts |
@@ -45,7 +45,7 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 
 | Missing | Why | What it needs |
 | --- | --- | --- |
-| V3000 mol blocks in 2D | The depiction reads the V2000 table | A V3000 parser, or a toolkit |
+| V3000 mol blocks in the Rust fallback | The RDKit path reads V3000; the fallback parser reads V2000 | A V3000 parser in Rust, or removal of the fallback |
 | Conformer generation for unknown SMILES | PubChem resolves SMILES, so an unknown string never reaches the renderer | RDKit-wasm embedding and MMFF, or a server |
 | Ray-traced export | patinae's ray tracer is a native cdylib plugin and is not in the wasm build | A wasm ray tracer, or a server-side render |
 | MSAA in the live view | patinae has no MSAA; FXAA and a 2x supersampled canvas are the substitutes | A renderer change, not an app change |
@@ -91,11 +91,15 @@ The output width is exact. The content is scaled to `width - 2 * margin_px`, so 
 horizontal margin is exact and no atom leaves the canvas. The scale bar is drawn in the
 bottom margin from the Å per pixel that the camera reports through `get_view`.
 
-### Depiction (Rust → SVG)
+### Depiction (RDKit → SVG)
 
-`depictSvg(sdf, width, margin, labels, monochrome, name)` parses a V2000 mol block and
-returns a complete SVG document. Hydrogens are implicit. Heteroatoms are always labelled;
-`labels` adds the carbons.
+`depictWithRdkit(sdf, width, height)` calls RDKit's `get_mol`, removes the explicit
+hydrogens, runs `set_new_coords` and returns `get_svg`. The 7.39 MB MinimalLib loads on
+first 2D use from `web/public/vendor/rdkit`.
+
+`depictSvg(sdf, width, margin, labels, monochrome, name)` is the Rust fallback. It parses
+a V2000 mol block and returns an SVG. Hydrogens are implicit. Heteroatoms are always
+labelled; `labels` adds the carbons.
 
 ## Repository map
 
@@ -107,12 +111,13 @@ web/src/context.ts      shared state, DOM handles, status helpers
 web/src/appearance.ts   the appearance panel
 web/src/figure.ts       export: PNG composition and SVG download
 web/src/keyboard.ts     shortcuts
-web/src/depiction.ts    inline SVG
+web/src/depiction.ts    inline SVG and the engine choice
+web/src/rdkit.ts        RDKit MinimalLib loader
 web/src/pubchem.ts      PubChem lookups and the compound type
 web/src/sources.ts      Wikidata, Wikipedia, DailyMed / openFDA
 web/src/protein.ts      RCSB PDB
 web/src/renderer.ts     the only file that knows patinae's API
-web/public/vendor/      the vendored patinae build (see its PROVENANCE.md)
+web/public/vendor/      the vendored patinae and RDKit builds (see their PROVENANCE.md)
 web/pkg/                generated wasm + JS bindings (git-ignored)
 docs/                   this file, the ADRs and the upgrade report
 scripts/dev-env.ps1     toolchain paths for this workstation
@@ -125,9 +130,10 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 * The page loads, accepts `aspirin`, shows a molecule, and every tab produces markup that
   parses as balanced templates.
 * Export at 1600 px writes a 1600 px wide PNG with 6 percent margins and no clipped atoms.
+* The 2D view draws an RDKit SVG under 100 KB and downloads it.
 * A 1CRN lookup draws a cartoon coloured by secondary structure in under three seconds.
 * The same compound loaded by name, CID and SMILES exports byte-identical images.
-* A browser without WebGPU explains itself, disables export, and still generates markup.
+* A browser without WebGPU explains itself. The 2D SVG and the markup still work.
 
 `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware` checks
 the browser-facing parts. The `--gpu hardware` flag matters: SwiftShader's flags remove the

@@ -156,23 +156,20 @@ async function loadFromInput(): Promise<void> {
       dom.exportButton.disabled = false;
     }
 
-    // The 2D drawing comes from the flat record, so it works even when there is no 3D
-    // viewer. It is built once per load and then shown or hidden by the mode switch.
+    // The flat record is kept for the 2D engine, which loads only when 2D first opens.
+    // The 7.39 MB RDKit module would otherwise slow every compound load.
+    state.depictionSource = result.depiction;
     state.depiction = null;
-    if (result.depiction !== null) {
-      const built = buildDepiction(result.compound.name ?? identifier, result.depiction.bytes);
-      state.depiction = built.depiction;
-      if (built.error !== null) result.warnings.push(`No 2D drawing: ${built.error}`);
-    } else {
+    dom.mode2d.disabled = result.depiction === null;
+    if (result.depiction === null) {
       result.warnings.push("PubChem has no flat record for this compound, so 2D is unavailable.");
     }
-    dom.mode2d.disabled = state.depiction === null;
-    if (state.mode === "2d" && state.depiction === null) state.mode = "3d";
+    if (state.mode === "2d" && result.depiction === null) state.mode = "3d";
 
     renderLooks();
     renderSummary(result.warnings);
-    applyMode();
     syncAppearance();
+    refreshOutput();
     const seconds = (performance.now() - started) / 1000;
     const loadedName = state.compound?.name ?? identifier;
     setStatus(`Loaded ${loadedName} in ${seconds.toFixed(2)} s.`);
@@ -204,6 +201,14 @@ async function loadFromInput(): Promise<void> {
       .catch(() => {
         // Metadata is a bonus; a failed source must not mark the load as failed.
       });
+
+    // A second 2D open after a new load rebuilds the drawing. The first open waits for
+    // the engine, so the overlay stays until the SVG is ready.
+    if (state.mode === "2d" && state.depictionSource !== null) {
+      await showMode("2d");
+    } else {
+      applyMode();
+    }
   } catch (error) {
     if (error instanceof LookupError) {
       setStatus(error.message, true);
@@ -263,6 +268,7 @@ async function loadProteinInput(id: string): Promise<void> {
     state.compound = { name: id, synonyms: [id] };
     state.compoundJson = JSON.stringify(state.compound);
     state.sources = [];
+    state.depictionSource = null;
     state.depiction = null;
     state.mode = "3d";
     state.tab = "commons";
@@ -410,11 +416,46 @@ async function chooseLook(look: Look): Promise<void> {
 
 // --- View mode ---------------------------------------------------------------------
 
+/** The 2D engine has been loaded once; later drawings skip the download message. */
+let engineLoaded = false;
+
+/**
+ * Switch the stage. The first 2D open loads RDKit, so this is asynchronous.
+ *
+ * The build runs under the stage overlay. A failed engine falls back to the Rust parser
+ * inside `buildDepiction`, so this returns without a drawing only when both fail.
+ */
+async function showMode(mode: ViewMode): Promise<void> {
+  if (mode === "2d") {
+    if (state.protein !== null || state.depictionSource === null) return;
+    if (state.depiction === null) {
+      setBusy(
+        true,
+        engineLoaded
+          ? "Drawing the 2D view…"
+          : "Loading the RDKit 2D engine (7.4 MB)…",
+      );
+      try {
+        const built = await buildDepiction(state.depictionSource.name, state.depictionSource.bytes);
+        if (built.depiction === null) {
+          setStatus(`The 2D drawing failed: ${built.error}`, true);
+          return;
+        }
+        state.depiction = built.depiction;
+        engineLoaded = true;
+      } finally {
+        setBusy(false);
+      }
+    }
+  }
+  state.mode = mode;
+  applyMode();
+}
+
 /** Switch the stage, and ignore 2D when the record has no flat coordinates. */
 function setMode(mode: ViewMode): void {
   if (mode === "2d" && dom.mode2d.disabled) return;
-  state.mode = mode;
-  applyMode();
+  void showMode(mode);
 }
 
 /** Swap the stage between the 3D viewer and the inline drawing. */
@@ -424,14 +465,15 @@ function applyMode(): void {
   const twoDimensional = state.mode === "2d";
   dom.mode3d.setAttribute("aria-selected", String(!twoDimensional));
   dom.mode2d.setAttribute("aria-selected", String(twoDimensional));
-  dom.mode2d.disabled = state.depiction === null || state.protein !== null;
+  dom.mode2d.disabled = state.depictionSource === null || state.protein !== null;
   dom.viewerHost.hidden = twoDimensional;
   dom.depiction.hidden = !twoDimensional;
 
   if (twoDimensional) {
     if (state.depiction !== null) {
       showDepiction(dom.depiction, state.depiction.svg);
-      dom.stageNote.textContent = "Vector skeletal drawing";
+      dom.stageNote.textContent =
+        state.depiction.engine === "rdkit" ? "RDKit skeletal drawing" : "Vector skeletal drawing";
     } else {
       clearDepiction(dom.depiction);
       dom.depiction.textContent = "Load a compound to see its 2D drawing.";

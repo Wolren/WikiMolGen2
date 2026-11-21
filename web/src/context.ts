@@ -92,6 +92,8 @@ export interface AppState {
   tab: TabId;
   compoundJson: string;
   mode: ViewMode;
+  /** The flat record waiting for the 2D engine. `null` for a protein or a missing record. */
+  depictionSource: { name: string; bytes: Uint8Array } | null;
   depiction: Depiction | null;
   protein: { id: string; atoms: number; residues: number; chains: number; seconds: number } | null;
   sources: SourceStatus[];
@@ -105,6 +107,7 @@ export const state: AppState = {
   tab: "drugbox",
   compoundJson: "{}",
   mode: "3d",
+  depictionSource: null,
   depiction: null,
   protein: null,
   sources: [],
