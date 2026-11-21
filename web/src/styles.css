@@ -250,7 +250,19 @@ h2 {
   gap: 8px;
 }
 
+.field-row input[type="number"] {
+  flex: 1;
+  width: auto;
+}
+
+.unit {
+  align-self: center;
+  color: var(--faint);
+  font-size: 12px;
+}
+
 input[type="text"],
+input[type="number"],
 select,
 input[type="color"] {
   width: 100%;
@@ -264,11 +276,13 @@ input[type="color"] {
 }
 
 input[type="text"]:hover,
+input[type="number"]:hover,
 select:hover {
   border-color: var(--line-strong);
 }
 
 input[type="text"]:focus,
+input[type="number"]:focus,
 select:focus {
   outline: none;
   border-color: var(--accent);
@@ -276,6 +290,7 @@ select:focus {
 }
 
 input[type="text"]:focus-visible,
+input[type="number"]:focus-visible,
 select:focus-visible,
 button:focus-visible,
 .wikitext:focus-visible,
@@ -492,6 +507,15 @@ button:disabled {
 .checkbox.compact {
   margin-top: 4px;
   font-size: 12px;
+}
+
+/* A slider that belongs to the checkbox above it, not a new row. */
+.compact-control {
+  margin-top: 8px;
+}
+
+.compact-control .field-label {
+  margin: 8px 0 2px;
 }
 
 /* Appearance sliders ------------------------------------------------------------ */

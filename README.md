@@ -18,9 +18,10 @@ What it offers:
   and the stage follows the theme tint.
 * **Named looks and controls.** Publication, Flat and Dark finishes, plus light, outline,
   ambient occlusion, depth cue, transparency and per-element colour overrides.
-* **Figures, not screenshots.** PNG at exactly 1200, 1600 or 2000 px wide, with a 4 to 9
-  percent margin. The background is transparent by default, and an optional colour or
-  gradient is one click away. Atom labels and a scale bar are available.
+* **Figures, not screenshots.** PNG at any width from 400 to 4096 px, with presets at
+  1200, 1600, 2000, 3000 and 4096. The default is 3x supersampling, with 2x and 4x
+  selectable. The background is transparent by default, and an optional colour or gradient
+  is one click away. Atom labels and a scale bar are available.
 * **Metadata beside PubChem.** Wikidata identifiers and ATC codes, Wikipedia clinical
   fields, and an openFDA drug label.
 
@@ -98,8 +99,8 @@ Wikidata, Wikipedia and openFDA fills the summary and the infobox fields.
 
 Known gaps are listed in [docs/SPEC.md](docs/SPEC.md): conformer generation for a SMILES
 that PubChem does not know, ray tracing, MSAA in the live view, a live background
-gradient, and a direct DailyMed read (openFDA serves the same labels). The Rust 2D
-fallback reads V2000 only; the RDKit path also reads V3000.
+gradient, export edges above 8192 px, and a direct DailyMed read (openFDA serves the same
+labels). The Rust 2D fallback reads V2000 only; the RDKit path also reads V3000.
 
 WebGPU is required for 3D and the path is exercised: `scripts/verify.mjs --gpu hardware`
 reports the live backend, loads aspirin and exports a figure on real hardware. The 2D SVG

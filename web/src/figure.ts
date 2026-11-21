@@ -18,8 +18,13 @@ import {
 } from "./context.js";
 import { depictionBytes, downloadSvg } from "./depiction.js";
 
-/** Render this many times wider than the figure and scale down in Rust. */
-const SUPERSAMPLE = 2;
+/** patinae's offscreen export tops out at 8192 per edge on this build. */
+const MAX_RENDER_EDGE = 8192;
+/** About 240 MB of RGBA, before the compose copies. */
+const MAX_RENDER_PIXELS = 60_000_000;
+/** The figure width range. The height follows the stage aspect and the content. */
+const MIN_WIDTH = 400;
+const MAX_WIDTH = 4096;
 
 /** A figure spec, mirrored from `molplate_core::figure::FigureSpec`. */
 interface FigureSpec {
@@ -52,24 +57,38 @@ function exportSvg(): void {
 }
 
 /**
- * Render at twice the wanted width, then compose the figure at an exact width.
+ * Render above the wanted width, then compose the figure at an exact width.
  *
- * patinae renders offscreen at whatever size is asked for, so there is no canvas resize,
- * no device-pixel-ratio correction and no screenshot handshake to wait on. The compose
- * step trims the viewport, scales the molecule to the inner width and pads the margin in
- * Rust, so the exported width is the number the user chose.
+ * The supersample factor comes from the quality select, but a large width lowers it so
+ * the render edge stays inside the safe GPU limit. The compose step trims the viewport,
+ * scales the molecule to the inner width and pads the margin in Rust, so the exported
+ * width is the number the user chose.
  */
 async function exportPng(): Promise<void> {
   const viewer = state.viewer;
   if (viewer === null) return;
 
-  const targetWidth = Number(dom.exportWidth.value);
+  const requestedWidth = Number(dom.exportWidth.value);
+  const targetWidth = Number.isFinite(requestedWidth)
+    ? Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(requestedWidth)))
+    : 1600;
+  if (dom.exportWidth.value !== String(targetWidth)) {
+    dom.exportWidth.value = String(targetWidth);
+  }
+
   const margin = Number(dom.exportMargin.value) / 100;
   const rect = dom.viewerHost.getBoundingClientRect();
   const aspect = rect.width > 0 && rect.height > 0 ? rect.width / rect.height : 1;
   const targetHeight = Math.max(1, Math.round(targetWidth / aspect));
-  const renderWidth = targetWidth * SUPERSAMPLE;
-  const renderHeight = targetHeight * SUPERSAMPLE;
+  const requestedFactor = Number(dom.exportQuality.value);
+  const maxEdge = Math.max(targetWidth, targetHeight);
+  const factorByEdge = Math.floor(MAX_RENDER_EDGE / maxEdge);
+  const factorByPixels = Math.floor(
+    Math.sqrt(MAX_RENDER_PIXELS / (targetWidth * targetHeight)),
+  );
+  const factor = Math.max(1, Math.min(requestedFactor, factorByEdge, factorByPixels));
+  const renderWidth = targetWidth * factor;
+  const renderHeight = targetHeight * factor;
   const transparent = dom.exportTransparent.checked;
   const labels = dom.exportLabels.checked;
 
@@ -80,7 +99,7 @@ async function exportPng(): Promise<void> {
     if (labels) {
       await viewer.setLabels(true);
       // The label is measured in render pixels; the figure scales it down with the scene.
-      await viewer.setLabelSize(Math.round(18 * (targetWidth / 1600) * SUPERSAMPLE));
+      await viewer.setLabelSize(Math.round(18 * (targetWidth / 1600) * factor));
     } else {
       await viewer.setLabels(false);
     }
@@ -126,7 +145,9 @@ async function exportPng(): Promise<void> {
     download(name, framed);
     dom.fileName.textContent = name;
     setStatus(
-      `Saved ${name} at ${size.width}x${size.height} px, ${dom.exportMargin.value}% margin` +
+      `Saved ${name} at ${size.width}x${size.height} px, ${dom.exportMargin.value}% margin, ` +
+        `${factor}x supersample` +
+        `${factor < requestedFactor ? " (capped)" : ""}` +
         `${transparent ? ", transparent" : ""}${scaleBar === null ? "" : ", with a scale bar"}.`,
     );
   } catch (error) {

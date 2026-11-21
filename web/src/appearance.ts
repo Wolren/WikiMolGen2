@@ -73,9 +73,15 @@ export function syncAppearance(): void {
   dom.ambient.value = String(appearance.ambient);
   dom.direct.value = String(appearance.direct);
   dom.specular.value = String(appearance.specular);
+  dom.reflect.value = String(appearance.reflect);
+  dom.shininess.value = String(appearance.shininess);
   dom.ambientOcclusion.checked = appearance.ambient_occlusion;
+  dom.aoStrength.value = String(appearance.ao_strength);
+  dom.shadows.checked = appearance.shadows;
   dom.silhouettes.checked = appearance.silhouettes;
+  dom.outlineWidth.value = String(appearance.silhouette_width);
   dom.depthCue.checked = appearance.depth_cue;
+  dom.fog.value = String(appearance.fog);
   syncOutputs();
   renderElementColors();
 }
@@ -90,6 +96,11 @@ function syncOutputs(): void {
   dom.ambientValue.textContent = appearance.ambient.toFixed(2);
   dom.directValue.textContent = appearance.direct.toFixed(2);
   dom.specularValue.textContent = appearance.specular.toFixed(2);
+  dom.reflectValue.textContent = appearance.reflect.toFixed(2);
+  dom.shininessValue.textContent = appearance.shininess.toFixed(0);
+  dom.aoStrengthValue.textContent = appearance.ao_strength.toFixed(2);
+  dom.outlineWidthValue.textContent = appearance.silhouette_width.toFixed(1);
+  dom.fogValue.textContent = appearance.fog.toFixed(2);
   const transparency = Math.max(
     appearance.stick_transparency,
     appearance.sphere_transparency,
@@ -115,9 +126,15 @@ function readAppearance(): void {
   appearance.ambient = Number(dom.ambient.value);
   appearance.direct = Number(dom.direct.value);
   appearance.specular = Number(dom.specular.value);
+  appearance.reflect = Number(dom.reflect.value);
+  appearance.shininess = Number(dom.shininess.value);
   appearance.ambient_occlusion = dom.ambientOcclusion.checked;
+  appearance.ao_strength = Number(dom.aoStrength.value);
+  appearance.shadows = dom.shadows.checked;
   appearance.silhouettes = dom.silhouettes.checked;
+  appearance.silhouette_width = Number(dom.outlineWidth.value);
   appearance.depth_cue = dom.depthCue.checked;
+  appearance.fog = Number(dom.fog.value);
 }
 
 /** Parse the heavy elements out of a molecular formula, in formula order. */
@@ -180,6 +197,11 @@ export function bindAppearance(): void {
     dom.ambient,
     dom.direct,
     dom.specular,
+    dom.reflect,
+    dom.shininess,
+    dom.aoStrength,
+    dom.outlineWidth,
+    dom.fog,
   ]) {
     input.addEventListener("input", () => {
       readAppearance();
@@ -211,9 +233,15 @@ export function bindAppearance(): void {
       if (state.look !== null && state.look.appearance.depth_cue && state.look.appearance.fog === 0) {
         state.look.appearance.fog = 0.25;
       }
+      syncOutputs();
       scheduleApply();
     });
   }
+
+  dom.shadows.addEventListener("change", () => {
+    readAppearance();
+    scheduleApply();
+  });
 
   dom.resetColors.addEventListener("click", () => {
     if (state.look === null) return;

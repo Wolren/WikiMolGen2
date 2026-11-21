@@ -16,7 +16,7 @@ sources and offers a keyboard path from load to export.
 | A. 2D depiction | Aspirin SVG under 100 KB, element colours, downloads from the UI | RDKit SVG 8652 bytes, `#FF0000` oxygen, `aspirin-2D.svg` |
 | B. 3D quality | Artwork, three named looks, pair against `/classic/` | Publication, Flat and Dark look data in Rust; images below |
 | C. Protein cartoons | 1CRN cartoon in under 3 s, colour by secondary structure | 0.09 to 1.82 s, 327 atoms, 46 residues, 131 helix atoms in pink |
-| D. Composition | 1600 px wide, margins 5 to 7 percent, no clipped atoms | 1600x1393, 6.00 percent on all sides, 0 edge ink, transparent by default |
+| D. Composition | 1600 px wide, margins 5 to 7 percent, no clipped atoms | 1600x1394, 6.00 percent on all sides, 0 edge ink, transparent by default |
 | E. Sources | Same render by name, CID and SMILES, one new field | SHA-256 `0E9E…B6FD` for all three; ATC, routes and legal status added |
 | F. Interface | 1280 and 800 px screenshots, no overflow, keyboard path | Scroll width equals viewport at both widths; keyboard export completed |
 
@@ -89,6 +89,12 @@ sent only when they change. The named looks are data. `looksJson()` returns Publ
 Flat and Dark, and the page sends the chosen object back unchanged. A new look needs no
 code.
 
+The panel now exposes Reflect, Shininess, Soft shadows, AO strength, Outline width and
+Fog. The background and the export gradient sit in the Export block, because they affect
+the file, not the stage.
+
+![The appearance controls](upgrade/after-appearance-controls.png)
+
 The classic renderer pair:
 
 | Classic, `/classic/` | New, Publication |
@@ -119,7 +125,8 @@ user waits once at startup, not on each protein.
 
 ## D. Figure composition
 
-`molplate_core::figure` composes the figure. The input is the raw 2x render. The steps are:
+`molplate_core::figure` composes the figure. The input is the raw supersampled render,
+which is 3x by default. The steps are:
 
 1. Trim the uniform background.
 2. Scale the content to `width - 2 * margin_px`.
@@ -134,7 +141,7 @@ canvas because the scale is computed from the trimmed content.
 | --- | --- | --- |
 | Requested width | 1600 px | 1600 px |
 | Written width | 1319 px | **1600 px** |
-| Written height | 1144 px | 1393 px |
+| Written height | 1144 px | 1394 px |
 | Left and right margin | 71 px, 5.38 percent | 96 px, **6.00 percent** |
 | Top and bottom margin | 71 px | 96 px (plain figure) |
 | Clipped content | no | no |
@@ -154,10 +161,18 @@ Rust, so the edges stay clean.
 
 ![A dark figure with a vertical gradient](upgrade/after-gradient.png)
 
-Exports are transparent by default. The 1600 px default is 1600x1393 and 640319 bytes.
-All four corners have alpha 0. The image has 409910 pixels at alpha 255 and 24216 partial
-pixels. The background and gradient controls apply when Transparent is off. Width presets
-are 1200, 1600 and 2000. The margin range is 4 to 9 percent.
+Exports are transparent by default. The 1600 px default is 1600x1394 and 640580 bytes.
+All four corners have alpha 0. The image has 411581 pixels at alpha 255 and 22185 partial
+pixels. The background and gradient controls apply when Transparent is off.
+
+The width field takes any value from 400 to 4096 px. The supersample select offers 2x, 3x
+and 4x. A large width lowers the factor. The render edge stays at or below 8192 px. The
+2000 px 4x export would be 8000x10884, and it did not complete here. The 3x export did. At
+2000 px the factor is 3x, a 6000x8163 render. The export is 2000x1741 and 936228 bytes. It
+took 10.7 s end to end. At 1200 px the factor is 4x, a 4800x6532 render. The margin range
+is 4 to 9 percent.
+
+![The export controls](upgrade/after-export-controls.png)
 
 ## E. Sources and metadata
 
@@ -246,9 +261,10 @@ SwiftShader, which removes the hardware adapter this renderer needs.
 | Keyboard export | completed |
 | Themes | Light, Paper and Dark apply; a stored choice survives a reload |
 | Stage tint | canvas pixel matches the theme: light (245,247,250), dark (15,21,28) |
+| Export quality | 2000 px at 3x is a 6000x8163 render; 1200 px at 4x is 4800x6532 |
 | Layout overflow | page scroll width equals the viewport at 1280 and 800 |
 
-Bundle: the page is 44.53 KB of JavaScript and 13.46 KB of CSS. The app's wasm grows from
+Bundle: the page is 46.00 KB of JavaScript and 13.75 KB of CSS. The app's wasm grows from
 531.77 KB to 623.61 KB, and it gzips to 222.40 KB. The 2D engine is a separate 7.39 MB
 wasm, loaded only when 2D opens. The fallback depiction, the composer and the scale bar
 font live in the app wasm. The classic renderer's wasm is 17.6 MB for comparison.

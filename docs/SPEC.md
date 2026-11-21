@@ -31,9 +31,9 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | 3D structure | PubChem's 3D record; a compound without one falls back to its 2D record and says so |
 | 2D depiction | RDKit's MinimalLib draws the skeletal SVG with canonical layout, stereo and element colours. The SVG has no background. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback |
 | Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by secondary structure or chain |
-| Appearance | Background, stick and sphere size, transparency, ambient and direct light, specular, ambient occlusion, outline, depth cue, per-element colour overrides |
+| Appearance | Stick and sphere size, transparency, ambient, direct, reflect, specular and shininess, ambient occlusion and strength, soft shadows, outline and width, depth cue and fog, per-element colour overrides. Background and gradient are export settings |
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, and keyboard shortcuts |
-| Export | PNG at exactly 1200, 1600 or 2000 px wide; a 4 to 9 percent margin; 2x supersampling; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
+| Export | PNG at any width from 400 to 4096 px; a 4 to 9 percent margin; 3x supersampling by default, 2x and 4x selectable; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
 | Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields, and an openFDA drug label |
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects, including ATC, routes and legal status |
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
@@ -52,6 +52,8 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | MSAA in the live view | patinae has no MSAA; FXAA and a 2x supersampled canvas are the substitutes | A renderer change, not an app change |
 | Live background gradient | The canvas surface is opaque, so a CSS gradient cannot show through | Renderer support for a gradient clear, or an accept of the export-only option |
 | True alpha in the live view | The patinae surface is opaque. The stage paints the theme tint instead | Renderer support for an alpha surface, or an accept of the tint |
+| Export edges above 8192 px | The 4x 2000 px export (8000x10884) did not complete; the 3x export (6000x8163) did. The GPU reports 16384 | A tiled export, or a patinae change |
+| Supersampling above 4x | The quality select stops at 4x; the 8192 edge cap limits it further at large widths | A tiled export, or a lower-level renderer option |
 | Direct DailyMed reads | The DailyMed service sends no CORS header, so the browser cannot read it | A proxy, or an upstream CORS header; openFDA serves the same SPL labels today |
 | Protein 2D or sequence view | A cartoon is the useful figure for an article | A sequence panel and a depiction path |
 | Element labels in 3D by symbol | The renderer's label expression has no element field; atom names are the substitute | A renderer label expression, or browser-side projection |
@@ -91,6 +93,10 @@ renderer commands.
 
 The app passes `[0, 0, 0, 0]` by default, so the PNG margin is transparent. The background
 or gradient applies when Transparent is off.
+
+The page renders at 2x, 3x or 4x the output width, then composes at the exact width. A
+large width lowers the factor so no render edge exceeds 8192 px, the export limit on this
+build.
 
 The output width is exact. The content is scaled to `width - 2 * margin_px`, so the
 horizontal margin is exact and no atom leaves the canvas. The scale bar is drawn in the
