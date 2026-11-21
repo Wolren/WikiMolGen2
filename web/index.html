@@ -31,7 +31,6 @@
   <body>
     <header class="topbar">
       <div class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
         <h1>molplate</h1>
       </div>
       <p class="tagline">Molecule figures for Wikipedia, rendered in your browser.</p>
@@ -332,28 +331,37 @@
         <p id="export-status" class="hint figure-status" role="status"></p>
 
         <aside class="panel output" aria-label="Wikitext">
-          <div class="tabs" role="tablist">
-            <button role="tab" id="tab-drugbox" aria-selected="true" aria-controls="wikitext">
-              Infobox drug
-            </button>
-            <button role="tab" id="tab-chembox" aria-selected="false" aria-controls="wikitext">
-              Chembox
-            </button>
-            <button role="tab" id="tab-commons" aria-selected="false" aria-controls="wikitext">
-              Commons
-            </button>
-          </div>
-
           <div class="output-header">
             <code id="file-name" class="file-name">—</code>
-            <button id="copy" type="button" class="secondary">Copy</button>
           </div>
 
-          <pre id="wikitext" class="wikitext" tabindex="0">Load a compound to generate markup.</pre>
+          <section id="block-drugbox" class="output-block">
+            <div class="output-title">
+              <h2>Infobox drug</h2>
+              <button id="copy-drugbox" type="button" class="secondary">Copy</button>
+            </div>
+            <pre id="wikitext-drugbox" class="wikitext" tabindex="0">Load a compound to generate markup.</pre>
+          </section>
 
-          <a id="upload" class="upload-link" href="#" target="_blank" rel="noreferrer" hidden>
-            Open the Commons upload form with this description
-          </a>
+          <section id="block-chembox" class="output-block">
+            <div class="output-title">
+              <h2>Chembox</h2>
+              <button id="copy-chembox" type="button" class="secondary">Copy</button>
+            </div>
+            <pre id="wikitext-chembox" class="wikitext" tabindex="0"></pre>
+          </section>
+
+          <section id="block-commons" class="output-block">
+            <div class="output-title">
+              <h2>Commons upload</h2>
+              <button id="copy-commons" type="button" class="secondary">Copy</button>
+            </div>
+            <pre id="wikitext-commons" class="wikitext" tabindex="0"></pre>
+
+            <a id="upload" class="upload-link" href="#" target="_blank" rel="noreferrer" hidden>
+              Open the Commons upload form with this description
+            </a>
+          </section>
         </aside>
       </section>
     </main>

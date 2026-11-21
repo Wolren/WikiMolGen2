@@ -38,8 +38,7 @@ import {
   structureKind,
   type ColorSchemeInfo,
   type Look,
-  type TabId,
-  type ViewMode,
+    type ViewMode,
 } from "./context.js";
 import { buildDepiction, clearDepiction, showDepiction } from "./depiction.js";
 import { bindExport, exportFigure } from "./figure.js";
@@ -54,9 +53,6 @@ import "./styles.css";
 import "./stage.css";
 
 const AUTHOR = "molplate";
-
-/** The markup currently shown, for the copy button. */
-let currentText = "";
 
 /** A later lookup cancels the metadata update of an earlier one. */
 let enrichmentToken = 0;
@@ -318,8 +314,7 @@ async function loadProteinInput(id: string): Promise<void> {
     state.depictionSource = null;
     state.depiction = null;
     state.mode = "3d";
-    state.tab = "commons";
-    dom.mode2d.disabled = true;
+      dom.mode2d.disabled = true;
 
     renderLooks();
     syncAppearance();
@@ -519,28 +514,32 @@ dom.viewerHost.addEventListener(
 
 // --- Wikitext ----------------------------------------------------------------------
 
-for (const tab of Object.keys(dom.tabs) as TabId[]) {
-  dom.tabs[tab].addEventListener("click", () => {
-    state.tab = tab;
-    refreshOutput();
-  });
+/** Copy one block, naming it in the status line. */
+function copyBlock(node: HTMLElement, label: string): void {
+  const text = node.textContent ?? "";
+  if (text === "") return;
+  void navigator.clipboard.writeText(text).then(
+    () => setStatus(`Copied the ${label}.`),
+    () => setStatus("The clipboard is not available in this browser.", true),
+  );
 }
+
+dom.copyDrugbox.addEventListener("click", () => copyBlock(dom.outputDrugbox, "drug infobox"));
+dom.copyChembox.addEventListener("click", () => copyBlock(dom.outputChembox, "chembox"));
+dom.copyCommons.addEventListener("click", () => copyBlock(dom.outputCommons, "Commons description"));
 
 function refreshOutput(): void {
   // A protein has no drug or chem box; its Commons description is the useful output.
   const protein = state.protein !== null;
-  dom.tabs.drugbox.hidden = protein;
-  dom.tabs.chembox.hidden = protein;
-  if (protein) state.tab = "commons";
-
-  for (const tab of Object.keys(dom.tabs) as TabId[]) {
-    dom.tabs[tab].setAttribute("aria-selected", String(tab === state.tab));
-  }
+  dom.blockDrugbox.hidden = protein;
+  dom.blockChembox.hidden = protein;
 
   if (state.compound === null) {
-    currentText = "";
-    dom.wikitext.textContent = "Load a compound to generate markup.";
-    dom.fileName.textContent = ": ";
+    dom.outputDrugbox.textContent = "Load a compound to generate markup.";
+    dom.outputChembox.textContent = "";
+    dom.outputCommons.textContent = "";
+    dom.fileName.textContent = "—";
+    dom.upload.hidden = true;
     return;
   }
 
@@ -548,41 +547,17 @@ function refreshOutput(): void {
   const fileName = figureName(kind);
   dom.fileName.textContent = fileName;
 
-  switch (state.tab) {
-    case "drugbox":
-      currentText = drugbox(state.compoundJson, fileName);
-      dom.upload.hidden = true;
-      break;
-    case "chembox":
-      currentText = chembox(state.compoundJson, fileName);
-      dom.upload.hidden = true;
-      break;
-    case "commons": {
-      const today = new Date().toISOString().slice(0, 10);
-      const license = defaultLicense(kind);
-      currentText = commonsInformation(
-        state.compoundJson,
-        kind,
-        AUTHOR,
-        license,
-        today,
-      );
-      dom.upload.href = commonsUploadUrl(fileName, currentText, license);
-      dom.upload.hidden = false;
-      break;
-    }
-  }
-
-  dom.wikitext.textContent = currentText;
+  // The two infoboxes and the upload description sit together: a figure needs the file
+  // description before the article gets the box that cites it.
+  dom.outputDrugbox.textContent = protein ? "" : drugbox(state.compoundJson, fileName);
+  dom.outputChembox.textContent = protein ? "" : chembox(state.compoundJson, fileName);
+  const today = new Date().toISOString().slice(0, 10);
+  const license = defaultLicense(kind);
+  const commons = commonsInformation(state.compoundJson, kind, AUTHOR, license, today);
+  dom.outputCommons.textContent = commons;
+  dom.upload.href = commonsUploadUrl(fileName, commons, license);
+  dom.upload.hidden = false;
 }
-
-dom.copy.addEventListener("click", () => {
-  if (currentText === "") return;
-  void navigator.clipboard.writeText(currentText).then(
-    () => setStatus("Copied to the clipboard."),
-    () => setStatus("The clipboard is not available in this browser.", true),
-  );
-});
 
 // --- Small helpers -----------------------------------------------------------------
 

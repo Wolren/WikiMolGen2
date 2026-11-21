@@ -40,7 +40,6 @@ export function cloneLook(look: Look): Look {
   return JSON.parse(JSON.stringify(look)) as Look;
 }
 
-export type TabId = "drugbox" | "chembox" | "commons";
 export type StructureKindId = "two_d" | "three_d" | "protein";
 export type ViewMode = "3d" | "2d";
 
@@ -132,14 +131,15 @@ export const dom = {
   stageText: required<HTMLParagraphElement>("stage-text"),
   fullscreen: required<HTMLButtonElement>("fullscreen"),
   shortcuts: required<HTMLDetailsElement>("shortcuts"),
-  tabs: {
-    drugbox: required<HTMLButtonElement>("tab-drugbox"),
-    chembox: required<HTMLButtonElement>("tab-chembox"),
-    commons: required<HTMLButtonElement>("tab-commons"),
-  },
   fileName: required<HTMLElement>("file-name"),
-  copy: required<HTMLButtonElement>("copy"),
-  wikitext: required<HTMLElement>("wikitext"),
+  copyDrugbox: required<HTMLButtonElement>("copy-drugbox"),
+  copyChembox: required<HTMLButtonElement>("copy-chembox"),
+  copyCommons: required<HTMLButtonElement>("copy-commons"),
+  outputDrugbox: required<HTMLElement>("wikitext-drugbox"),
+  outputChembox: required<HTMLElement>("wikitext-chembox"),
+  outputCommons: required<HTMLElement>("wikitext-commons"),
+  blockDrugbox: required<HTMLElement>("block-drugbox"),
+  blockChembox: required<HTMLElement>("block-chembox"),
   upload: required<HTMLAnchorElement>("upload"),
 };
 
@@ -150,7 +150,6 @@ export interface AppState {
   schemes: ColorSchemeInfo[];
   compound: Compound | null;
   look: Look | null;
-  tab: TabId;
   compoundJson: string;
   mode: ViewMode;
   /** The flat record waiting for the 2D engine. `null` for a protein or a missing record. */
@@ -165,7 +164,6 @@ export const state: AppState = {
   schemes: [],
   compound: null,
   look: null,
-  tab: "drugbox",
   compoundJson: "{}",
   mode: "3d",
   depictionSource: null,

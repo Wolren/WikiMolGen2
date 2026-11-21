@@ -54,6 +54,7 @@ reach; a load then scrolls the figure into view.
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects, including ATC, routes and legal status |
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
 | Commons | File name, `{{Information}}` plus licence block, pre-filled upload URL; the licence follows the structure kind |
+| Outputs | The drug infobox, the chembox and the Commons upload text sit stacked in one panel, in that order, each with its own copy button. A protein shows the Commons text only |
 | Keyboard | `Ctrl+Enter` load, `2`/`3` view, `E` export, `F` frame, `+`/`-` zoom, `/` focus, `?` help |
 | Theme | Light, Paper and Dark, plus System. The choice persists and applies before the first paint. The stage follows the theme tint |
 | Graphics | WebGPU only. There is no WebGL2 fallback, so a browser without an adapter gets an explanation instead of a lesser image |
@@ -191,8 +192,8 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 
 * `cargo test -p molplate_core` passes natively (57 tests at the time of writing).
 * `cargo build --target wasm32-unknown-unknown -p molplate_wasm` produces the module.
-* The page loads, accepts `aspirin`, shows a molecule, and every tab produces markup that
-  parses as balanced templates.
+* The page loads, accepts `aspirin`, shows a molecule, and all three outputs produce markup
+  that parses as balanced templates.
 * Export at 1600 px writes a 1600 px wide PNG with 6 percent margins and no clipped atoms.
 * The 2D view draws a transparent RDKit SVG under 100 KB and downloads it.
 * A 1CRN lookup draws a cartoon coloured by secondary structure in under three seconds.

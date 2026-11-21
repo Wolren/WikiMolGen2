@@ -138,15 +138,6 @@ body {
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.brand-mark {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 28%, var(--accent-soft) 0 32%, var(--accent) 33% 100%);
-  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 .topbar h1 {
@@ -201,9 +192,8 @@ body {
   overflow-y: auto;
 }
 
-/* The figure keeps most of the column; the markup panel stays readable below it.
-   Both keep a height rather than sharing the leftover space, so the molecule is drawn
-   large and the column scrolls when the pair is taller than the viewport. */
+/* The figure keeps most of the column; the markup panel grows with its three blocks, so
+   the page scrolls rather than hiding the Commons text inside a short panel. */
 .workspace .stage {
   flex: none;
   height: min(68vh, 640px);
@@ -212,9 +202,6 @@ body {
 
 .workspace .output {
   flex: none;
-  height: min(38vh, 340px);
-  min-height: 260px;
-  overflow: hidden;
 }
 
 /* Download sits in the stage toolbar: it acts on the figure the toolbar controls. */
