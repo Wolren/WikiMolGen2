@@ -10,6 +10,7 @@ import { appliedLook } from "./appearance.js";
 import { describe, dom, figureName, setStatus, state } from "./context.js";
 import { readFigureSettings, renderFigure } from "./figure.js";
 import { loadProtein, pdbIdOf } from "./protein.js";
+import { applyOrientation } from "./orientation.js";
 import { loadCompound } from "./pubchem.js";
 import type { Renderer } from "./renderer.js";
 import { ZipWriter } from "./zip.js";
@@ -57,7 +58,7 @@ async function loadIntoViewer(viewer: Renderer, identifier: string): Promise<str
     state.depiction = null;
     const proteinLook = appliedLook();
     if (proteinLook !== null) await viewer.applyLook(proteinLook);
-    await viewer.frameScene();
+    await applyOrientation(viewer);
     return figureName("protein");
   }
 
@@ -70,7 +71,7 @@ async function loadIntoViewer(viewer: Renderer, identifier: string): Promise<str
   state.depiction = null;
   const compoundLook = appliedLook();
   if (compoundLook !== null) await viewer.applyLook(compoundLook);
-  await viewer.frameScene();
+  await applyOrientation(viewer);
   return figureName("three_d");
 }
 
@@ -145,11 +146,11 @@ async function runBatch(callbacks: BatchCallbacks): Promise<void> {
   dom.batchRun.disabled = true;
   dom.batchClose.disabled = true;
   callbacks.beforeRun?.();
-  await new Promise((done) => requestAnimationFrame(done));
-
   const settings = readFigureSettings();
   const zip = new ZipWriter();
   const rows = renderRows(identifiers);
+  // A paint before the first render; rAF can pause in an occluded window.
+  await new Promise((done) => setTimeout(done, 0));
   const used = new Set<string>();
   let rendered = 0;
 

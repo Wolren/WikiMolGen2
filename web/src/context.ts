@@ -41,6 +41,17 @@ export function cloneLook(look: Look): Look {
 }
 
 export type StructureKindId = "two_d" | "three_d" | "protein";
+
+/** The normalised camera presets, plus custom angles and the free camera. */
+export type OrientationPreset = "free" | "wiki" | "front" | "side" | "top" | "custom";
+
+/** A camera orientation: a preset name, or the angles a custom preset uses. */
+export interface Orientation {
+  preset: OrientationPreset;
+  x: number;
+  y: number;
+  z: number;
+}
 export type ViewMode = "3d" | "2d";
 
 export const dom = {
@@ -111,6 +122,11 @@ export const dom = {
   resetColors: required<HTMLButtonElement>("reset-colors"),
   projection: required<HTMLSelectElement>("projection"),
   frame: required<HTMLButtonElement>("frame"),
+  orientation: required<HTMLSelectElement>("orientation"),
+  orientationCustom: required<HTMLElement>("orientation-custom"),
+  rotationX: required<HTMLInputElement>("rotation-x"),
+  rotationY: required<HTMLInputElement>("rotation-y"),
+  rotationZ: required<HTMLInputElement>("rotation-z"),
   zoomSelection: required<HTMLInputElement>("zoom-selection"),
   zoomSelectionGo: required<HTMLButtonElement>("zoom-selection-go"),
   zoomIn: required<HTMLButtonElement>("zoom-in"),
@@ -167,6 +183,7 @@ export interface AppState {
   depictionSource: { name: string; bytes: Uint8Array } | null;
   depiction: Depiction | null;
   protein: { id: string; atoms: number; residues: number; chains: number; seconds: number } | null;
+  orientation: Orientation;
 }
 
 export const state: AppState = {
@@ -180,6 +197,7 @@ export const state: AppState = {
   depictionSource: null,
   depiction: null,
   protein: null,
+  orientation: { preset: "free", x: 10, y: 20, z: 0 },
 };
 
 export function required<T extends HTMLElement>(id: string): T {

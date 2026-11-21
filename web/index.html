@@ -308,6 +308,22 @@
             <button id="frame" type="button" class="secondary">Re-frame view</button>
           </div>
 
+          <label class="field-label" for="orientation">Orientation</label>
+          <select id="orientation">
+            <option value="free">Free</option>
+            <option value="wiki">Wiki normalised (10°, 20°)</option>
+            <option value="front">Front (0°, 0°)</option>
+            <option value="side">Side (0°, 90°)</option>
+            <option value="top">Top (90°, 0°)</option>
+            <option value="custom">Custom…</option>
+          </select>
+          <div id="orientation-custom" class="orientation-angles" hidden>
+            <label class="angle-field">X <input id="rotation-x" type="number" min="0" max="360" step="1" value="10" aria-label="X turn in degrees" /></label>
+            <label class="angle-field">Y <input id="rotation-y" type="number" min="0" max="360" step="1" value="20" aria-label="Y turn in degrees" /></label>
+            <label class="angle-field">Z <input id="rotation-z" type="number" min="0" max="360" step="1" value="0" aria-label="Z turn in degrees" /></label>
+          </div>
+          <p class="hint">Presets turn the fitted view, so every figure follows the same house tilt.</p>
+
           <label class="field-label" for="zoom-selection">Zoom to a selection</label>
           <div class="field-row">
             <input

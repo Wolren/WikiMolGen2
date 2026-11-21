@@ -797,6 +797,26 @@ input[type="range"] {
   flex: 1;
 }
 
+/* Three angle fields share one row, so the custom preset stays compact. */
+.orientation-angles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.orientation-angles input {
+  width: 100%;
+}
+
+.angle-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 /* Batch dialog ------------------------------------------------------------------- */
 
 .batch-open {

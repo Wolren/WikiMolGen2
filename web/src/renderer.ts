@@ -648,6 +648,13 @@ export class Renderer {
     await this.run(`zoom all, buffer=${FRAME_BUFFER_ANGSTROM}`);
   }
 
+  /** Turn the fitted camera by fixed angles, which is how a wiki preset normalises. */
+  async turn(angles: { x: number; y: number; z: number }): Promise<void> {
+    if (angles.x !== 0) await this.run(`turn x, ${angles.x}`);
+    if (angles.y !== 0) await this.run(`turn y, ${angles.y}`);
+    if (angles.z !== 0) await this.run(`turn z, ${angles.z}`);
+  }
+
   /**
    * Zoom in (`notches > 0`) or out by changing the field of view.
    *

@@ -43,6 +43,7 @@ import {
 import { buildDepiction, clearDepiction, showDepiction } from "./depiction.js";
 import { bindSuggestions } from "./suggest.js";
 import { bindBatch } from "./batch.js";
+import { applyOrientation, bindOrientation, loadOrientation } from "./orientation.js";
 import { bindExport, exportFigure } from "./figure.js";
 import { bindFullscreen } from "./fullscreen.js";
 import { bindKeyboard } from "./keyboard.js";
@@ -55,6 +56,9 @@ import "./styles.css";
 import "./stage.css";
 
 const AUTHOR = "WikiMolGen 2";
+
+// The stored orientation must be in place before the first load frames the scene.
+state.orientation = loadOrientation();
 
 /** A later lookup cancels the metadata update of an earlier one. */
 let enrichmentToken = 0;
@@ -208,7 +212,7 @@ async function loadFromInput(): Promise<void> {
       setBusy(true, "Colouring…");
       if (state.look !== null) await state.viewer.applyLook(appliedLook() ?? state.look);
       setBusy(true, "Framing…");
-      await state.viewer.frameScene();
+      await applyOrientation(state.viewer);
       dom.exportButton.disabled = false;
     }
 
@@ -304,7 +308,7 @@ async function loadProteinInput(id: string): Promise<void> {
     state.look = state.looks[0] === undefined ? null : cloneLook(state.looks[0]);
     if (state.look !== null) await viewer.applyLook(state.look);
     const styled = performance.now();
-    await viewer.frameScene();
+    await applyOrientation(viewer);
     await nextFrames(2);
     const drawn = performance.now();
     const seconds = (drawn - started) / 1000;
@@ -381,7 +385,7 @@ async function chooseLook(look: Look): Promise<void> {
   if (state.viewer === null || state.compound === null) return;
   try {
     await state.viewer.applyLook(appliedLook() ?? look);
-    await state.viewer.frameScene();
+    await applyOrientation(state.viewer);
   } catch (error) {
     setStatus(`Could not apply “${look.label}”: ${describe(error)}`, true);
   }
@@ -484,7 +488,7 @@ dom.projection.addEventListener("change", () => {
 
 dom.frame.addEventListener("click", () => {
   if (state.compound === null) return;
-  void state.viewer?.frameScene();
+  if (state.viewer !== null) void applyOrientation(state.viewer);
 });
 
 /** Zoom around the current framing; a no-op with nothing loaded. */
@@ -595,6 +599,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 bindTheme();
 bindSections();
 bindSuggestions();
+bindOrientation(() => {
+  if (state.viewer === null || state.compound === null) return;
+  void applyOrientation(state.viewer).catch((error) =>
+    setStatus(`Orientation failed: ${describe(error)}`, true),
+  );
+});
 bindBatch({
   beforeRun: () => {
     if (state.mode !== "2d") return;
@@ -621,7 +631,7 @@ bindKeyboard({
   setMode,
   exportFigure: () => void exportFigure(),
   frame: () => {
-    if (state.compound !== null) void state.viewer?.frameScene();
+    if (state.compound !== null && state.viewer !== null) void applyOrientation(state.viewer);
   },
   zoom: zoomScene,
 });

@@ -463,6 +463,30 @@ if (uploads.link.top < uploads.text.bottom - 1) {
   failures.push("the Commons upload link overlaps its text");
 }
 
+// 3a. Orientation: the custom fields appear, and a preset survives in storage.
+const orientation = await evaluate(
+  session,
+  `(() => {
+     const select = document.getElementById('orientation');
+     select.value = 'custom';
+     select.dispatchEvent(new Event('change', { bubbles: true }));
+     const shown = !document.getElementById('orientation-custom').hidden;
+     const input = document.getElementById('rotation-x');
+     input.value = '30';
+     input.dispatchEvent(new Event('change', { bubbles: true }));
+     select.value = 'wiki';
+     select.dispatchEvent(new Event('change', { bubbles: true }));
+     const stored = JSON.parse(localStorage.getItem('wikimolgen2.orientation') ?? '{}');
+     select.value = 'free';
+     select.dispatchEvent(new Event('change', { bubbles: true }));
+     return JSON.stringify({ shown, preset: stored.preset });
+   })()`,
+);
+const orientationState = JSON.parse(orientation);
+if (orientationState.shown !== true) failures.push("the custom orientation fields did not appear");
+if (orientationState.preset !== "wiki") failures.push("the orientation preset did not save");
+console.log(`orientation: ${orientation}`);
+
 // 3b. The 2D view. The first open loads RDKit (7.39 MB) and draws an inline SVG. A
 //     protein has no flat record, so the mode button is disabled and there is nothing to
 //     check.
@@ -866,6 +890,20 @@ if (args.dialog) {
   await new Promise((done) => setTimeout(done, 300));
 }
 
+// `--orientation wiki` applies a preset so the screenshot shows the house tilt.
+if (args.orientation) {
+  await evaluate(
+    session,
+    `(() => {
+       const select = document.getElementById('orientation');
+       select.value = ${JSON.stringify(String(args.orientation))};
+       select.dispatchEvent(new Event('change', { bubbles: true }));
+       return true;
+     })()`,
+  );
+  await new Promise((done) => setTimeout(done, 600));
+}
+
 // `--zoom 12` clicks zoom-in that many times, so a screenshot can show a deep view.
 if (args.zoom) {
   const notches = Number(args.zoom);
@@ -1046,8 +1084,18 @@ const rows = await poll(async () => {
   if (states.length !== 2) return null;
   return states.every((state) => state === "done" || state === "failed") ? states : null;
 }, 60_000);
-if (rows === null) failures.push("the batch did not finish");
-else console.log(`batch rows: ${JSON.stringify(rows)}`);
+if (rows === null) {
+  const states = await evaluate(
+    session,
+    `JSON.stringify({
+       rows: [...document.querySelectorAll('#batch-list .batch-row')].map((row) => row.dataset.state),
+       status: document.getElementById('export-status')?.textContent,
+       input: document.getElementById('batch-input')?.value,
+       open: document.getElementById('batch')?.open,
+     })`,
+  );
+  failures.push(`the batch did not finish; ${states}`);
+} else console.log(`batch rows: ${JSON.stringify(rows)}`);
 
 const zipPath = await poll(async () => newestZip(downloadDir), 10_000);
 if (zipPath === null) failures.push("the batch ZIP did not download");
