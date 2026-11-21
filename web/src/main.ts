@@ -540,7 +540,9 @@ function refreshOutput(): void {
     dom.outputChembox.textContent = "";
     dom.outputCommons.textContent = "";
     dom.fileName.textContent = "—";
-    dom.upload.hidden = true;
+    for (const link of [dom.uploadDrugbox, dom.uploadChembox, dom.uploadCommons]) {
+      link.hidden = true;
+    }
     return;
   }
 
@@ -556,8 +558,15 @@ function refreshOutput(): void {
   const license = defaultLicense(kind);
   const commons = commonsInformation(state.compoundJson, kind, AUTHOR, license, today);
   dom.outputCommons.textContent = commons;
-  dom.upload.href = commonsUploadUrl(fileName, commons, license);
-  dom.upload.hidden = false;
+
+  // A compound gets the upload under each infobox; a protein has only the Commons block.
+  const href = commonsUploadUrl(fileName, commons, license);
+  for (const link of [dom.uploadDrugbox, dom.uploadChembox]) {
+    link.href = href;
+    link.hidden = protein;
+  }
+  dom.uploadCommons.href = href;
+  dom.uploadCommons.hidden = !protein;
 }
 
 // --- Small helpers -----------------------------------------------------------------

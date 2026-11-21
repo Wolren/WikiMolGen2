@@ -143,7 +143,9 @@ export const dom = {
   outputCommons: required<HTMLElement>("wikitext-commons"),
   blockDrugbox: required<HTMLElement>("block-drugbox"),
   blockChembox: required<HTMLElement>("block-chembox"),
-  upload: required<HTMLAnchorElement>("upload"),
+  uploadDrugbox: required<HTMLAnchorElement>("upload-drugbox"),
+  uploadChembox: required<HTMLAnchorElement>("upload-chembox"),
+  uploadCommons: required<HTMLAnchorElement>("upload-commons"),
 };
 
 export interface AppState {

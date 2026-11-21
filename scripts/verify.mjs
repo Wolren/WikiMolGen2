@@ -436,6 +436,40 @@ if (!isProtein) {
   }
 }
 
+// The upload action sits under each infobox, in flow, and never overlaps the text.
+const uploads = JSON.parse(
+  await evaluate(
+    session,
+    `(() => {
+       const box = (id) => {
+         const node = document.getElementById(id);
+         const rect = node.getBoundingClientRect();
+         return { top: Math.round(rect.top), bottom: Math.round(rect.bottom), shown: !node.hidden };
+       };
+       return JSON.stringify({
+         drugText: box('wikitext-drugbox'),
+         drugLink: box('upload-drugbox'),
+         chemText: box('wikitext-chembox'),
+         chemLink: box('upload-chembox'),
+         commonsLink: box('upload-commons'),
+       });
+     })()`,
+  ),
+);
+console.log(`upload links: ${JSON.stringify(uploads)}`);
+for (const [text, link] of [
+  ["drug", uploads.drugText],
+  ["chem", uploads.chemText],
+]) {
+  const action = text === "drug" ? uploads.drugLink : uploads.chemLink;
+  if (!isProtein && action.shown !== true) failures.push(`the ${text}box upload link is hidden`);
+  if (action.shown && action.top < text.bottom - 1) {
+    failures.push(`the ${text}box upload link overlaps its text`);
+  }
+}
+if (!isProtein && uploads.commonsLink.shown) failures.push("the Commons upload link is shown for a compound");
+if (isProtein && !uploads.commonsLink.shown) failures.push("the Commons upload link is hidden for a protein");
+
 // 3b. The 2D view. The first open loads RDKit (7.39 MB) and draws an inline SVG. A
 //     protein has no flat record, so the mode button is disabled and there is nothing to
 //     check.

@@ -49,6 +49,9 @@ let debounce = 0;
 let titlesFetch = 0;
 
 function close(): void {
+  // An in-flight live query must not reopen the list after a choice.
+  liveToken += 1;
+  window.clearTimeout(debounce);
   active = -1;
   rows = [];
   dom.suggestions.hidden = true;

@@ -45,8 +45,8 @@ shows through. A Rust V2000 parser is the fallback if the RDKit module cannot lo
 
 ![WikiMolGen 2 rendering aspirin, with the download in the figure toolbar and the Commons markup below](docs/screenshot.png)
 
-The drug infobox, the chembox and the Commons upload text sit together below the figure,
-each with its own copy button:
+The drug infobox, the chembox and the Commons upload text sit together below the figure.
+The two infoboxes carry an Upload to Commons action; a protein shows the Commons text only:
 
 ![The stacked output panel](docs/output-panel.png)
 
