@@ -12,7 +12,7 @@ pub mod style;
 pub mod wikitext;
 
 pub use depict::{depiction_svg, DepictionError, DepictionOptions};
-pub use style::{ColorMode, Look, RepStyle};
+pub use style::{Appearance, ColorMode, ElementColor, Look, RepStyle};
 pub use wikitext::{
     chembox, commons_file_name, commons_information, commons_upload_url, drugbox, Compound,
     License, StructureKind,

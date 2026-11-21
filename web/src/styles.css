@@ -399,6 +399,75 @@ button:disabled {
   margin: 0;
 }
 
+/* Three surface toggles on consecutive lines, without the wide field spacing. */
+.checkbox.compact {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+/* Appearance sliders ---------------------------------------------------------- */
+
+.control + .control {
+  margin-top: 14px;
+}
+
+.control .field-label {
+  margin-top: 0;
+}
+
+.control output {
+  margin-left: 4px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+input[type="range"] {
+  width: 100%;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.link-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.element-colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+}
+
+.element-color {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.element-color input[type="color"] {
+  width: 26px;
+  height: 22px;
+  padding: 1px;
+  border-radius: 5px;
+}
+
 /* Zoom out / zoom in / re-frame on one line, the arrows square and the label wide. */
 .button-row {
   display: flex;

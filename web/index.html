@@ -47,8 +47,64 @@
 
         <section class="block">
           <h2>Appearance</h2>
-          <label class="field-label" for="background">Background</label>
-          <input id="background" type="color" value="#ffffff" />
+
+          <div class="control">
+            <label class="field-label" for="background">Background</label>
+            <div class="field-row">
+              <input id="background" type="color" value="#ffffff" />
+              <select id="gradient">
+                <option value="none">Solid</option>
+                <option value="vertical">Gradient</option>
+              </select>
+            </div>
+            <input id="gradient-bottom" type="color" value="#dfe7f2" aria-label="Gradient end colour" hidden />
+            <p class="hint">A gradient applies to the exported PNG. The live view keeps the solid colour.</p>
+          </div>
+
+          <div class="control">
+            <label class="field-label" for="stick-radius">Stick radius <output id="stick-radius-value">0.17</output></label>
+            <input id="stick-radius" type="range" min="0.05" max="0.5" step="0.01" value="0.17" />
+          </div>
+
+          <div class="control">
+            <label class="field-label" for="sphere-scale">Sphere size <output id="sphere-scale-value">0.33</output></label>
+            <input id="sphere-scale" type="range" min="0.1" max="1.1" step="0.01" value="0.33" />
+          </div>
+
+          <div class="control">
+            <label class="field-label" for="transparency">Transparency <output id="transparency-value">0%</output></label>
+            <input id="transparency" type="range" min="0" max="0.8" step="0.02" value="0" />
+          </div>
+
+          <div class="control">
+            <label class="field-label" for="ambient">Ambient <output id="ambient-value">0.30</output></label>
+            <input id="ambient" type="range" min="0" max="1" step="0.01" value="0.30" />
+          </div>
+
+          <div class="control">
+            <label class="field-label" for="direct">Direct light <output id="direct-value">0.55</output></label>
+            <input id="direct" type="range" min="0" max="1" step="0.01" value="0.55" />
+          </div>
+
+          <div class="control">
+            <label class="field-label" for="specular">Specular <output id="specular-value">0.35</output></label>
+            <input id="specular" type="range" min="0" max="1" step="0.01" value="0.35" />
+          </div>
+
+          <div class="control">
+            <span class="field-label">Surface</span>
+            <label class="checkbox compact"><input id="ambient-occlusion" type="checkbox" checked /> Ambient occlusion</label>
+            <label class="checkbox compact"><input id="silhouettes" type="checkbox" checked /> Outline</label>
+            <label class="checkbox compact"><input id="depth-cue" type="checkbox" /> Depth cue</label>
+          </div>
+
+          <div class="control">
+            <div class="field-label-row">
+              <span class="field-label">Element colours</span>
+              <button id="reset-colors" type="button" class="link-button">Reset</button>
+            </div>
+            <div id="element-colors" class="element-colors"></div>
+          </div>
 
           <label class="field-label" for="projection">Projection</label>
           <select id="projection">

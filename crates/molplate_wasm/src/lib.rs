@@ -73,6 +73,13 @@ pub fn looks_json() -> Result<String, JsError> {
     serde_json::to_string(&looks).map_err(|error| JsError::new(&error.to_string()))
 }
 
+/// The looks offered for a protein, as JSON. Cartoons colour by secondary structure.
+#[wasm_bindgen(js_name = proteinLooksJson)]
+pub fn protein_looks_json() -> Result<String, JsError> {
+    let looks = molplate_core::Look::protein_looks();
+    serde_json::to_string(&looks).map_err(|error| JsError::new(&error.to_string()))
+}
+
 /// Draw a V2000 mol block as a 2D skeletal SVG.
 ///
 /// The drawing is vector, so the width only sets the nominal canvas. Heteroatoms are
@@ -94,6 +101,12 @@ pub fn depict_svg(
         molplate_core::DepictionOptions { width, margin, labels, monochrome },
     )
     .map_err(|error| JsError::new(&error.to_string()))
+}
+
+/// The default colour of an element, `#rrggbb`, for a UI swatch.
+#[wasm_bindgen(js_name = elementColor)]
+pub fn element_color(symbol: String) -> String {
+    molplate_core::depict::element_color(&symbol).to_string()
 }
 
 /// The licence a new upload should offer for a structure kind.

@@ -11,11 +11,52 @@
  * repository, not a package we install.
  */
 
+/** One element colour override, mirrored from `molplate_core::style::ElementColor`. */
+export interface ElementColor {
+  element: string;
+  color: string;
+}
+
+/** Everything about a look that is not geometry, mirrored from `Appearance`. */
+export interface Appearance {
+  background: string;
+  gradient: [string, string] | null;
+  stick_radius: number;
+  sphere_scale: number;
+  stick_transparency: number;
+  sphere_transparency: number;
+  cartoon_transparency: number;
+  ambient: number;
+  direct: number;
+  reflect: number;
+  specular: number;
+  shininess: number;
+  shadows: boolean;
+  ambient_occlusion: boolean;
+  ao_strength: number;
+  silhouettes: boolean;
+  silhouette_width: number;
+  depth_cue: boolean;
+  fog: number;
+  element_colors: ElementColor[];
+}
+
 /** The subset of `molplate_core::style::Look` the renderer needs. */
 export interface LookSpec {
   style: string;
   color_mode: string;
   line_width: number | null;
+  appearance: Appearance;
+}
+
+/** The camera fields a scale bar needs, read back from `get_view`. */
+export interface CameraView {
+  /** Visible height in Ångström at the origin plane. */
+  viewHeight: number;
+  /** Vertical field of view in degrees. */
+  fov: number;
+  /** Distance from the camera to the origin plane. */
+  distance: number;
 }
 
 /** A receipt from patinae's command engine. */
@@ -78,32 +119,28 @@ const MAX_BUFFER_ANGSTROM = 30;
  * are explicit rather than delegated. `lines` uses the line width from the look because
  * a 1 px line disappears at article size.
  */
-function lookCommands(look: LookSpec): string[] {
-  const common = ["hide"] as string[];
+function representationCommands(look: LookSpec): string[] {
+  const radius = look.appearance.stick_radius.toFixed(3);
+  const sphere = look.appearance.sphere_scale.toFixed(3);
   switch (look.style) {
     case "vdw":
-      return [...common, "show spheres", "set sphere_scale, 1.0"];
+      return ["show spheres", `set sphere_scale, ${sphere}`];
     case "licorice":
-      return [...common, "show sticks", "set stick_radius, 0.30"];
+      return ["show sticks", `set stick_radius, ${radius}`];
     case "lines":
-      return [
-        ...common,
-        "show lines",
-        `set line_width, ${(look.line_width ?? 2.5).toFixed(1)}`,
-      ];
+      return ["show lines", `set line_width, ${(look.line_width ?? 2.5).toFixed(1)}`];
     case "cartoon":
-      return [...common, "show cartoon"];
+      return ["show cartoon"];
     case "surface":
-      return [...common, "show surface"];
+      return ["show surface"];
     case "ball_stick":
     case "ballstick":
     default:
       return [
-        ...common,
         "show sticks",
-        "set stick_radius, 0.16",
+        `set stick_radius, ${radius}`,
         "show spheres",
-        "set sphere_scale, 0.30",
+        `set sphere_scale, ${sphere}`,
       ];
   }
 }
@@ -134,6 +171,19 @@ function colorCommand(mode: string): string {
     default:
       return "color atomic";
   }
+}
+
+/** `#rrggbb` → three 0..255 channels. A malformed value falls back to mid grey. */
+function rgbOf(hex: string): [number, number, number] {
+  const value = hex.trim().replace(/^#/, "");
+  if (!/^[0-9a-fA-F]{6}$/.test(value)) return [128, 128, 128];
+  const int = Number.parseInt(value, 16);
+  return [(int >> 16) & 0xff, (int >> 8) & 0xff, int & 0xff];
+}
+
+/** Fixed-point form for a command argument, with a safe fallback. */
+function decimal(value: number): string {
+  return Number.isFinite(value) ? value.toFixed(3) : "0";
 }
 
 /** Extension of a structure name, which patinae's parser keys the format off. */
@@ -170,6 +220,13 @@ function frames(count: number): Promise<void> {
 export class Renderer {
   /** Current camera buffer in Å, tracked so zoom is relative rather than absolute. */
   private frameBuffer = FRAME_BUFFER_ANGSTROM;
+
+  // Last values of the settings whose change reloads a shader or a pipeline.
+  private lastBackground = "";
+  private lastShading = "";
+  private lastAo: boolean | null = null;
+  private lastSilhouettes: boolean | null = null;
+  private lastDepthCue: boolean | null = null;
 
   private constructor(private readonly viewer: PatinaeViewer) {}
 
@@ -234,10 +291,75 @@ export class Renderer {
     return this.viewer.countAtoms("all");
   }
 
-  /** Apply a look: geometry plus its colouring. */
+  /** Apply a look: geometry plus its colouring, then the appearance. */
   async applyLook(look: LookSpec): Promise<void> {
-    for (const command of lookCommands(look)) await this.run(command);
+    await this.run("hide");
+    for (const command of representationCommands(look)) await this.run(command);
     await this.run(colorCommand(look.color_mode));
+    await this.applyAppearance(look);
+  }
+
+  /**
+   * Apply only the appearance: light, finish, background and element overrides.
+   *
+   * A slider drag calls this instead of {@link applyLook}, so the representation is not
+   * hidden and shown again on every input event.
+   */
+  async applyAppearance(look: LookSpec): Promise<void> {
+    const appearance = look.appearance;
+    await this.setBackgroundHex(appearance.background);
+
+    await this.run(`set stick_transparency, ${decimal(appearance.stick_transparency)}`);
+    await this.run(`set sphere_transparency, ${decimal(appearance.sphere_transparency)}`);
+    await this.run(`set cartoon_transparency, ${decimal(appearance.cartoon_transparency)}`);
+    await this.run(`set stick_radius, ${decimal(appearance.stick_radius)}`);
+    await this.run(`set sphere_scale, ${decimal(appearance.sphere_scale)}`);
+
+    await this.run(`set ambient, ${decimal(appearance.ambient)}`);
+    await this.run(`set direct, ${decimal(appearance.direct)}`);
+    await this.run(`set reflect, ${decimal(appearance.reflect)}`);
+    await this.run(`set specular, ${decimal(appearance.specular)}`);
+    await this.run(`set shininess, ${decimal(appearance.shininess)}`);
+
+    // These settings trigger a shader reload. Only send the command when it changes.
+    const shading = appearance.shadows ? "full" : "classic";
+    if (shading !== this.lastShading) {
+      await this.run(`set shading_mode, ${shading}`);
+      this.lastShading = shading;
+    }
+    if (appearance.ambient_occlusion !== this.lastAo) {
+      await this.run(`set ssao_enabled, ${appearance.ambient_occlusion ? 1 : 0}`);
+      this.lastAo = appearance.ambient_occlusion;
+    }
+    if (appearance.ambient_occlusion) {
+      await this.run(`set ssao_intensity, ${decimal(appearance.ao_strength)}`);
+      await this.run("set ssao_radius, 0.5");
+    }
+    if (appearance.silhouettes !== this.lastSilhouettes) {
+      await this.run(`set silhouettes, ${appearance.silhouettes ? 1 : 0}`);
+      this.lastSilhouettes = appearance.silhouettes;
+    }
+    if (appearance.silhouettes) {
+      await this.run(`set silhouette_width, ${decimal(appearance.silhouette_width)}`);
+      await this.run("set silhouette_color, 0x1a1a1a");
+    }
+    if (appearance.depth_cue !== this.lastDepthCue) {
+      await this.run(`set depth_cue, ${appearance.depth_cue ? 1 : 0}`);
+      this.lastDepthCue = appearance.depth_cue;
+    }
+    await this.run(`set fog, ${decimal(appearance.fog)}`);
+
+    await this.applyElementColors(appearance.element_colors);
+  }
+
+  /** Override one element colour, e.g. oxygen to a brighter red. */
+  private async applyElementColors(colors: ElementColor[]): Promise<void> {
+    for (const { element, color } of colors) {
+      const [r, g, b] = rgbOf(color);
+      const name = `molplate_${element.toLowerCase()}`;
+      await this.run(`set_color ${name}, [${r}, ${g}, ${b}]`);
+      await this.run(`color ${name}, elem ${element}`);
+    }
   }
 
   /** `"perspective"` or `"orthographic"`. patinae spells the latter `orthoscopic`. */
@@ -245,13 +367,62 @@ export class Renderer {
     await this.run(`set orthoscopic, ${mode === "orthographic" ? 1 : 0}`);
   }
 
-  /** Background colour as sRGB 0…1, which is what the page's colour input gives. */
-  async setBackground(r: number, g: number, b: number): Promise<void> {
-    const channel = (value: number): string =>
-      Math.round(Math.min(1, Math.max(0, value)) * 255)
-        .toString(16)
-        .padStart(2, "0");
-    await this.run(`bg_color 0x${channel(r)}${channel(g)}${channel(b)}`);
+  /** Set the background from a colour input value. */
+  private async setBackgroundHex(hex: string): Promise<void> {
+    if (hex === this.lastBackground) return;
+    const [r, g, b] = rgbOf(hex);
+    await this.run(`bg_color 0x${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`);
+    this.lastBackground = hex;
+  }
+
+  /**
+   * Show element labels on every heavy atom, or remove them.
+   *
+   * The labels live in their own object so a toggle replaces them instead of stacking.
+   * `name` is the atom name the SDF reader assigns, e.g. `O2`, not the element symbol.
+   */
+  async setLabels(enabled: boolean): Promise<void> {
+    await this.runQuiet("delete molplate_labels");
+    if (!enabled) return;
+    await this.run("set label_size, 14");
+    await this.run("label not elem C, name, object=molplate_labels");
+  }
+
+  /** Label height in render pixels. The export path scales this with the figure. */
+  async setLabelSize(pixels: number): Promise<void> {
+    await this.run(`set label_size, ${Math.max(6, Math.round(pixels))}`);
+  }
+
+  /** Run a command and ignore a failure, for cleanup that may find nothing. */
+  private async runQuiet(command: string): Promise<void> {
+    try {
+      await this.run(command);
+    } catch {
+      // The object was already absent; nothing to clean up.
+    }
+  }
+
+  /**
+   * Read the camera back as the scale-bar input: visible height in Ångström.
+   *
+   * `get_view` prints the 18-value PyMOL view. The 10th..12th values are the camera
+   * position, and the 18th is the vertical field of view in degrees.
+   */
+  async cameraView(): Promise<CameraView | null> {
+    const receipt = await this.viewer.execute("get_view");
+    if (!receipt || (receipt.result && "Err" in receipt.result)) return null;
+    const text = receipt.messages.map((message) => message.text).join("\n");
+    const numbers = text.match(/-?\d+\.\d+|-?\d+/g)?.map(Number) ?? [];
+    if (numbers.length < 18) return null;
+    const position = numbers.slice(9, 12);
+    const fov = numbers[17] ?? 0;
+    const distance = Math.abs(position[2] ?? 0) || Math.hypot(...position);
+    if (!Number.isFinite(fov) || fov <= 0 || distance <= 0) return null;
+    return {
+      viewHeight: 2 * distance * Math.tan((fov * Math.PI) / 360),
+      fov,
+      distance,
+    };
   }
 
   /** Point the camera at the whole scene, leaving air around it. */
