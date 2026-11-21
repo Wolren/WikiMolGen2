@@ -6,10 +6,13 @@
 //! straight back. Translating a look into renderer calls is the adapter's job
 //! (`web/src/renderer.ts`), so this module stays free of any one renderer's vocabulary.
 //!
-//! Only settings the page can honour live here. The default element palette belongs to
-//! the renderer; [`Appearance::element_colors`] carries the overrides the user asks for.
+//! Only settings the page can honour live here. Element inks come from [`crate::palette`]
+//! so a figure matches a wikimolgen render; [`Appearance::element_colors`] carries the
+//! per-element overrides the user asks for on top of the chosen scheme.
 
 use serde::{Deserialize, Serialize};
+
+use crate::palette;
 
 /// Representation geometry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,15 +27,23 @@ pub enum RepStyle {
 }
 
 /// What the representation is coloured by.
+///
+/// Every variant but [`ColorMode::Uniform`] is a patinae colour scheme under another name,
+/// which is why the adapter passes them through as a single `color` command.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ColorMode {
+    /// Per element, from the selected [`palette`] scheme.
     Element,
     Chain,
+    /// Residue type: hydrophobic, charged, polar.
     Residue,
+    /// Residue number, as a spectrum.
     Index,
     SecStruct,
     BFactor,
+    /// One colour for every atom, from [`Appearance::solid_color`].
+    Uniform,
 }
 
 /// One element whose colour the user overrides, e.g. oxygen to a brighter red.
@@ -44,10 +55,11 @@ pub struct ElementColor {
     pub color: String,
 }
 
-/// Everything about a look that is not geometry: light, surface finish, background.
+/// Everything about a look that is not geometry: light, surface finish, background, inks.
 ///
-/// The defaults describe a plain white figure. A named look overrides the few fields it
-/// needs, so a missing field never becomes an accidental black background.
+/// The defaults describe the wikimolgen preset: CPK spheres, grey sticks, a white page,
+/// one soft highlight. A named look overrides the few fields it needs, so a missing field
+/// never becomes an accidental black background.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Appearance {
@@ -86,7 +98,19 @@ pub struct Appearance {
     pub depth_cue: bool,
     /// Fog amount, 0..1. Only visible with the depth cue on.
     pub fog: f32,
-    /// Per-element colour overrides, applied on top of the element palette.
+    /// Element scheme id from [`palette::scheme_infos`], e.g. `"cpk"`.
+    pub scheme: String,
+    /// Flat stick ink, `#rrggbb`. `None` lets sticks follow the atom colours.
+    pub stick_color: Option<String>,
+    /// Ink for [`ColorMode::Uniform`], `#rrggbb`.
+    pub solid_color: String,
+    /// Cartoon helix ink for [`ColorMode::SecStruct`], `#rrggbb`.
+    pub helix_color: String,
+    /// Cartoon sheet ink for [`ColorMode::SecStruct`], `#rrggbb`.
+    pub sheet_color: String,
+    /// Cartoon loop ink, which is the base of a [`ColorMode::SecStruct`] cartoon.
+    pub loop_color: String,
+    /// Per-element colour overrides, applied on top of the scheme.
     pub element_colors: Vec<ElementColor>,
 }
 
@@ -95,51 +119,33 @@ impl Default for Appearance {
         Self {
             background: "#ffffff".to_string(),
             gradient: None,
-            stick_radius: 0.17,
-            sphere_scale: 0.33,
+            stick_radius: 0.20,
+            sphere_scale: 0.30,
             stick_transparency: 0.0,
             sphere_transparency: 0.0,
             cartoon_transparency: 0.0,
-            ambient: 0.30,
-            direct: 0.55,
-            reflect: 0.28,
-            specular: 0.35,
-            shininess: 45.0,
+            ambient: 0.25,
+            direct: 0.45,
+            reflect: 0.45,
+            specular: 1.0,
+            shininess: 30.0,
             shadows: false,
-            ambient_occlusion: true,
+            ambient_occlusion: false,
             ao_strength: 0.75,
-            silhouettes: true,
+            silhouettes: false,
             silhouette_width: 1.4,
             depth_cue: false,
             fog: 0.0,
+            scheme: palette::DEFAULT_SCHEME.to_string(),
+            // The CPK scheme's own stick ink: wikimolgen's `stick_color = "gray50"`.
+            stick_color: Some("#808080".to_string()),
+            solid_color: "#232323".to_string(),
+            // wikimolgen's `ProteinConfig`: blue helix, yellow sheet, slate loop.
+            helix_color: "#3399ff".to_string(),
+            sheet_color: "#ffcc00".to_string(),
+            loop_color: "#99aabb".to_string(),
             element_colors: Vec::new(),
         }
-    }
-}
-
-impl Appearance {
-    /// The colour overrides the three figure looks share: deeper, print-safe element inks.
-    fn print_colors() -> Vec<ElementColor> {
-        vec![
-            ElementColor { element: "O".to_string(), color: "#d42a1e".to_string() },
-            ElementColor { element: "N".to_string(), color: "#2b4bd6".to_string() },
-            ElementColor { element: "S".to_string(), color: "#b58900".to_string() },
-            ElementColor { element: "P".to_string(), color: "#e07000".to_string() },
-        ]
-    }
-
-    /// A dark figure needs light carbon; the element palette's carbon is nearly black.
-    fn dark_colors() -> Vec<ElementColor> {
-        vec![
-            ElementColor { element: "C".to_string(), color: "#d7dde6".to_string() },
-            ElementColor { element: "H".to_string(), color: "#8f98a3".to_string() },
-            ElementColor { element: "O".to_string(), color: "#ff6b5e".to_string() },
-            ElementColor { element: "N".to_string(), color: "#7d9bff".to_string() },
-            ElementColor { element: "S".to_string(), color: "#ffe066".to_string() },
-            ElementColor { element: "P".to_string(), color: "#ffa94d".to_string() },
-            ElementColor { element: "F".to_string(), color: "#74e08a".to_string() },
-            ElementColor { element: "Cl".to_string(), color: "#58d858".to_string() },
-        ]
     }
 }
 
@@ -183,21 +189,21 @@ impl Look {
     /// point, licorice and stick for flat figures.
     pub fn small_molecule_looks() -> Vec<Look> {
         vec![
-            Look::new("publication", "Publication", RepStyle::BallStick)
-                .with_appearance(Appearance { element_colors: Appearance::print_colors(), ..Appearance::default() }),
+            // The wikimolgen preset: CPK spheres, grey sticks, a white page.
+            Look::new("publication", "Publication", RepStyle::BallStick),
             Look::new("flat", "Flat", RepStyle::BallStick).with_appearance(Appearance {
                 ambient: 0.62,
                 direct: 0.55,
                 reflect: 0.08,
                 specular: 0.0,
                 shininess: 20.0,
-                ambient_occlusion: false,
-                silhouettes: false,
-                element_colors: Appearance::print_colors(),
                 ..Appearance::default()
             }),
             Look::new("dark", "Dark", RepStyle::BallStick).with_appearance(Appearance {
                 background: "#0b0f14".to_string(),
+                scheme: "dark".to_string(),
+                // Element-coloured sticks on black: the pale inks do not need a flat grey.
+                stick_color: None,
                 ambient: 0.16,
                 direct: 0.62,
                 reflect: 0.30,
@@ -205,41 +211,29 @@ impl Look {
                 shininess: 60.0,
                 ambient_occlusion: true,
                 ao_strength: 1.0,
-                silhouettes: false,
                 depth_cue: true,
                 fog: 0.28,
-                element_colors: Appearance::dark_colors(),
                 ..Appearance::default()
             }),
-            Look::new("space-filling", "Space filling", RepStyle::Vdw).with_appearance(Appearance {
-                sphere_scale: 1.0,
-                silhouettes: false,
-                element_colors: Appearance::print_colors(),
-                ..Appearance::default()
-            }),
+            Look::new("space-filling", "Space filling", RepStyle::Vdw)
+                .with_appearance(Appearance { sphere_scale: 1.0, ..Appearance::default() }),
             Look::new("licorice", "Licorice", RepStyle::Licorice).with_appearance(Appearance {
                 stick_radius: 0.30,
-                silhouettes: false,
-                element_colors: Appearance::print_colors(),
+                // The stick is the whole representation, so it takes the atom colours.
+                stick_color: None,
                 ..Appearance::default()
             }),
             Look {
                 line_width: Some(2.5),
                 ..Look::new("stick", "Stick", RepStyle::Lines)
             }
-            .with_appearance(Appearance {
-                ambient_occlusion: false,
-                silhouettes: false,
-                depth_cue: false,
-                ..Appearance::default()
-            }),
+            .with_appearance(Appearance { stick_color: None, ..Appearance::default() }),
         ]
     }
 
-    /// The look to start with: the shape most published small-molecule figures use.
+    /// The look to start with: the wikimolgen preset, the shape most Wikipedia figures use.
     pub fn default_small_molecule() -> Look {
         Look::new("publication", "Publication", RepStyle::BallStick)
-            .with_appearance(Appearance { element_colors: Appearance::print_colors(), ..Appearance::default() })
     }
 
     /// The looks offered for a protein. Cartoons colour by secondary structure.
@@ -255,10 +249,6 @@ impl Look {
                 reflect: 0.25,
                 specular: 0.30,
                 shininess: 40.0,
-                // A cartoon is a lit surface, not a crowded pocket. Ambient occlusion adds
-                // a full-screen pass and its first-use pipeline for no visible gain.
-                ambient_occlusion: false,
-                silhouettes: false,
                 // Keep the renderer's default depth cue on with no fog. The image is the
                 // same, and the first frame avoids a shader reload.
                 depth_cue: true,
@@ -275,8 +265,6 @@ impl Look {
                 reflect: 0.25,
                 specular: 0.30,
                 shininess: 40.0,
-                ambient_occlusion: false,
-                silhouettes: false,
                 depth_cue: true,
                 fog: 0.0,
                 ..Appearance::default()
@@ -288,6 +276,7 @@ impl Look {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::palette;
 
     #[test]
     fn looks_are_distinct_and_named_for_the_ui() {
@@ -312,10 +301,49 @@ mod tests {
         let dark = looks.iter().find(|look| look.id == "dark").expect("dark look");
         assert_eq!(dark.appearance.background, "#0b0f14");
         assert!(dark.appearance.depth_cue, "the dark look cues depth");
-        assert!(
-            dark.appearance.element_colors.iter().any(|c| c.element == "C"),
-            "dark carbon needs a light override"
-        );
+        // Dark carbon cannot come from CPK: gray35 disappears on `#0b0f14`.
+        assert_eq!(dark.appearance.scheme, "dark");
+        assert_eq!(palette::color(&dark.appearance.scheme, "C"), "#d7dde6");
+    }
+
+    #[test]
+    fn the_default_appearance_is_the_wikimolgen_preset() {
+        // Every number here is a wikimolgen `RenderConfig3D` default; a figure that
+        // matches a wikimolgen render depends on them.
+        let look = Look::default_small_molecule();
+        let appearance = look.appearance;
+        assert_eq!(appearance.scheme, "cpk");
+        assert_eq!(appearance.background, "#ffffff");
+        assert_eq!(appearance.stick_color.as_deref(), Some("#808080"));
+        assert!((appearance.stick_radius - 0.20).abs() < 1e-6);
+        assert!((appearance.sphere_scale - 0.30).abs() < 1e-6);
+        assert!((appearance.ambient - 0.25).abs() < 1e-6);
+        assert!((appearance.direct - 0.45).abs() < 1e-6);
+        assert!((appearance.reflect - 0.45).abs() < 1e-6);
+        assert!((appearance.specular - 1.0).abs() < 1e-6);
+        assert!((appearance.shininess - 30.0).abs() < 1e-6);
+        assert!(!appearance.ambient_occlusion, "wikimolgen renders with AO off");
+        assert!(!appearance.silhouettes, "wikimolgen draws no outline");
+        assert!(!appearance.depth_cue);
+        assert!(appearance.element_colors.is_empty(), "the scheme carries the inks");
+        assert_eq!(look.color_mode, ColorMode::Element);
+    }
+
+    #[test]
+    fn the_scheme_stick_ink_matches_the_default() {
+        // The default duplicates the CPK stick colour; this keeps the two in step.
+        let infos = palette::scheme_infos();
+        let cpk = infos.iter().find(|info| info.id == "cpk").expect("cpk scheme");
+        assert_eq!(Appearance::default().stick_color.as_deref(), cpk.stick_color);
+    }
+
+    #[test]
+    fn the_secondary_structure_inks_are_the_wikimolgen_ones() {
+        // Blue helix and yellow sheet are what a wikimolgen protein figure shows.
+        let appearance = Appearance::default();
+        assert_eq!(appearance.helix_color, "#3399ff");
+        assert_eq!(appearance.sheet_color, "#ffcc00");
+        assert_eq!(appearance.loop_color, "#99aabb");
     }
 
     #[test]
@@ -326,12 +354,24 @@ mod tests {
         assert!(json.contains("\"ball_stick\""));
         assert!(json.contains("\"color_mode\":\"element\""));
         assert!(json.contains("\"appearance\":{"), "the appearance travels with the look");
-        assert!(json.contains("\"ambient_occlusion\":true"));
+        assert!(json.contains("\"scheme\":\"cpk\""));
         let back: Vec<Look> = serde_json::from_str(&json).expect("deserialise looks");
         assert_eq!(back.len(), looks.len());
         assert_eq!(back[0].style, RepStyle::BallStick);
         assert_eq!(back[2].appearance.background, "#0b0f14");
-        assert!((back[0].appearance.stick_radius - 0.17).abs() < 1e-6);
+        assert!((back[0].appearance.stick_radius - 0.20).abs() < 1e-6);
+        assert_eq!(back[0].appearance.stick_color.as_deref(), Some("#808080"));
+    }
+
+    #[test]
+    fn the_uniform_colour_mode_round_trips() {
+        // The adapter matches on this string; a serde rename would fall through to element.
+        assert_eq!(serde_json::to_string(&ColorMode::Uniform).unwrap(), "\"uniform\"");
+        assert_eq!(
+            serde_json::from_str::<ColorMode>("\"uniform\"").unwrap(),
+            ColorMode::Uniform
+        );
+        assert_eq!(serde_json::to_string(&ColorMode::SecStruct).unwrap(), "\"sec_struct\"");
     }
 
     #[test]
@@ -357,6 +397,18 @@ mod tests {
         let old = r#"{"id":"legacy","label":"Legacy","style":"ball_stick","color_mode":"element","material":null,"line_width":null}"#;
         let look: Look = serde_json::from_str(old).expect("legacy look must parse");
         assert_eq!(look.appearance.background, "#ffffff");
-        assert!((look.appearance.stick_radius - 0.17).abs() < 1e-6);
+        assert!((look.appearance.stick_radius - 0.20).abs() < 1e-6);
+        assert_eq!(look.appearance.scheme, palette::DEFAULT_SCHEME);
+    }
+
+    #[test]
+    fn an_old_look_with_the_retired_element_overrides_still_loads() {
+        // The three finishes used to carry print inks in `element_colors`; a stored
+        // preset from that build must keep working.
+        let old = r##"{"id":"publication","label":"Publication","style":"ball_stick","color_mode":"element","material":null,"line_width":null,"appearance":{"background":"#ffffff","stick_radius":0.17,"element_colors":[{"element":"O","color":"#d42a1e"}]}}"##;
+        let look: Look = serde_json::from_str(old).expect("legacy look must parse");
+        assert_eq!(look.appearance.element_colors.len(), 1);
+        assert_eq!(look.appearance.scheme, palette::DEFAULT_SCHEME);
+        assert_eq!(look.appearance.stick_color.as_deref(), Some("#808080"));
     }
 }

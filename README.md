@@ -16,8 +16,13 @@ What it offers:
   cartoons cover 3D.
 * **Three themes.** Light, Paper and Dark, plus System. The choice persists across visits,
   and the stage follows the theme tint.
+* **A colour panel.** Colour by element, chain, residue type, residue number, secondary
+  structure, B-factor or one ink. Seven element palettes: CPK, Jmol, RasMol, ChemDraw,
+  VMD, print inks and a dark-figure palette. Sticks follow the atoms or take one ink,
+  secondary-structure cartoons take three inks, and any element is overridable.
 * **Named looks and controls.** Publication, Flat and Dark finishes, plus light, outline,
-  ambient occlusion, depth cue, transparency and per-element colour overrides.
+  ambient occlusion, depth cue and transparency. The default look is WikiMolGen's preset:
+  CPK spheres, grey sticks and a white page.
 * **Figures, not screenshots.** PNG at any width from 400 to 4096 px, with presets at
   1200, 1600, 2000, 3000 and 4096. The default is 3x supersampling, with 2x and 4x
   selectable. The background is transparent by default, and an optional colour or gradient
@@ -30,6 +35,10 @@ the page stays at about 624 KB of wasm. The drawing has no background, so the st
 shows through. A Rust V2000 parser is the fallback if the RDKit module cannot load.
 
 ![molplate rendering aspirin, with the Commons markup beside it](docs/screenshot.png)
+
+The colour panel: the element palette, the stick ink and the per-element overrides.
+
+![The colour panel](docs/colour-panel.png)
 
 An exported figure, aspirin, ball and stick, cropped and padded by the app itself:
 
@@ -75,8 +84,9 @@ node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardwar
 
 ## How it is put together
 
-* `crates/molplate_core`, the 2D depiction, the figure composition, presets and the
-  wikitext generators. No browser, no GPU, so it is unit-tested natively.
+* `crates/molplate_core`, the 2D depiction, the figure composition, the presets, the
+  element palettes and the wikitext generators. No browser, no GPU, so it is unit-tested
+  natively.
 * `crates/molplate_wasm`, the Rust that has to run in the browser: writes the SVG,
   composes a rendered PNG into a figure, and generates the markup. It does not render.
 * `web/src/`, Vite + TypeScript: lookups, metadata, controls, downloads, and the adapter

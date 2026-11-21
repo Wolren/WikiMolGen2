@@ -1,11 +1,13 @@
 /**
- * The appearance panel: sliders, toggles and per-element colours.
+ * The colour and appearance panels: palette, colour mode, stick ink and per-element
+ * overrides, then the sliders that carry the light and the surface finish.
  *
- * A change updates `state.look.appearance` and re-applies only the appearance, so a
- * slider drag does not rebuild the representation or move the camera.
+ * A change updates `state.look` and re-applies only the part it touched: the appearance
+ * sliders never recolour, and a colour control never rebuilds the representation. That
+ * keeps a slider drag to one message per frame.
  */
 
-import { elementColor } from "../pkg/molplate_wasm.js";
+import { schemeColor } from "../pkg/molplate_wasm.js";
 import {
   dom,
   setStatus,
@@ -18,28 +20,39 @@ import type { ElementColor } from "./renderer.js";
 
 /** Apply appearance changes once per frame, not once per input event. */
 let applyScheduled = false;
+/** Apply colour changes once per frame. Kept separate: they are different commands. */
+let recolorScheduled = false;
+/** Scheme options already in the select, so a re-sync does not rebuild them. */
+let schemesRendered = 0;
 
 /**
- * The look with overrides reduced to elements the structure has.
+ * The look with element inks resolved for the current structure.
  *
- * An override for an absent element makes patinae log "0 atoms colored", so a look that
- * names common elements is filtered to the current molecule first.
+ * The scheme names up to 120 elements; sending all of them makes patinae report "0 atoms
+ * colored" for the absent ones, so only the elements this formula has are sent. A user
+ * override wins over the scheme, and a non-element mode sends no inks at all, because the
+ * mode command has already painted the atoms.
  */
 export function appliedLook(): Look | null {
   const look = state.look;
   if (look === null) return null;
-  const present = new Set(elementsOf(state.compound));
-  if (present.size === 0) return look;
-  return {
-    ...look,
-    appearance: {
-      ...look.appearance,
-      element_colors: look.appearance.element_colors.filter((entry) => present.has(entry.element)),
-    },
-  };
+  const present = inkElementsOf(state.compound);
+  if (present.length === 0) return look;
+  if (look.color_mode !== "element") {
+    return { ...look, appearance: { ...look.appearance, element_colors: [] } };
+  }
+  const overrides = look.appearance.element_colors;
+  const inks = present.map(
+    (element) =>
+      overrides.find((entry) => entry.element === element) ?? {
+        element,
+        color: schemeColor(look.appearance.scheme, element),
+      },
+  );
+  return { ...look, appearance: { ...look.appearance, element_colors: inks } };
 }
 
-/** Re-apply the current appearance on the next frame. */
+/** Re-apply the light, finish and background on the next frame. */
 export function scheduleApply(): void {
   if (applyScheduled) return;
   applyScheduled = true;
@@ -53,11 +66,45 @@ export function scheduleApply(): void {
   });
 }
 
-/** Copy the current look into the controls. */
+/** Re-colour the scene on the next frame. */
+export function scheduleRecolor(): void {
+  if (recolorScheduled) return;
+  recolorScheduled = true;
+  requestAnimationFrame(() => {
+    recolorScheduled = false;
+    const look = appliedLook();
+    if (state.viewer === null || state.compound === null || look === null) return;
+    void state.viewer.applyColoring(look).catch((error) => {
+      setStatus(`Could not recolour the figure: ${describeError(error)}`, true);
+    });
+  });
+}
+
+/**
+ * Fill the palette picker from Rust's scheme list.
+ *
+ * Runs once per session: rebuilding the options would drop the current selection.
+ */
+export function renderSchemeOptions(): void {
+  if (state.schemes.length === 0 || schemesRendered === state.schemes.length) return;
+  dom.colorScheme.replaceChildren(
+    ...state.schemes.map((scheme) => {
+      const option = document.createElement("option");
+      option.value = scheme.id;
+      option.textContent = scheme.label;
+      option.title = scheme.description;
+      return option;
+    }),
+  );
+  schemesRendered = state.schemes.length;
+}
+
+/** Copy the current look into every control. */
 export function syncAppearance(): void {
   const look = state.look;
   if (look === null) return;
   const appearance = look.appearance;
+  syncColour();
   dom.background.value = appearance.background;
   dom.gradient.value = appearance.gradient === null ? "none" : "vertical";
   dom.gradientBottom.hidden = appearance.gradient === null;
@@ -83,6 +130,32 @@ export function syncAppearance(): void {
   dom.depthCue.checked = appearance.depth_cue;
   dom.fog.value = String(appearance.fog);
   syncOutputs();
+}
+
+/** Copy the colour controls into the panel, including which ones are active. */
+function syncColour(): void {
+  const look = state.look;
+  if (look === null) return;
+  const appearance = look.appearance;
+  const byElement = look.color_mode === "element";
+  // A protein has no element formula on the page and a cartoon carries the mode's inks.
+  dom.moleculeColour.hidden = state.protein !== null;
+  renderSchemeOptions();
+  dom.colorMode.value = look.color_mode;
+  dom.colorScheme.value = appearance.scheme;
+  dom.colorScheme.disabled = !byElement;
+  dom.solidColor.value = appearance.solid_color;
+  dom.solidColorControl.hidden = look.color_mode !== "uniform";
+  dom.helixColor.value = appearance.helix_color;
+  dom.sheetColor.value = appearance.sheet_color;
+  dom.loopColor.value = appearance.loop_color;
+  dom.secstructColorControl.hidden = look.color_mode !== "sec_struct";
+  const oneInk = appearance.stick_color !== null;
+  dom.stickColorMode.value = oneInk ? "single" : "follow";
+  dom.stickColor.value = appearance.stick_color ?? "#808080";
+  dom.stickColorControl.hidden = !oneInk;
+  const scheme = state.schemes.find((entry) => entry.id === appearance.scheme);
+  dom.schemeNote.textContent = scheme?.description ?? "";
   renderElementColors();
 }
 
@@ -109,7 +182,7 @@ function syncOutputs(): void {
   dom.transparencyValue.textContent = `${Math.round(transparency * 100)}%`;
 }
 
-/** Read every control into the current look. */
+/** Read every appearance control into the current look. */
 function readAppearance(): void {
   const look = state.look;
   if (look === null) return;
@@ -137,34 +210,67 @@ function readAppearance(): void {
   appearance.fog = Number(dom.fog.value);
 }
 
+/** Read the colour controls into the current look. */
+function readColour(): void {
+  const look = state.look;
+  if (look === null) return;
+  look.color_mode = dom.colorMode.value;
+  look.appearance.scheme = dom.colorScheme.value;
+  look.appearance.solid_color = dom.solidColor.value;
+  look.appearance.helix_color = dom.helixColor.value;
+  look.appearance.sheet_color = dom.sheetColor.value;
+  look.appearance.loop_color = dom.loopColor.value;
+  look.appearance.stick_color =
+    dom.stickColorMode.value === "single" ? dom.stickColor.value : null;
+}
+
 /** Parse the heavy elements out of a molecular formula, in formula order. */
 function elementsOf(compound: Compound | null): string[] {
+  return formulaElements(compound, false);
+}
+
+/** Every element the scheme has to ink, hydrogens included, in formula order. */
+function inkElementsOf(compound: Compound | null): string[] {
+  return formulaElements(compound, true);
+}
+
+/**
+ * Elements of the formula, in the order the formula writes them.
+ *
+ * Hydrogens are skipped for the chips: a skeletal figure hides them, and they would
+ * crowd the picker. The 3D figure shows them, so the inks include them.
+ */
+function formulaElements(compound: Compound | null, includeHydrogen: boolean): string[] {
   const formula = compound?.molecular_formula ?? "";
   const seen = new Set<string>();
   const out: string[] = [];
   for (const match of formula.matchAll(/([A-Z][a-z]?)/g)) {
     const symbol = match[1] ?? "";
-    if (symbol === "H" || seen.has(symbol)) continue;
+    if (!includeHydrogen && symbol === "H") continue;
+    if (seen.has(symbol)) continue;
     seen.add(symbol);
     out.push(symbol);
   }
-  return out.slice(0, 10);
+  return out.slice(0, includeHydrogen ? 24 : 10);
 }
 
-/** One chip per heavy element, showing the override or the default element colour. */
+/** One chip per heavy element, showing the override or the scheme's ink. */
 function renderElementColors(): void {
   const look = state.look;
   if (look === null) {
     dom.elementColors.replaceChildren();
     return;
   }
+  const byElement = look.color_mode === "element";
   const elements = elementsOf(state.compound);
+  dom.resetColors.disabled = !byElement;
   dom.elementColors.replaceChildren(
     ...elements.map((element) => {
       const override = look.appearance.element_colors.find((entry) => entry.element === element);
       const input = document.createElement("input");
       input.type = "color";
-      input.value = override?.color ?? elementColor(element);
+      input.value = override?.color ?? schemeColor(look.appearance.scheme, element);
+      input.disabled = !byElement;
       input.setAttribute("aria-label", `${element} colour`);
       input.addEventListener("input", () => setElementColor(element, input.value));
 
@@ -185,10 +291,10 @@ export function setElementColor(element: string, color: string): void {
     (entry) => entry.element !== element,
   );
   look.appearance.element_colors.push({ element, color } satisfies ElementColor);
-  scheduleApply();
+  scheduleRecolor();
 }
 
-/** Wire the panel once, after the document exists. */
+/** Wire the panels once, after the document exists. */
 export function bindAppearance(): void {
   for (const input of [
     dom.stickRadius,
@@ -243,10 +349,49 @@ export function bindAppearance(): void {
     scheduleApply();
   });
 
+  dom.colorMode.addEventListener("change", () => {
+    readColour();
+    // The solid ink only exists for one mode; keep the picker in step before recolouring.
+    syncColour();
+    scheduleRecolor();
+  });
+
+  dom.colorScheme.addEventListener("change", () => {
+    readColour();
+    // The chips show the scheme's inks, so they are redrawn with the palette.
+    renderElementColors();
+    const scheme = state.schemes.find((entry) => entry.id === dom.colorScheme.value);
+    dom.schemeNote.textContent = scheme?.description ?? "";
+    scheduleRecolor();
+  });
+
+  dom.solidColor.addEventListener("input", () => {
+    readColour();
+    scheduleRecolor();
+  });
+
+  for (const input of [dom.helixColor, dom.sheetColor, dom.loopColor]) {
+    input.addEventListener("input", () => {
+      readColour();
+      scheduleRecolor();
+    });
+  }
+
+  dom.stickColorMode.addEventListener("change", () => {
+    readColour();
+    syncColour();
+    scheduleRecolor();
+  });
+
+  dom.stickColor.addEventListener("input", () => {
+    readColour();
+    scheduleRecolor();
+  });
+
   dom.resetColors.addEventListener("click", () => {
     if (state.look === null) return;
     state.look.appearance.element_colors = [];
     renderElementColors();
-    scheduleApply();
+    scheduleRecolor();
   });
 }

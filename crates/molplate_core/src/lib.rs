@@ -9,11 +9,13 @@
 pub mod depict;
 pub mod figure;
 pub mod image_ops;
+pub mod palette;
 pub mod style;
 pub mod wikitext;
 
 pub use depict::{depiction_svg, DepictionError, DepictionOptions};
 pub use figure::{compose_figure, FigureSpec, ScaleBarSpec};
+pub use palette::{scheme_infos, Scheme, SchemeInfo};
 pub use style::{Appearance, ColorMode, ElementColor, Look, RepStyle};
 pub use wikitext::{
     chembox, commons_file_name, commons_information, commons_upload_url, drugbox, Compound,

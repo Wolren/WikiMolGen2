@@ -22,6 +22,25 @@ export interface Look {
   appearance: Appearance;
 }
 
+/** Mirrors `molplate_core::palette::SchemeInfo`: one entry in the palette picker. */
+export interface ColorSchemeInfo {
+  id: string;
+  label: string;
+  description: string;
+  /** Flat stick ink the scheme expects, or `null` for sticks that follow the atoms. */
+  stick_color: string | null;
+}
+
+/**
+ * A copy of a preset for the live look.
+ *
+ * The panel edits the live look in place. Handing it the preset object would write every
+ * slider back into the preset list, so switching away and back would never reset.
+ */
+export function cloneLook(look: Look): Look {
+  return JSON.parse(JSON.stringify(look)) as Look;
+}
+
 export type TabId = "drugbox" | "chembox" | "commons";
 export type StructureKindId = "two_d" | "three_d" | "protein";
 export type ViewMode = "3d" | "2d";
@@ -32,6 +51,19 @@ export const dom = {
   loadButton: required<HTMLButtonElement>("load"),
   summary: required<HTMLDListElement>("summary"),
   looks: required<HTMLDivElement>("looks"),
+  colorMode: required<HTMLSelectElement>("color-mode"),
+  moleculeColour: required<HTMLElement>("molecule-colour"),
+  colorScheme: required<HTMLSelectElement>("color-scheme"),
+  schemeNote: required<HTMLParagraphElement>("scheme-note"),
+  solidColor: required<HTMLInputElement>("solid-color"),
+  solidColorControl: required<HTMLElement>("solid-color-control"),
+  helixColor: required<HTMLInputElement>("helix-color"),
+  sheetColor: required<HTMLInputElement>("sheet-color"),
+  loopColor: required<HTMLInputElement>("loop-color"),
+  secstructColorControl: required<HTMLElement>("secstruct-color-control"),
+  stickColorMode: required<HTMLSelectElement>("stick-color-mode"),
+  stickColor: required<HTMLInputElement>("stick-color"),
+  stickColorControl: required<HTMLElement>("stick-color-control"),
   background: required<HTMLInputElement>("background"),
   gradient: required<HTMLSelectElement>("gradient"),
   gradientBottom: required<HTMLInputElement>("gradient-bottom"),
@@ -99,6 +131,8 @@ export const dom = {
 export interface AppState {
   viewer: Renderer | null;
   looks: Look[];
+  /** Element palettes for the colour picker, in the order Rust lists them. */
+  schemes: ColorSchemeInfo[];
   compound: Compound | null;
   look: Look | null;
   tab: TabId;
@@ -114,6 +148,7 @@ export interface AppState {
 export const state: AppState = {
   viewer: null,
   looks: [],
+  schemes: [],
   compound: null,
   look: null,
   tab: "drugbox",

@@ -123,6 +123,25 @@ pub fn element_color(symbol: String) -> String {
     molplate_core::depict::element_color(&symbol).to_string()
 }
 
+/// The colour schemes as JSON, in the order the colour panel lists them.
+///
+/// Each entry carries the id the page sends back, a label, a one-sentence description and
+/// the stick ink the scheme expects (`null` for sticks that follow the atoms).
+#[wasm_bindgen(js_name = colorSchemesJson)]
+pub fn color_schemes_json() -> Result<String, JsError> {
+    let schemes = molplate_core::palette::scheme_infos();
+    serde_json::to_string(&schemes).map_err(|error| JsError::new(&error.to_string()))
+}
+
+/// One element's ink in a scheme, `#rrggbb`.
+///
+/// The page asks per element so it can label the chips with the colour a figure will use.
+/// An unknown scheme id resolves as the default scheme.
+#[wasm_bindgen(js_name = schemeColor)]
+pub fn scheme_color(scheme: String, symbol: String) -> String {
+    molplate_core::palette::color(&scheme, &symbol).to_string()
+}
+
 /// The licence a new upload should offer for a structure kind.
 ///
 /// The rule lives in Rust so the Commons block and the upload URL cannot disagree.

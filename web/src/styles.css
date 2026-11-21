@@ -518,6 +518,47 @@ button:disabled {
   margin: 8px 0 2px;
 }
 
+/* One ink is a swatch, not a full-width field: a wide colour bar reads as a slider. */
+.compact-control input[type="color"] {
+  width: 76px;
+  height: 30px;
+}
+
+/* Element inks sit under the colour mode; a protein hides the whole group. */
+#molecule-colour {
+  margin-top: 14px;
+}
+
+#molecule-colour .field-label:first-of-type {
+  margin-top: 0;
+}
+
+/* Helix, sheet and loop inks on one line, each in a chip like an element swatch. */
+.ink-row {
+  display: flex;
+  gap: 6px;
+}
+
+.ink {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-2);
+  font-size: 12px;
+}
+
+.ink input[type="color"] {
+  width: 26px;
+  height: 22px;
+  padding: 1px;
+  border-radius: 5px;
+}
+
 /* Appearance sliders ------------------------------------------------------------ */
 
 .control + .control {

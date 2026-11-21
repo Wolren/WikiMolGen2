@@ -10,6 +10,7 @@
 
 import init, {
   chembox,
+  colorSchemesJson,
   commonsInformation,
   commonsUploadUrl,
   defaultLicense,
@@ -17,8 +18,14 @@ import init, {
   looksJson,
   proteinLooksJson,
 } from "../pkg/molplate_wasm.js";
-import { appliedLook, bindAppearance, syncAppearance } from "./appearance.js";
 import {
+  appliedLook,
+  bindAppearance,
+  renderSchemeOptions,
+  syncAppearance,
+} from "./appearance.js";
+import {
+  cloneLook,
   describe,
   dom,
   figureName,
@@ -28,6 +35,7 @@ import {
   showStageError,
   state,
   structureKind,
+  type ColorSchemeInfo,
   type Look,
   type TabId,
   type ViewMode,
@@ -71,7 +79,10 @@ async function boot(): Promise<void> {
   }
 
   state.looks = JSON.parse(looksJson()) as Look[];
-  // Presets need no GPU, so they are shown even if the renderer cannot start.
+  // The palettes are Rust data: the page only sends an id back, never an element table.
+  state.schemes = JSON.parse(colorSchemesJson()) as ColorSchemeInfo[];
+  // Presets and palettes need no GPU, so they are shown even if the renderer cannot start.
+  renderSchemeOptions();
   renderLooks();
 
   try {
@@ -153,7 +164,7 @@ async function loadFromInput(): Promise<void> {
     // take it down with it.
     if (state.viewer !== null) {
       await state.viewer.loadStructure(result.structure.name, result.structure.bytes);
-      state.look = state.looks[0] ?? null;
+      state.look = state.looks[0] === undefined ? null : cloneLook(state.looks[0]);
       if (state.look !== null) await state.viewer.applyLook(appliedLook() ?? state.look);
       await state.viewer.frameScene();
       dom.exportButton.disabled = false;
@@ -258,7 +269,7 @@ async function loadProteinInput(id: string): Promise<void> {
     const atoms = await viewer.loadStructure(record.name, record.bytes);
     const parsed = performance.now();
     state.looks = JSON.parse(proteinLooksJson()) as Look[];
-    state.look = state.looks[0] ?? null;
+    state.look = state.looks[0] === undefined ? null : cloneLook(state.looks[0]);
     if (state.look !== null) await viewer.applyLook(state.look);
     const styled = performance.now();
     await viewer.frameScene();
@@ -409,7 +420,8 @@ function renderLooks(): void {
 }
 
 async function chooseLook(look: Look): Promise<void> {
-  state.look = look;
+  // A copy, so the panel's edits never write back into the preset list.
+  state.look = cloneLook(look);
   renderLooks();
   syncAppearance();
   // Nothing to re-style before a structure is loaded, and patinae treats a command

@@ -30,8 +30,9 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | Protein lookup | A four-character PDB ID (for example `1CRN`) or a `pdb:` prefix fetches the entry from RCSB and draws a cartoon |
 | 3D structure | PubChem's 3D record; a compound without one falls back to its 2D record and says so |
 | 2D depiction | RDKit's MinimalLib draws the skeletal SVG with canonical layout, stereo and element colours. The SVG has no background. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback |
-| Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by secondary structure or chain |
-| Appearance | Stick and sphere size, transparency, ambient, direct, reflect, specular and shininess, ambient occlusion and strength, soft shadows, outline and width, depth cue and fog, per-element colour overrides. Background and gradient are export settings |
+| Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by secondary structure or chain. The finishes start from the WikiMolGen preset: CPK spheres, grey sticks, a white page |
+| Colour | Colour by element, chain, residue type, residue number, secondary structure, B-factor or a single ink. Seven element palettes: CPK (default), Jmol, RasMol, ChemDraw, VMD, print inks and dark figure. Sticks follow the atoms or take one flat ink. A cartoon takes three secondary-structure inks. Per-element overrides sit on top of the palette |
+| Appearance | Stick and sphere size, transparency, ambient, direct, reflect, specular and shininess, ambient occlusion and strength, soft shadows, outline and width, depth cue and fog. Background and gradient are export settings |
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, and keyboard shortcuts |
 | Export | PNG at any width from 400 to 4096 px; a 4 to 9 percent margin; 3x supersampling by default, 2x and 4x selectable; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
 | Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields, and an openFDA drug label |
@@ -74,8 +75,40 @@ both sources know a field.
 hands a chosen preset to `Renderer.applyLook(look)` unchanged. The object is
 `molplate_core::style::Look`, the same type in both directions, so a renamed field breaks
 one test rather than two implementations. `Look.appearance` carries the light, finish,
-background and element overrides. The adapter, not the core, knows how a style becomes
+background and the colour inks. The adapter, not the core, knows how a style becomes
 renderer commands.
+
+The page copies a preset before the panel edits it (`cloneLook`). Editing the preset
+object itself would write every slider back into the preset list, so choosing a look twice
+would never reset.
+
+### `Appearance` colour fields (Rust → TypeScript)
+
+| Field | Meaning |
+| --- | --- |
+| `scheme` | Element palette id from `colorSchemesJson()`, e.g. `"cpk"` |
+| `stick_color` | Flat stick ink, `null` for sticks that follow the atoms |
+| `solid_color` | Ink for the `uniform` colour mode |
+| `helix_color`, `sheet_color`, `loop_color` | Cartoon inks for the `sec_struct` colour mode |
+| `element_colors` | Per-element overrides, applied on top of the scheme |
+
+`ColorMode` is `element`, `chain`, `residue`, `index`, `sec_struct`, `b_factor` or
+`uniform`. All but `uniform` are patinae colour schemes under another name; `uniform`
+paints one ink and is the black-and-white figure.
+
+### Element palettes (Rust → TypeScript)
+
+`colorSchemesJson()` returns the picker entries: `id`, `label`, `description` and the stick
+ink the scheme expects. `schemeColor(scheme, symbol)` returns one element's `#rrggbb`.
+
+The tables live in `crates/molplate_core/src/palette.rs`: the CPK table (120 rows, 118
+elements plus the D and T aliases) plus the handful of overrides that define each viewer's
+palette. CPK is the default, so a molplate figure matches a WikiMolGen render.
+
+The page resolves the palette for the elements the structure has and sends the result as
+`element_colors`, which keeps the command count to the molecule rather than the periodic
+table. A user override wins over the scheme; a non-element colour mode sends no element
+inks at all, because the mode command has already painted the atoms.
 
 ### Figure spec (TypeScript → Rust)
 
@@ -116,11 +149,11 @@ labelled; `labels` adds the carbons.
 ## Repository map
 
 ```
-crates/molplate_core/   depiction, presets, figure composition, image ops, wikitext
+crates/molplate_core/   depiction, presets, palettes, figure composition, image ops, wikitext
 crates/molplate_wasm/   SVG, figure and JSON exports  (no renderer)
 web/src/main.ts         page controller: lookup, modes, markup
 web/src/context.ts      shared state, DOM handles, status helpers
-web/src/appearance.ts   the appearance panel
+web/src/appearance.ts   the colour and appearance panels
 web/src/figure.ts       export: PNG composition and SVG download
 web/src/keyboard.ts     shortcuts
 web/src/theme.ts        Light, Paper, Dark and System
@@ -138,7 +171,7 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 
 ## Acceptance
 
-* `cargo test -p molplate_core` passes natively (37 tests at the time of writing).
+* `cargo test -p molplate_core` passes natively (57 tests at the time of writing).
 * `cargo build --target wasm32-unknown-unknown -p molplate_wasm` produces the module.
 * The page loads, accepts `aspirin`, shows a molecule, and every tab produces markup that
   parses as balanced templates.
@@ -146,6 +179,8 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 * The 2D view draws a transparent RDKit SVG under 100 KB and downloads it.
 * A 1CRN lookup draws a cartoon coloured by secondary structure in under three seconds.
 * The same compound loaded by name, CID and SMILES exports byte-identical images.
+* Every palette and every colour mode applies without an error, and a fresh load starts
+  on the CPK palette with the grey stick ink of the WikiMolGen preset.
 * A browser without WebGPU explains itself. The 2D SVG and the markup still work.
 
 `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware` checks

@@ -38,6 +38,18 @@ export interface Appearance {
   silhouette_width: number;
   depth_cue: boolean;
   fog: number;
+  /** Element scheme id, e.g. `"cpk"`. Resolved to inks by `appliedLook`. */
+  scheme: string;
+  /** Flat stick ink, or `null` for sticks that follow the atom colours. */
+  stick_color: string | null;
+  /** Ink for the `uniform` colour mode. */
+  solid_color: string;
+  /** Cartoon helix ink for the `sec_struct` mode. */
+  helix_color: string;
+  /** Cartoon sheet ink for the `sec_struct` mode. */
+  sheet_color: string;
+  /** Cartoon loop ink, the base of a `sec_struct` cartoon. */
+  loop_color: string;
   element_colors: ElementColor[];
 }
 
@@ -47,6 +59,12 @@ export interface LookSpec {
   color_mode: string;
   line_width: number | null;
   appearance: Appearance;
+}
+
+/** Which secondary structures the scene has, so empty colour selections are skipped. */
+interface Structure {
+  helix: boolean;
+  sheet: boolean;
 }
 
 /** The camera fields a scale bar needs, read back from `get_view`. */
@@ -154,26 +172,40 @@ function representationCommands(look: LookSpec): string[] {
  * molplate's colour modes → patinae's scheme names.
  *
  * `color ss` colours this scene uniformly, although the `ss` selection reports helix,
- * sheet and loop atoms correctly. The three named palette colours plus the `ss` selection
- * give the documented PyMOL cartoon look.
+ * sheet and loop atoms correctly. The three named inks plus the `ss` selection give the
+ * cartoon look wikimolgen renders. `uniform` is not a scheme: it paints every atom one
+ * ink, which is the black-and-white figure wikimolgen calls `minimal_bw`.
+ *
+ * `structure` says which secondary structures the scene has: colouring an empty selection
+ * is not an error in patinae, but it logs "0 atoms colored" as an error message.
  */
-function colourCommands(mode: string): string[] {
-  switch (mode) {
+function colourCommands(look: LookSpec, structure: Structure): string[] {
+  const appearance = look.appearance;
+  switch (look.color_mode) {
     case "chain":
       return ["color chain"];
     case "residue":
     case "resid":
+    case "residue_type":
       return ["color residue"];
     case "index":
+    case "residue_index":
       return ["color index"];
     case "secstruct":
     case "sec_struct":
     case "ss":
-      return ["color ss_loop, all", "color ss_helix, ss H", "color ss_sheet, ss S"];
+      return [
+        `color ${ink(appearance.loop_color)}, all`,
+        ...(structure.helix ? [`color ${ink(appearance.helix_color)}, ss H`] : []),
+        ...(structure.sheet ? [`color ${ink(appearance.sheet_color)}, ss S`] : []),
+      ];
     case "b_factor":
     case "bfactor":
     case "beta":
       return ["color b_factor"];
+    case "uniform":
+    case "solid":
+      return [`color ${ink(appearance.solid_color)}, all`];
     case "element":
     default:
       return ["color atomic"];
@@ -186,6 +218,12 @@ function rgbOf(hex: string): [number, number, number] {
   if (!/^[0-9a-fA-F]{6}$/.test(value)) return [128, 128, 128];
   const int = Number.parseInt(value, 16);
   return [(int >> 16) & 0xff, (int >> 8) & 0xff, int & 0xff];
+}
+
+/** `#rrggbb` → the `0xrrggbb` literal patinae's colour parser accepts. */
+function ink(hex: string): string {
+  const [r, g, b] = rgbOf(hex);
+  return `0x${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
 }
 
 /** Fixed-point form for a command argument, with a safe fallback. */
@@ -275,6 +313,8 @@ export class Renderer {
   private lastAo = false;
   private lastSilhouettes = false;
   private lastDepthCue = true;
+  /** Last stick ink sent, so a fill-mode recolour does not rebuild the sticks. */
+  private lastStickInk = "\u0000";
 
   private constructor(private readonly viewer: PatinaeViewer) {}
 
@@ -389,16 +429,41 @@ export class Renderer {
     };
   }
 
-  /** Apply a look: geometry plus its colouring, then the appearance. */
+  /** Apply a look: geometry, its colouring, then the light and finish. */
   async applyLook(look: LookSpec): Promise<void> {
     await this.run("hide");
     for (const command of representationCommands(look)) await this.run(command);
-    for (const command of colourCommands(look.color_mode)) await this.run(command);
+    await this.applyColoring(look);
     await this.applyAppearance(look);
   }
 
   /**
-   * Apply only the appearance: light, finish, background and element overrides.
+   * Apply only the colouring: the mode, the element inks and the stick ink.
+   *
+   * A colour control calls this instead of {@link applyLook}, so choosing a palette does
+   * not hide and re-show the representation. Sticks come last: `stick_color` is a setting
+   * with a rebuild side effect, so it must not ride on an appearance slider.
+   */
+  async applyColoring(look: LookSpec): Promise<void> {
+    const appearance = look.appearance;
+    const structure: Structure = {
+      helix: this.count("ss H") > 0,
+      sheet: this.count("ss S") > 0,
+    };
+    for (const command of colourCommands(look, structure)) {
+      await this.run(command);
+    }
+    await this.applyElementInks(appearance.element_colors);
+    // `stick_color` rebuilds the stick buffers, so a chip drag must not resend it.
+    const stickInk = appearance.stick_color === null ? "inherit" : ink(appearance.stick_color);
+    if (stickInk !== this.lastStickInk) {
+      await this.run(`set stick_color, ${stickInk}`);
+      this.lastStickInk = stickInk;
+    }
+  }
+
+  /**
+   * Apply only the appearance: light, finish and background.
    *
    * A slider drag calls this instead of {@link applyLook}, so the representation is not
    * hidden and shown again on every input event.
@@ -446,17 +511,17 @@ export class Renderer {
       this.lastDepthCue = appearance.depth_cue;
     }
     await this.run(`set fog, ${decimal(appearance.fog)}`);
-
-    await this.applyElementColors(appearance.element_colors);
   }
 
-  /** Override one element colour, e.g. oxygen to a brighter red. */
-  private async applyElementColors(colors: ElementColor[]): Promise<void> {
+  /**
+   * Paint one element's atoms, e.g. oxygen to a deeper red.
+   *
+   * The ink goes straight into the command: `color 0xrrggbb, elem O` needs no
+   * `set_color` round trip and leaves the renderer's palette untouched.
+   */
+  private async applyElementInks(colors: ElementColor[]): Promise<void> {
     for (const { element, color } of colors) {
-      const [r, g, b] = rgbOf(color);
-      const name = `molplate_${element.toLowerCase()}`;
-      await this.run(`set_color ${name}, [${r}, ${g}, ${b}]`);
-      await this.run(`color ${name}, elem ${element}`);
+      await this.run(`color ${ink(color)}, elem ${element}`);
     }
   }
 
@@ -480,8 +545,7 @@ export class Renderer {
   /** Set the background from a colour input value. */
   private async setBackgroundHex(hex: string): Promise<void> {
     if (hex === this.lastBackground) return;
-    const [r, g, b] = rgbOf(hex);
-    await this.run(`bg_color 0x${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`);
+    await this.run(`bg_color ${ink(hex)}`);
     this.lastBackground = hex;
   }
 
