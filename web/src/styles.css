@@ -230,7 +230,7 @@ body {
    the page scrolls rather than hiding the Commons text inside a short panel. */
 .workspace .stage {
   flex: none;
-  height: min(68vh, 640px);
+  height: min(72vh, 680px);
   min-height: 320px;
 }
 
