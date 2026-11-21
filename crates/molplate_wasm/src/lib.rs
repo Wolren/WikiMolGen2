@@ -49,6 +49,20 @@ pub fn frame_figure(
     molplate_core::image_ops::encode_png(&figure).map_err(|error| JsError::new(&error.to_string()))
 }
 
+/// Compose a figure at an exact width, with a margin, an optional gradient and a scale bar.
+///
+/// `spec_json` is `molplate_core::figure::FigureSpec`. The input is the raw render; the
+/// output is the cropped, scaled and padded figure. Returns PNG bytes.
+#[wasm_bindgen(js_name = composeFigure)]
+pub fn compose_figure(png: Vec<u8>, spec_json: String) -> Result<Vec<u8>, JsError> {
+    let spec: molplate_core::FigureSpec = serde_json::from_str(&spec_json)
+        .map_err(|error| JsError::new(&format!("bad figure spec: {error}")))?;
+    let image = molplate_core::image_ops::decode_png(&png)
+        .map_err(|error| JsError::new(&error.to_string()))?;
+    let figure = molplate_core::compose_figure(&image, &spec);
+    molplate_core::image_ops::encode_png(&figure).map_err(|error| JsError::new(&error.to_string()))
+}
+
 /// Scale a PNG to the given size with a good filter.
 ///
 /// Used to supersample: the renderer's browser build has FXAA but no MSAA, so a silhouette

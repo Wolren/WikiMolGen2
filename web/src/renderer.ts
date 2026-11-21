@@ -478,6 +478,8 @@ export class Renderer {
     if (!enabled) return;
     await this.run("set label_size, 14");
     await this.run("label not elem C, name, object=molplate_labels");
+    // The default label colour is a screen cyan; a figure needs ink that reads on white.
+    await this.run("color black, molplate_labels");
   }
 
   /** Label height in render pixels. The export path scales this with the figure. */

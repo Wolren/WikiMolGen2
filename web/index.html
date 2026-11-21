@@ -123,16 +123,21 @@
           <h2>Export</h2>
           <label class="field-label" for="export-width">Image width</label>
           <select id="export-width">
-            <option value="1000">1000 px</option>
+            <option value="1200">1200 px</option>
             <option value="1600" selected>1600 px</option>
-            <option value="2400">2400 px</option>
-            <option value="3200">3200 px</option>
+            <option value="2000">2000 px</option>
           </select>
+
+          <div class="control">
+            <label class="field-label" for="export-margin">Margin <output id="export-margin-value">6%</output></label>
+            <input id="export-margin" type="range" min="4" max="9" step="0.5" value="6" />
+          </div>
+
+          <label class="checkbox"><input id="export-transparent" type="checkbox" /> Transparent background</label>
+          <label class="checkbox"><input id="export-labels" type="checkbox" /> Atom labels</label>
+          <label class="checkbox"><input id="export-scalebar" type="checkbox" /> Scale bar</label>
+
           <button id="export" type="button" class="primary" disabled>Download PNG</button>
-          <label class="checkbox">
-            <input id="export-transparent" type="checkbox" />
-            Transparent background
-          </label>
           <p id="export-status" class="hint" role="status"></p>
         </section>
       </aside>

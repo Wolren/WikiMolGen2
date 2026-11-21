@@ -13,13 +13,12 @@ import init, {
   commonsFileName,
   commonsInformation,
   commonsUploadUrl,
+  composeFigure,
   defaultLicense,
   drugbox,
   elementColor,
-  frameFigure,
   looksJson,
   proteinLooksJson,
-  resizePng,
 } from "../pkg/molplate_wasm.js";
 import {
   buildDepiction,
@@ -50,8 +49,6 @@ type StructureKindId = "two_d" | "three_d" | "protein";
 type ViewMode = "3d" | "2d";
 
 const AUTHOR = "molplate";
-/** Margin around a figure, as a fraction of the molecule's longer side. */
-const FIGURE_MARGIN = 0.06;
 /**
  * Render this many times wider than the figure and scale down in Rust.
  *
@@ -92,7 +89,11 @@ const dom = {
   zoomIn: required<HTMLButtonElement>("zoom-in"),
   zoomOut: required<HTMLButtonElement>("zoom-out"),
   exportWidth: required<HTMLSelectElement>("export-width"),
+  exportMargin: required<HTMLInputElement>("export-margin"),
+  exportMarginValue: required<HTMLOutputElement>("export-margin-value"),
   exportTransparent: required<HTMLInputElement>("export-transparent"),
+  exportLabels: required<HTMLInputElement>("export-labels"),
+  exportScaleBar: required<HTMLInputElement>("export-scalebar"),
   exportButton: required<HTMLButtonElement>("export"),
   exportStatus: required<HTMLParagraphElement>("export-status"),
   viewerHost: required<HTMLElement>("viewer"),
@@ -746,6 +747,10 @@ dom.viewerHost.addEventListener(
 
 // --- Export ------------------------------------------------------------------------
 
+dom.exportMargin.addEventListener("input", () => {
+  dom.exportMarginValue.textContent = `${dom.exportMargin.value}%`;
+});
+
 dom.exportButton.addEventListener("click", () => {
   void exportFigure();
 });
@@ -771,52 +776,108 @@ function exportSvg(): void {
   setStatus(`Saved ${name} (${depictionBytes(state.depiction.svg)} bytes).`);
 }
 
+/** A figure spec, mirrored from `molplate_core::figure::FigureSpec`. */
+interface FigureSpec {
+  width: number;
+  margin: number;
+  background: [number, number, number, number];
+  gradient: [[number, number, number], [number, number, number]] | null;
+  scale_bar: { angstrom_per_pixel: number } | null;
+}
+
 /**
- * Render at the wanted width, then crop to the molecule and pad an even margin.
+ * Render at twice the wanted width, then compose the figure at an exact width.
  *
  * patinae renders offscreen at whatever size is asked for, so there is no canvas resize,
- * no device-pixel-ratio correction and no screenshot handshake to wait on. What remains
- * is the step that makes a viewport capture into a figure, the crop and the margin : 
- * and that stays in Rust where it is tested.
+ * no device-pixel-ratio correction and no screenshot handshake to wait on. The compose
+ * step trims the viewport, scales the molecule to the inner width and pads the margin in
+ * Rust, so the exported width is the number the user chose.
  */
 async function exportPng(): Promise<void> {
   const viewer = state.viewer;
   if (viewer === null) return;
 
   const targetWidth = Number(dom.exportWidth.value);
+  const margin = Number(dom.exportMargin.value) / 100;
   const rect = dom.viewerHost.getBoundingClientRect();
   const aspect = rect.width > 0 && rect.height > 0 ? rect.width / rect.height : 1;
   const targetHeight = Math.max(1, Math.round(targetWidth / aspect));
+  const renderWidth = targetWidth * SUPERSAMPLE;
+  const renderHeight = targetHeight * SUPERSAMPLE;
   const transparent = dom.exportTransparent.checked;
-  // The margin has to match the scene, or a dark figure gains a white border and a
-  // transparent one stops being transparent as soon as it is cropped.
-  const [red, green, blue] = transparent ? [0, 0, 0] : hexToBytes(dom.background.value);
+  const labels = dom.exportLabels.checked;
 
   setBusy(true, "Rendering…");
   dom.exportButton.disabled = true;
 
   try {
+    if (labels) {
+      await viewer.setLabels(true);
+      // The label is measured in render pixels; the figure scales it down with the scene.
+      await viewer.setLabelSize(Math.round(18 * (targetWidth / 1600) * SUPERSAMPLE));
+    } else {
+      await viewer.setLabels(false);
+    }
+
+    let scaleBar: { angstrom_per_pixel: number } | null = null;
+    if (dom.exportScaleBar.checked) {
+      const camera = await viewer.cameraView();
+      if (camera !== null) {
+        scaleBar = { angstrom_per_pixel: camera.viewHeight / renderHeight };
+      }
+    }
+
+    // A gradient cannot be keyed out of an opaque render: the content rectangle would
+    // show its own flat background. Render with alpha and composite the gradient behind.
+    const gradient: [[number, number, number], [number, number, number]] | null =
+      transparent || state.look === null || state.look.appearance.gradient === null
+        ? null
+        : [
+            hexToBytes(state.look.appearance.gradient[0]),
+            hexToBytes(state.look.appearance.gradient[1]),
+          ];
+
     const blob = await viewer.exportPng({
-      width: targetWidth * SUPERSAMPLE,
-      height: targetHeight * SUPERSAMPLE,
-      transparent,
+      width: renderWidth,
+      height: renderHeight,
+      transparent: transparent || gradient !== null,
     });
     const rendered = new Uint8Array(await blob.arrayBuffer());
-    const scaled = resizePng(rendered, targetWidth, targetHeight);
-    const framed = frameFigure(scaled, FIGURE_MARGIN, red, green, blue, transparent ? 0 : 255);
+    const [red, green, blue] = hexToBytes(state.look?.appearance.background ?? dom.background.value);
+
+    const spec: FigureSpec = {
+      width: targetWidth,
+      margin,
+      background: transparent ? [0, 0, 0, 0] : [red, green, blue, 255],
+      gradient,
+      scale_bar: scaleBar,
+    };
+    const framed = composeFigure(rendered, JSON.stringify(spec));
+    const size = pngSize(framed);
 
     const name = state.compound === null
       ? "molecule-3D.png"
       : figureName(structureKind());
     download(name, framed);
-    setStatus(`Saved ${name}${transparent ? " with a transparent background" : ""}.`);
     dom.fileName.textContent = name;
+    setStatus(
+      `Saved ${name} at ${size.width}x${size.height} px, ${dom.exportMargin.value}% margin` +
+        `${transparent ? ", transparent" : ""}${scaleBar === null ? "" : ", with a scale bar"}.`,
+    );
   } catch (error) {
     setStatus(`Export failed: ${describe(error)}`, true);
   } finally {
+    if (labels) await viewer.setLabelSize(14).catch(() => undefined);
     dom.exportButton.disabled = false;
     setBusy(false);
   }
+}
+
+/** Width and height from a PNG header, without a decoder. */
+function pngSize(bytes: Uint8Array): { width: number; height: number } {
+  if (bytes.length < 24) return { width: 0, height: 0 };
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { width: view.getUint32(16), height: view.getUint32(20) };
 }
 
 function download(name: string, bytes: Uint8Array): void {
