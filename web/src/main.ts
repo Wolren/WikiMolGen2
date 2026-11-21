@@ -38,7 +38,7 @@ import { bindKeyboard } from "./keyboard.js";
 import { enrichCompound, LookupError, loadCompound } from "./pubchem.js";
 import { ProteinError, loadProtein, pdbIdOf } from "./protein.js";
 import { Renderer, RendererUnavailable } from "./renderer.js";
-import { bindTheme } from "./theme.js";
+import { bindTheme, stageTint } from "./theme.js";
 import "./styles.css";
 import "./stage.css";
 
@@ -97,6 +97,7 @@ async function boot(): Promise<void> {
   // is in use, and the note explains what a figure needs, rather than implying a
   // fallback that does not exist.
   dom.engine.textContent = "WebGPU";
+  state.viewer.setStageTint(stageTint());
   applyMode();
 
   // Compile the cartoon pipelines before the first request. The first cartoon frame
@@ -621,6 +622,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 }
 
 bindTheme();
+document.addEventListener("themechange", () => {
+  state.viewer?.setStageTint(stageTint());
+});
 bindAppearance();
 bindExport();
 bindKeyboard({

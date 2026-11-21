@@ -31,6 +31,16 @@ function resolved(choice: ThemeChoice): ThemeName {
 
 function apply(choice: ThemeChoice): void {
   document.documentElement.dataset.theme = resolved(choice);
+  // The stage canvas cannot read CSS, so it listens for this event.
+  document.dispatchEvent(new CustomEvent("themechange"));
+}
+
+/** The colour behind the figure, from the active theme. The 3D canvas copies it. */
+export function stageTint(): string {
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue("--stage-tint")
+    .trim();
+  return value === "" ? "#ffffff" : value;
 }
 
 /** Wire the picker and the OS preference. A stored choice wins over the OS. */

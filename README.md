@@ -11,9 +11,11 @@ It is a static site: no server, no upload, no install.
 
 What it offers:
 
-* **2D and 3D.** RDKit's MinimalLib draws the skeletal SVG, with element colours and
-  stereo. Ball-and-stick, space-filling, licorice, stick and protein cartoons cover 3D.
-* **Three themes.** Light, Paper and Dark, plus System. The choice persists across visits.
+* **2D and 3D.** RDKit's MinimalLib draws the skeletal SVG with no background, plus
+  element colours and stereo. Ball-and-stick, space-filling, licorice, stick and protein
+  cartoons cover 3D.
+* **Three themes.** Light, Paper and Dark, plus System. The choice persists across visits,
+  and the stage follows the theme tint.
 * **Named looks and controls.** Publication, Flat and Dark finishes, plus light, outline,
   ambient occlusion, depth cue, transparency and per-element colour overrides.
 * **Figures, not screenshots.** PNG at exactly 1200, 1600 or 2000 px wide, with a 4 to 9
@@ -22,8 +24,8 @@ What it offers:
   fields, and an openFDA drug label.
 
 The 2D engine is RDKit.js, 7.39 MB, loaded only when the 2D view first opens. Until then
-the page stays at about 624 KB of wasm. A Rust V2000 parser is the fallback if the RDKit
-module cannot load.
+the page stays at about 624 KB of wasm. The drawing has no background, so the stage tint
+shows through. A Rust V2000 parser is the fallback if the RDKit module cannot load.
 
 ![molplate rendering aspirin, with the Commons markup beside it](docs/screenshot.png)
 

@@ -29,7 +29,7 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | Lookup by name, CID or SMILES | Name and CID resolve directly; a SMILES is resolved through PubChem's structure search, so only compounds PubChem knows work |
 | Protein lookup | A four-character PDB ID (for example `1CRN`) or a `pdb:` prefix fetches the entry from RCSB and draws a cartoon |
 | 3D structure | PubChem's 3D record; a compound without one falls back to its 2D record and says so |
-| 2D depiction | RDKit's MinimalLib draws the skeletal SVG with canonical layout, stereo and element colours. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback |
+| 2D depiction | RDKit's MinimalLib draws the skeletal SVG with canonical layout, stereo and element colours. The SVG has no background. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback |
 | Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by secondary structure or chain |
 | Appearance | Background, stick and sphere size, transparency, ambient and direct light, specular, ambient occlusion, outline, depth cue, per-element colour overrides |
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, and keyboard shortcuts |
@@ -39,7 +39,7 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
 | Commons | File name, `{{Information}}` plus licence block, pre-filled upload URL; the licence follows the structure kind |
 | Keyboard | `Ctrl+Enter` load, `2`/`3` view, `E` export, `F` frame, `+`/`-` zoom, `/` focus, `?` help |
-| Theme | Light, Paper and Dark, plus System. The choice persists and applies before the first paint |
+| Theme | Light, Paper and Dark, plus System. The choice persists and applies before the first paint. The stage follows the theme tint |
 | Graphics | WebGPU only. There is no WebGL2 fallback, so a browser without an adapter gets an explanation instead of a lesser image |
 
 ## Not in v1
@@ -51,6 +51,7 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | Ray-traced export | patinae's ray tracer is a native cdylib plugin and is not in the wasm build | A wasm ray tracer, or a server-side render |
 | MSAA in the live view | patinae has no MSAA; FXAA and a 2x supersampled canvas are the substitutes | A renderer change, not an app change |
 | Live background gradient | The canvas surface is opaque, so a CSS gradient cannot show through | Renderer support for a gradient clear, or an accept of the export-only option |
+| True alpha in the live view | The patinae surface is opaque. The stage paints the theme tint instead | Renderer support for an alpha surface, or an accept of the tint |
 | Direct DailyMed reads | The DailyMed service sends no CORS header, so the browser cannot read it | A proxy, or an upstream CORS header; openFDA serves the same SPL labels today |
 | Protein 2D or sequence view | A cartoon is the useful figure for an article | A sequence panel and a depiction path |
 | Element labels in 3D by symbol | The renderer's label expression has no element field; atom names are the substitute | A renderer label expression, or browser-side projection |
@@ -95,8 +96,9 @@ bottom margin from the Å per pixel that the camera reports through `get_view`.
 ### Depiction (RDKit → SVG)
 
 `depictWithRdkit(sdf, width, height)` calls RDKit's `get_mol`, removes the explicit
-hydrogens, runs `set_new_coords` and returns `get_svg`. The 7.39 MB MinimalLib loads on
-first 2D use from `web/public/vendor/rdkit`.
+hydrogens, runs `set_new_coords` and calls `get_svg_with_highlights` with
+`clearBackground: false`. The result has no background rectangle. The 7.39 MB MinimalLib
+loads on first 2D use from `web/public/vendor/rdkit`.
 
 `depictSvg(sdf, width, margin, labels, monochrome, name)` is the Rust fallback. It parses
 a V2000 mol block and returns an SVG. Hydrogens are implicit. Heteroatoms are always
@@ -132,7 +134,7 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 * The page loads, accepts `aspirin`, shows a molecule, and every tab produces markup that
   parses as balanced templates.
 * Export at 1600 px writes a 1600 px wide PNG with 6 percent margins and no clipped atoms.
-* The 2D view draws an RDKit SVG under 100 KB and downloads it.
+* The 2D view draws a transparent RDKit SVG under 100 KB and downloads it.
 * A 1CRN lookup draws a cartoon coloured by secondary structure in under three seconds.
 * The same compound loaded by name, CID and SMILES exports byte-identical images.
 * A browser without WebGPU explains itself. The 2D SVG and the markup still work.

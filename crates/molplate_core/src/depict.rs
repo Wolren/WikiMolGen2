@@ -259,7 +259,6 @@ pub fn depiction_svg(text: &str, name: &str, options: DepictionOptions) -> Resul
         escape_xml(name)
     );
     let _ = writeln!(svg, "<title>{}</title>", escape_xml(name));
-    let _ = writeln!(svg, r##"<rect width="{width}" height="{height}" fill="#ffffff"/>"##);
     let _ = writeln!(
         svg,
         r##"<g stroke="#1a1a1a" stroke-width="{bond_width:.2}" stroke-linecap="round" stroke-linejoin="round" fill="none">"##

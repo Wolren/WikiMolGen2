@@ -11,6 +11,7 @@
   --surface: #ffffff;
   --surface-2: #f5f7fa;
   --surface-3: #eceff4;
+  --stage-tint: #f5f7fa;
   --field: #ffffff;
   --canvas: #f1f4f8;
   --code: #fbfcfe;
@@ -39,6 +40,7 @@
   --surface: #131a22;
   --surface-2: #0f151c;
   --surface-3: #1b242e;
+  --stage-tint: #0f151c;
   --field: #0d131a;
   --canvas: #090d12;
   --code: #0c1218;
@@ -64,6 +66,7 @@
   --surface: #fbf7ef;
   --surface-2: #f4eddf;
   --surface-3: #ece2d1;
+  --stage-tint: #f4eddf;
   --field: #fffdf7;
   --canvas: #ebe3d4;
   --code: #f7f1e4;

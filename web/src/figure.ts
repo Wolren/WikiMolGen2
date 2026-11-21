@@ -107,6 +107,7 @@ async function exportPng(): Promise<void> {
       width: renderWidth,
       height: renderHeight,
       transparent: transparent || gradient !== null,
+      background: state.look?.appearance.background ?? dom.background.value,
     });
     const rendered = new Uint8Array(await blob.arrayBuffer());
     const [red, green, blue] = hexToBytes(state.look?.appearance.background ?? dom.background.value);

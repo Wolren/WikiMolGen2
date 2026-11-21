@@ -63,10 +63,14 @@ engine. The project notes named it, and it is the right tool for depiction.
 
 ![The 2D mode with aspirin, drawn by RDKit](upgrade/after-2d.png)
 
-Measured: `aspirin-2D.svg` is 8757 bytes and the inline SVG is 8821 characters. Oxygen is
-`#FF0000` and carbon is black. The file downloads from the same button that exports the
-PNG. The first 2D open shows the engine load in the stage overlay. The Rust fallback is
-covered by six integration tests and the core suite.
+Measured: `aspirin-2D.svg` is 8652 bytes and the inline SVG is 8716 characters. It has no
+background rectangle, so the theme tint shows through. Oxygen is `#FF0000` and carbon is
+black. The file downloads from the same button that exports the PNG. In the dark theme the
+inline bonds take the theme ink; the downloaded file keeps black bonds for print. The first
+2D open shows the engine load in the stage overlay. The Rust fallback is covered by six
+integration tests and the core suite.
+
+![The same drawing on the dark theme](upgrade/after-2d-dark.png)
 
 ## B. 3D quality controls
 
@@ -190,12 +194,16 @@ openFDA. The drugbox now emits:
 
 The top bar has a theme picker with Light, Paper, Dark and System. An inline script applies
 the stored choice before the first paint. Light uses cool neutrals, Paper uses warm cream,
-Dark uses a deep slate. The accent is teal in Light and Dark, and copper in Paper. The
-figure keeps its own background, so a white Wikipedia figure stays white in every theme.
+Dark uses a deep slate. The accent is teal in Light and Dark, and copper in Paper. The stage
+background follows the theme. The exported figure keeps its own background, so a white
+Wikipedia figure stays white.
 
 ![The dark theme with aspirin](upgrade/after-dark-ui.png)
 
 ![The paper theme with aspirin](upgrade/after-paper-ui.png)
+
+The patinae surface is opaque, so the stage paints the `--stage-tint` colour instead of
+alpha. The 2D SVG is truly transparent.
 
 The stage has a 3D and 2D switch, and the stage note says which view is live. The style
 picker is a two-column list with a CSS swatch per representation. The appearance panel
@@ -231,13 +239,14 @@ SwiftShader, which removes the hardware adapter this renderer needs.
 | `cargo test -p molplate_core` | 37 unit tests pass |
 | Depiction integration tests | 6 tests pass |
 | `cd web; npm run build` | TypeScript clean, Vite build OK |
-| `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware` | OK, 2D SVG 8821 chars, export 1200x1045 at 6 percent |
+| `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware` | OK, 2D SVG 8716 chars, export 1200x1045 at 6 percent |
 | `pwsh -File scripts/build-dual.ps1 -NoServe` | classic and current builds OK |
 | Keyboard export | completed, 637313 bytes |
 | Themes | Light, Paper and Dark apply; a stored choice survives a reload |
+| Stage tint | canvas pixel matches the theme: light (245,247,250), dark (15,21,28) |
 | Layout overflow | page scroll width equals the viewport at 1280 and 800 |
 
-Bundle: the page is 43.77 KB of JavaScript and 13.27 KB of CSS. The app's wasm grows from
+Bundle: the page is 44.53 KB of JavaScript and 13.46 KB of CSS. The app's wasm grows from
 531.77 KB to 623.61 KB, and it gzips to 222.40 KB. The 2D engine is a separate 7.39 MB
 wasm, loaded only when 2D opens. The fallback depiction, the composer and the scale bar
 font live in the app wasm. The classic renderer's wasm is 17.6 MB for comparison.
@@ -252,6 +261,8 @@ font live in the app wasm. The classic renderer's wasm is 17.6 MB for comparison
   structures today, so the gap is invisible until a lookup misses.
 * Ray tracing. The ray tracer is a native plugin and is absent from the wasm build.
 * A live background gradient. The canvas is opaque. The gradient is export-only.
+* True alpha in the live 3D view. The patinae surface is opaque, so the stage paints the
+  theme tint. The 2D SVG and the offscreen PNG export can be transparent.
 * A direct DailyMed read. The service sends no CORS header. openFDA supplies the label.
 * 3D atom labels show atom names. The label expression has no element field. For an SDF
   the atom name is the element symbol, so the figure reads `O` and `H`. For a PDB it reads

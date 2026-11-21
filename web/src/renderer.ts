@@ -71,7 +71,11 @@ interface PatinaeViewer {
   init(): Promise<void>;
   loadData(data: Uint8Array, name: string, format: string): Receipt;
   execute(command: string): Promise<Receipt>;
-  exportPng(options: { width?: number; height?: number; transparent?: boolean }): Promise<Blob>;
+  exportPng(options: {
+    width?: number;
+    height?: number;
+    transparent?: boolean;
+  }): Promise<Blob>;
   countAtoms(selection?: string): number;
   getSequenceData(): { chain_id: string; residues: unknown[] }[];
   destroy(): void;
@@ -265,6 +269,8 @@ export class Renderer {
   // Last values of the settings whose change reloads a shader or a pipeline. They start
   // at the renderer's defaults, so the first look does not reload a shader for nothing.
   private lastBackground = "";
+  /** Theme tint for the live stage; the export keeps its own background. */
+  private stageTint: string | null = null;
   private lastShading = "classic";
   private lastAo = false;
   private lastSilhouettes = false;
@@ -399,7 +405,7 @@ export class Renderer {
    */
   async applyAppearance(look: LookSpec): Promise<void> {
     const appearance = look.appearance;
-    await this.setBackgroundHex(appearance.background);
+    await this.setBackgroundHex(this.stageTint ?? appearance.background);
 
     await this.run(`set stick_transparency, ${decimal(appearance.stick_transparency)}`);
     await this.run(`set sphere_transparency, ${decimal(appearance.sphere_transparency)}`);
@@ -457,6 +463,18 @@ export class Renderer {
   /** `"perspective"` or `"orthographic"`. patinae spells the latter `orthoscopic`. */
   async setProjection(mode: string): Promise<void> {
     await this.run(`set orthoscopic, ${mode === "orthographic" ? 1 : 0}`);
+  }
+
+  /**
+   * Set the live stage background to the active theme tint.
+   *
+   * The patinae surface is opaque, so the view cannot be alpha-transparent. This colour
+   * matches the page behind the canvas, which gives the same visual result.
+   */
+  setStageTint(hex: string): void {
+    if (this.stageTint === hex) return;
+    this.stageTint = hex;
+    void this.setBackgroundHex(hex).catch(() => undefined);
   }
 
   /** Set the background from a colour input value. */
@@ -552,11 +570,31 @@ export class Renderer {
    * With only a width, its aspect follows the *live* canvas, so callers that care about
    * the shape pass both dimensions.
    */
-  async exportPng(options: { width: number; height: number; transparent: boolean }): Promise<Blob> {
-    // A build task may still be finishing; a couple of frames is what makes the
-    // difference between the new scene and the previous one in the image.
-    await frames(SETTLE_FRAMES);
-    return this.viewer.exportPng(options);
+  async exportPng(options: {
+    width: number;
+    height: number;
+    transparent: boolean;
+    background: string;
+  }): Promise<Blob> {
+    // The live stage is painted with the theme tint. The export uses the figure's own
+    // background, so swap it in for the render and restore the tint afterwards.
+    const stage = this.stageTint;
+    await this.setBackgroundHex(options.transparent ? "#000000" : options.background);
+    try {
+      // A build task may still be finishing; a couple of frames is what makes the
+      // difference between the new scene and the previous one in the image.
+      await frames(SETTLE_FRAMES);
+      return await this.viewer.exportPng({
+        width: options.width,
+        height: options.height,
+        transparent: options.transparent,
+      });
+    } finally {
+      if (stage !== null) {
+        this.stageTint = null;
+        this.setStageTint(stage);
+      }
+    }
   }
 
   destroy(): void {

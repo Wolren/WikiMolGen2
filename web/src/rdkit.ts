@@ -12,7 +12,7 @@ interface RdkitMol {
   has_coords(): number;
   remove_hs_in_place(): boolean;
   set_new_coords(useCoordGen?: boolean): boolean;
-  get_svg(width: number, height: number): string;
+  get_svg_with_highlights(details: string): string;
   delete(): void;
 }
 
@@ -96,7 +96,10 @@ export async function depictWithRdkit(
     // PubChem records carry explicit hydrogens; a skeletal drawing keeps them implicit.
     mol.remove_hs_in_place();
     mol.set_new_coords(true);
-    return mol.get_svg(width, height);
+    // No white rectangle: the page tint shows through the drawing.
+    return mol.get_svg_with_highlights(
+      JSON.stringify({ width, height, clearBackground: false }),
+    );
   } finally {
     mol.delete();
   }

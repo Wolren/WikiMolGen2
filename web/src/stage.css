@@ -73,10 +73,10 @@
   width: 100%;
   min-height: 0;
   padding: 10px;
-  background: var(--surface-2);
+  background: var(--stage-tint);
 }
 
-/* The 2D drawing scales to the stage without cropping, on a paper-like card. */
+/* The 2D drawing scales to the stage without cropping, on the theme tint. */
 .depiction {
   flex: 1;
   min-height: 0;
@@ -84,16 +84,23 @@
   place-items: center;
   padding: 18px;
   overflow: auto;
-  background: var(--surface-2);
+  background: var(--stage-tint);
 }
 
 .depiction svg {
   max-width: 100%;
   max-height: 100%;
   height: auto;
-  border-radius: 3px;
-  background: #ffffff;
-  box-shadow: var(--shadow-2);
+  background: transparent;
+}
+
+/* RDKit draws black bonds and black atom labels. On a dark tint they become the ink. */
+[data-theme="dark"] .depiction svg path[style*="stroke:#000000"] {
+  stroke: var(--ink) !important;
+}
+
+[data-theme="dark"] .depiction svg path[fill="#000000"] {
+  fill: var(--ink) !important;
 }
 
 .stage canvas {
