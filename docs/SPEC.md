@@ -31,7 +31,7 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | 3D structure | PubChem's 3D record; a compound without one falls back to its 2D record and says so |
 | 2D depiction | RDKit's MinimalLib draws the skeletal SVG with canonical layout, stereo and element colours. The SVG has no background. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback |
 | Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by secondary structure or chain. The finishes start from the WikiMolGen preset: CPK spheres, grey sticks, a white page |
-| Colour | Colour by element, chain, residue type, residue number, secondary structure, B-factor or a single ink. Seven element palettes: CPK (default), Jmol, RasMol, ChemDraw, VMD, print inks and dark figure. Sticks follow the atoms or take one flat ink. A cartoon takes three secondary-structure inks. Per-element overrides sit on top of the palette |
+| Colour | Styles the 3D figure: colour by element, chain, residue type, residue number, secondary structure, B-factor or a single ink. Seven element palettes: CPK (default), Jmol, RasMol, ChemDraw, VMD, print inks and dark figure. Sticks follow the atoms or take one flat ink. A cartoon takes three secondary-structure inks. Per-element overrides sit on top of the palette. The panel steps aside in the 2D view, which keeps RDKit's inks |
 | Appearance | Stick and sphere size, transparency, ambient, direct, reflect, specular and shininess, ambient occlusion and strength, soft shadows, outline and width, depth cue and fog. Background and gradient are export settings |
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, and keyboard shortcuts |
 | Export | PNG at any width from 400 to 4096 px; a 4 to 9 percent margin; 3x supersampling by default, 2x and 4x selectable; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
@@ -57,6 +57,7 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | Supersampling above 4x | The quality select stops at 4x; the 8192 edge cap limits it further at large widths | A tiled export, or a lower-level renderer option |
 | Direct DailyMed reads | The DailyMed service sends no CORS header, so the browser cannot read it | A proxy, or an upstream CORS header; openFDA serves the same SPL labels today |
 | Protein 2D or sequence view | A cartoon is the useful figure for an article | A sequence panel and a depiction path |
+| Element palettes in the 2D drawing | RDKit's MinimalLib draws the SVG with its own atom inks. The vendored build reads an `atomColourPalette` keyed by atomic number, not by symbol, and the drawing is cached after the first build | A symbol-to-atomic-number table plus a redraw when the palette changes |
 | Element labels in 3D by symbol | The renderer's label expression has no element field; atom names are the substitute | A renderer label expression, or browser-side projection |
 
 ## Contracts

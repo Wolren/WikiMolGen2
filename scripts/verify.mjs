@@ -319,8 +319,19 @@ if (isProtein) {
   }, 60_000);
   if (svgSize === null) failures.push("the 2D view did not render an SVG");
   else console.log(`2d: ${svgSize} chars`);
+  // The colour panel styles the 3D figure; in 2D it must step aside with a note.
+  const colourHidden = await evaluate(
+    session,
+    "document.getElementById('colour-controls').hidden === true && document.getElementById('colour-note').hidden === false",
+  );
+  if (colourHidden !== true) failures.push("the 3D colour controls stay visible in the 2D mode");
   await evaluate(session, "document.getElementById('mode-3d').click(), true");
   await new Promise((done) => setTimeout(done, 300));
+  const colourShown = await evaluate(
+    session,
+    "document.getElementById('colour-controls').hidden === false",
+  );
+  if (colourShown !== true) failures.push("the colour controls do not return in the 3D mode");
 }
 
 // 3c. The colour surface. Every palette and every mode has to reach the renderer and come

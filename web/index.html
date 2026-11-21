@@ -71,56 +71,64 @@
         <section class="block">
           <h2>Colour</h2>
 
-          <label class="field-label" for="color-mode">Colour by</label>
-          <select id="color-mode">
-            <option value="element">Element</option>
-            <option value="chain">Chain</option>
-            <option value="residue">Residue type</option>
-            <option value="index">Residue number</option>
-            <option value="sec_struct">Secondary structure</option>
-            <option value="b_factor">B-factor</option>
-            <option value="uniform">Single colour</option>
-          </select>
-
-          <!-- Element inks belong to a molecule; a protein cartoon is coloured by its mode. -->
-          <div id="molecule-colour">
-            <label class="field-label" for="color-scheme">Element palette</label>
-            <select id="color-scheme"></select>
-            <p id="scheme-note" class="hint"></p>
-
-            <label class="field-label" for="stick-color-mode">Sticks</label>
-            <select id="stick-color-mode">
-              <option value="follow">Element colours</option>
-              <option value="single">One colour</option>
+          <!-- The 2D drawing is RDKit's own palette, so this group is inert in that mode. -->
+          <div id="colour-controls">
+            <label class="field-label" for="color-mode">Colour by</label>
+            <select id="color-mode">
+              <option value="element">Element</option>
+              <option value="chain">Chain</option>
+              <option value="residue">Residue type</option>
+              <option value="index">Residue number</option>
+              <option value="sec_struct">Secondary structure</option>
+              <option value="b_factor">B-factor</option>
+              <option value="uniform">Single colour</option>
             </select>
-            <div class="compact-control" id="stick-color-control">
-              <label class="field-label" for="stick-color">Stick ink</label>
-              <input id="stick-color" type="color" value="#808080" />
-            </div>
 
-            <div class="control">
-              <div class="field-label-row">
-                <span class="field-label">Element overrides</span>
-                <button id="reset-colors" type="button" class="link-button">Reset</button>
+            <!-- Element inks belong to a molecule; a protein cartoon is coloured by its mode. -->
+            <div id="molecule-colour">
+              <label class="field-label" for="color-scheme">Element palette</label>
+              <select id="color-scheme"></select>
+              <p id="scheme-note" class="hint"></p>
+
+              <label class="field-label" for="stick-color-mode">Sticks</label>
+              <select id="stick-color-mode">
+                <option value="follow">Element colours</option>
+                <option value="single">One colour</option>
+              </select>
+              <div class="compact-control" id="stick-color-control">
+                <label class="field-label" for="stick-color">Stick ink</label>
+                <input id="stick-color" type="color" value="#808080" />
               </div>
-              <div id="element-colors" class="element-colors"></div>
-              <p class="hint">Override one element on top of the palette.</p>
+
+              <div class="control">
+                <div class="field-label-row">
+                  <span class="field-label">Element overrides</span>
+                  <button id="reset-colors" type="button" class="link-button">Reset</button>
+                </div>
+                <div id="element-colors" class="element-colors"></div>
+                <p class="hint">Override one element on top of the palette.</p>
+              </div>
+            </div>
+
+            <div class="compact-control" id="solid-color-control">
+              <label class="field-label" for="solid-color">Single ink</label>
+              <input id="solid-color" type="color" value="#232323" />
+            </div>
+
+            <div class="control" id="secstruct-color-control">
+              <span class="field-label">Secondary structure</span>
+              <div class="ink-row">
+                <label class="ink">Helix <input id="helix-color" type="color" value="#3399ff" /></label>
+                <label class="ink">Sheet <input id="sheet-color" type="color" value="#ffcc00" /></label>
+                <label class="ink">Loop <input id="loop-color" type="color" value="#99aabb" /></label>
+              </div>
             </div>
           </div>
 
-          <div class="compact-control" id="solid-color-control">
-            <label class="field-label" for="solid-color">Single ink</label>
-            <input id="solid-color" type="color" value="#232323" />
-          </div>
-
-          <div class="control" id="secstruct-color-control">
-            <span class="field-label">Secondary structure</span>
-            <div class="ink-row">
-              <label class="ink">Helix <input id="helix-color" type="color" value="#3399ff" /></label>
-              <label class="ink">Sheet <input id="sheet-color" type="color" value="#ffcc00" /></label>
-              <label class="ink">Loop <input id="loop-color" type="color" value="#99aabb" /></label>
-            </div>
-          </div>
+          <p id="colour-note" class="hint" hidden>
+            The 2D drawing is an RDKit SVG, so it keeps RDKit's element colours. These
+            controls style the 3D figure.
+          </p>
         </section>
 
         <section class="block">

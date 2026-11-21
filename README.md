@@ -16,10 +16,11 @@ What it offers:
   cartoons cover 3D.
 * **Three themes.** Light, Paper and Dark, plus System. The choice persists across visits,
   and the stage follows the theme tint.
-* **A colour panel.** Colour by element, chain, residue type, residue number, secondary
-  structure, B-factor or one ink. Seven element palettes: CPK, Jmol, RasMol, ChemDraw,
-  VMD, print inks and a dark-figure palette. Sticks follow the atoms or take one ink,
-  secondary-structure cartoons take three inks, and any element is overridable.
+* **A colour panel for the 3D figure.** Colour by element, chain, residue type, residue
+  number, secondary structure, B-factor or one ink. Seven element palettes: CPK, Jmol,
+  RasMol, ChemDraw, VMD, print inks and a dark-figure palette. Sticks follow the atoms or
+  take one ink, secondary-structure cartoons take three inks, and any element is
+  overridable. The 2D drawing keeps RDKit's own element colours.
 * **Named looks and controls.** Publication, Flat and Dark finishes, plus light, outline,
   ambient occlusion, depth cue and transparency. The default look is WikiMolGen's preset:
   CPK spheres, grey sticks and a white page.

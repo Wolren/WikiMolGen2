@@ -52,6 +52,8 @@ export const dom = {
   summary: required<HTMLDListElement>("summary"),
   looks: required<HTMLDivElement>("looks"),
   colorMode: required<HTMLSelectElement>("color-mode"),
+  colourControls: required<HTMLElement>("colour-controls"),
+  colourNote: required<HTMLElement>("colour-note"),
   moleculeColour: required<HTMLElement>("molecule-colour"),
   colorScheme: required<HTMLSelectElement>("color-scheme"),
   schemeNote: required<HTMLParagraphElement>("scheme-note"),

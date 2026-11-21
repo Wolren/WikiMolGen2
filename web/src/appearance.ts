@@ -81,6 +81,17 @@ export function scheduleRecolor(): void {
 }
 
 /**
+ * Show or hide the whole colour group.
+ *
+ * The 2D drawing is RDKit's SVG with RDKit's own element inks, so every control here is
+ * inert in that mode. A note says so rather than leaving the panel looking broken.
+ */
+export function setColourAvailable(available: boolean): void {
+  dom.colourControls.hidden = !available;
+  dom.colourNote.hidden = available;
+}
+
+/**
  * Fill the palette picker from Rust's scheme list.
  *
  * Runs once per session: rebuilding the options would drop the current selection.

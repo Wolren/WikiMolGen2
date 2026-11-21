@@ -22,6 +22,7 @@ import {
   appliedLook,
   bindAppearance,
   renderSchemeOptions,
+  setColourAvailable,
   syncAppearance,
 } from "./appearance.js";
 import {
@@ -489,6 +490,7 @@ function applyMode(): void {
   dom.mode2d.disabled = state.depictionSource === null || state.protein !== null;
   dom.viewerHost.hidden = twoDimensional;
   dom.depiction.hidden = !twoDimensional;
+  setColourAvailable(!twoDimensional);
 
   if (twoDimensional) {
     if (state.depiction !== null) {
