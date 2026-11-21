@@ -156,8 +156,42 @@ body {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   margin-left: auto;
+}
+
+/* The project links are quiet text until hovered: the figure is the page's subject. */
+.topbar-links {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.topbar-links a {
+  color: var(--muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.topbar-links a:hover {
+  color: var(--accent);
+}
+
+/* A rule separates the links from the theme picker, so the row reads as two groups. */
+.topbar-actions .theme-picker {
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+
+@media (max-width: 640px) {
+  .topbar-links {
+    display: none;
+  }
+
+  .topbar-actions .theme-picker {
+    padding-left: 0;
+    border-left: 0;
+  }
 }
 
 .theme-picker select {

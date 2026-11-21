@@ -57,6 +57,7 @@ reach; a load then scrolls the figure into view.
 | Outputs | The drug infobox, the chembox and the Commons upload text sit stacked in one panel, in that order, each with its own copy button. A protein shows the Commons text only |
 | Keyboard | `Ctrl+Enter` load, `2`/`3` view, `E` export, `F` frame, `+`/`-` zoom, `/` focus, `?` help |
 | Theme | Light, Paper and Dark, plus System. The choice persists and applies before the first paint. The stage follows the theme tint |
+| Links | The top bar carries the repository, the original WikiMolGen project and the docs, then the theme picker. Below 640 px the links fold away |
 | Graphics | WebGPU only. There is no WebGL2 fallback, so a browser without an adapter gets an explanation instead of a lesser image |
 
 ## Not in v1

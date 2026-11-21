@@ -310,6 +310,23 @@ const finish = JSON.parse(
   ),
 );
 console.log(`finish defaults: ${JSON.stringify(finish)}`);
+
+// The top bar carries the project's two references, and they must point somewhere real.
+const links = JSON.parse(
+  await evaluate(
+    session,
+    `JSON.stringify(Array.from(document.querySelectorAll('.topbar-links a')).map(
+       (node) => [node.textContent.trim(), node.getAttribute('href')],
+     ))`,
+  ),
+);
+console.log(`topbar links: ${links.map(([label, href]) => `${label} -> ${href}`).join(", ")}`);
+for (const expected of [
+  "https://github.com/Wolren/wikimolgen2",
+  "https://github.com/Wolren/WikiMolGen",
+]) {
+  if (!links.some(([, href]) => href === expected)) failures.push(`no ${expected} link in the top bar`);
+}
 if (finish.valence !== true) failures.push("valence bonds start off");
 if (finish.valenceScale !== "1") failures.push(`valence size starts at ${finish.valenceScale}`);
 if (finish.stick !== "0" || finish.sphere !== "0" || finish.cartoon !== "0") {
