@@ -830,6 +830,16 @@ if (args.suggest) {
   await new Promise((done) => setTimeout(done, 1500));
 }
 
+// `--zoom 12` clicks zoom-in that many times, so a screenshot can show a deep view.
+if (args.zoom) {
+  const notches = Number(args.zoom);
+  for (let index = 0; index < notches; index += 1) {
+    await evaluate(session, "document.getElementById('zoom-in').click(), true");
+    await new Promise((done) => setTimeout(done, 60));
+  }
+  await new Promise((done) => setTimeout(done, 300));
+}
+
 // 5. Screenshot for a human to look at. `--scroll <id>` brings one control into view and
 //    `--scroll-offset <px>` shifts the panel after that, which is how the colour section
 //    is captured with its heading instead of mid-field.

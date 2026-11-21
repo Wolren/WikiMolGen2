@@ -138,17 +138,14 @@ const SETTLE_FRAMES = 3;
 const FRAME_BUFFER_ANGSTROM = 0.5;
 
 /**
- * Zoom is expressed as a change to that buffer, because the viewer exposes no camera
- * handle to JavaScript: its wheel handler moves the clipping planes, and only zooms when
- * a button is held. `zoom all, buffer=<Å>` is the one documented lever on apparent size.
+ * Zoom changes the field of view, so the camera stays put and no atom is clipped.
  *
- * The range is on the fit's own scale. Above zero it only frames more loosely; below zero
- * it pushes past the fit, which is useful for looking closely but can clip atoms, so the
- * floor stays shallow and "re-frame" returns to the safe default.
+ * The camera has no JS handle, but `get_view` prints the 18-value PyMOL view and
+ * `set_view` accepts it back; the field of view is the last value.
  */
-const ZOOM_STEP_ANGSTROM = 0.35;
-const MIN_BUFFER_ANGSTROM = -1.5;
-const MAX_BUFFER_ANGSTROM = 30;
+const ZOOM_FACTOR = 0.88;
+const MIN_FOV_DEG = 0.5;
+const MAX_FOV_DEG = 60;
 
 /**
  * WikiMolGen 2's look vocabulary → patinae commands.
@@ -317,9 +314,6 @@ function frames(count: number): Promise<void> {
 
 /** A started viewer. One per page: patinae owns a rAF loop and a canvas per handle. */
 export class Renderer {
-  /** Current camera buffer in Å, tracked so zoom is relative rather than absolute. */
-  private frameBuffer = FRAME_BUFFER_ANGSTROM;
-
   /** In-flight pipeline warm-up, awaited before the first real structure load. */
   private warmup: Promise<void> | null = null;
 
@@ -620,19 +614,24 @@ export class Renderer {
   }
 
   /**
-   * Read the camera back as the scale-bar input: visible height in Ångström.
+   * Read the camera back as the 18-value view `get_view` prints.
    *
-   * `get_view` prints the 18-value PyMOL view. The 10th..12th values are the camera
-   * position, and the 18th is the vertical field of view in degrees.
+   * The 10th..12th values are the camera position, the 18th the vertical field of view.
    */
-  async cameraView(): Promise<CameraView | null> {
+  private async readView(): Promise<number[] | null> {
     const receipt = await this.viewer.execute("get_view");
     if (!receipt || (receipt.result && "Err" in receipt.result)) return null;
     const text = receipt.messages.map((message) => message.text).join("\n");
     const numbers = text.match(/-?\d+\.\d+|-?\d+/g)?.map(Number) ?? [];
-    if (numbers.length < 18) return null;
-    const position = numbers.slice(9, 12);
-    const fov = numbers[17] ?? 0;
+    return numbers.length >= 18 ? numbers.slice(0, 18) : null;
+  }
+
+  /** The scale-bar input: visible height in Ångström at the origin plane. */
+  async cameraView(): Promise<CameraView | null> {
+    const view = await this.readView();
+    if (view === null) return null;
+    const position = view.slice(9, 12);
+    const fov = view[17] ?? 0;
     const distance = Math.abs(position[2] ?? 0) || Math.hypot(...position);
     if (!Number.isFinite(fov) || fov <= 0 || distance <= 0) return null;
     return {
@@ -644,26 +643,27 @@ export class Renderer {
 
   /** Point the camera at the whole scene, leaving air around it. */
   async frameScene(): Promise<void> {
-    this.frameBuffer = FRAME_BUFFER_ANGSTROM;
     await this.run("reset");
     await this.run("orient");
     await this.run(`zoom all, buffer=${FRAME_BUFFER_ANGSTROM}`);
   }
 
   /**
-   * Zoom in (`notches > 0`) or out, relative to where the camera already is.
+   * Zoom in (`notches > 0`) or out by changing the field of view.
    *
-   * Returns whether anything changed, so a caller can stop at the ends of the range
-   * without tracking it.
+   * Returns whether anything changed, so a caller can stop at the ends of the range.
    */
   async zoomBy(notches: number): Promise<boolean> {
+    const view = await this.readView();
+    if (view === null) return false;
+    const current = view[17] ?? 0;
     const next = Math.min(
-      MAX_BUFFER_ANGSTROM,
-      Math.max(MIN_BUFFER_ANGSTROM, this.frameBuffer - notches * ZOOM_STEP_ANGSTROM),
+      MAX_FOV_DEG,
+      Math.max(MIN_FOV_DEG, current * Math.pow(ZOOM_FACTOR, notches)),
     );
-    if (Math.abs(next - this.frameBuffer) < 1e-4) return false;
-    this.frameBuffer = next;
-    await this.run(`zoom all, buffer=${next.toFixed(2)}`);
+    if (!Number.isFinite(next) || Math.abs(next - current) < 1e-3) return false;
+    view[17] = next;
+    await this.run(`set_view (${view.map((value) => value.toFixed(6)).join(", ")})`);
     return true;
   }
 
