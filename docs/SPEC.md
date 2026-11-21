@@ -55,7 +55,7 @@ reach; a load then scrolls the figure into view.
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects, including ATC, routes and legal status |
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
 | Commons | File name, `{{Information}}` plus licence block, pre-filled upload URL; the licence follows the structure kind |
-| Outputs | The drug infobox, the chembox and the Commons upload text sit stacked in one panel, in that order, each with a copy button. The two infoboxes carry an Upload to Commons link below their text; a protein shows the Commons text and its link only |
+| Outputs | The drug infobox, the chembox and the Commons upload text sit stacked in one panel, in that order, each with a copy button. The Commons block carries the Upload to Commons link under its text; a protein shows the Commons text only |
 | Keyboard | `Ctrl+Enter` load, `2`/`3` view, `E` export, `F` frame, `+`/`-` zoom, `/` focus, `?` help |
 | Theme | Light, Paper and Dark, plus System. The choice persists and applies before the first paint. The stage follows the theme tint |
 | Links | The top bar carries the repository, the original WikiMolGen project and the docs, then the theme picker. Below 640 px the links fold away |
