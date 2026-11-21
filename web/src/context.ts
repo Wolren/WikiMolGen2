@@ -9,7 +9,6 @@ import { commonsFileName } from "../pkg/molplate_wasm.js";
 import type { Depiction } from "./depiction.js";
 import type { Compound } from "./pubchem.js";
 import type { Appearance, Renderer } from "./renderer.js";
-import type { SourceStatus } from "./sources.js";
 
 /** Mirrors `molplate_core::style::Look`. */
 export interface Look {
@@ -49,7 +48,6 @@ export const dom = {
   form: required<HTMLFormElement>("lookup"),
   identifier: required<HTMLInputElement>("identifier"),
   loadButton: required<HTMLButtonElement>("load"),
-  summary: required<HTMLDListElement>("summary"),
   looks: required<HTMLDivElement>("looks"),
   colorMode: required<HTMLSelectElement>("color-mode"),
   colourControls: required<HTMLElement>("colour-controls"),
@@ -117,7 +115,6 @@ export const dom = {
   stageNote: required<HTMLElement>("stage-note"),
   stageMessage: required<HTMLDivElement>("stage-message"),
   stageText: required<HTMLParagraphElement>("stage-text"),
-  engine: required<HTMLElement>("engine"),
   shortcuts: required<HTMLDetailsElement>("shortcuts"),
   tabs: {
     drugbox: required<HTMLButtonElement>("tab-drugbox"),
@@ -144,7 +141,6 @@ export interface AppState {
   depictionSource: { name: string; bytes: Uint8Array } | null;
   depiction: Depiction | null;
   protein: { id: string; atoms: number; residues: number; chains: number; seconds: number } | null;
-  sources: SourceStatus[];
 }
 
 export const state: AppState = {
@@ -159,7 +155,6 @@ export const state: AppState = {
   depictionSource: null,
   depiction: null,
   protein: null,
-  sources: [],
 };
 
 export function required<T extends HTMLElement>(id: string): T {

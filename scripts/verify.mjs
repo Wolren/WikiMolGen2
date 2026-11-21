@@ -10,7 +10,7 @@
 // Exit code is 0 only when the page loaded, produced markup, and the canvas was drawn on.
 
 import { createServer } from "node:http";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { readFile, readdir, mkdir, stat, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { extname, join, resolve, dirname } from "node:path";
 
@@ -264,22 +264,6 @@ console.log(
   `renderer: ${stageReady?.hidden ? "started" : "FAILED — " + stageText.trim()}`,
 );
 
-// The badge is filled a tick after the overlay clears (boot sets it right after the
-// renderer resolves), so wait for it instead of racing that one line.
-const engine = await poll(
-  async () => {
-    const text = await evaluate(session, "document.getElementById('engine')?.textContent ?? ''");
-    return text === "" ? null : text;
-  },
-  10_000,
-);
-console.log(`backend: ${engine || "(none reported)"}`);
-if (engine !== "WebGPU" && engine !== "WebGL2") {
-  failures.push(`unexpected graphics backend: ${engine || "none"}`);
-} else if (engine === "WebGL2") {
-  console.log("  note: WebGL2 fallback in use — WebGPU was not available to this browser");
-}
-
 // 2. Load a compound through the page's own form.
 await evaluate(
   session,
@@ -291,14 +275,15 @@ await evaluate(
    })()`,
 );
 
-const summary = await poll(async () => {
-  const visible = await evaluate(session, "!document.getElementById('summary').hidden");
-  return visible ? await evaluate(session, "document.getElementById('summary').innerText") : null;
-  // A protein's first cartoon frame compiles pipelines; measured up to 33 s under load.
+// The status line under the figure is the page's one progress report, so it is what
+// says a load finished. A protein's first cartoon frame compiles pipelines; measured
+// up to 33 s under load.
+const loaded = await poll(async () => {
+  const text = await evaluate(session, "document.getElementById('export-status').textContent ?? ''");
+  return text.includes("Loaded") ? text : null;
 }, 90_000);
-if (summary === null) failures.push("no compound summary appeared");
-else console.log(`compound: ${summary.replace(/\n/g, " | ").slice(0, 160)}`);
-console.log(`status: ${await evaluate(session, "document.getElementById('export-status').textContent")}`);
+if (loaded === null) failures.push("no load status appeared");
+else console.log(`status: ${loaded.slice(0, 160)}`);
 
 // A protein has no drug box and no flat record, so the compound-only checks below skip.
 const isProtein = await evaluate(
@@ -333,6 +318,11 @@ if (isProtein) {
   }, 60_000);
   if (svgSize === null) failures.push("the 2D view did not render an SVG");
   else console.log(`2d: ${svgSize} chars`);
+  // The toolbar button follows the stage: a vector drawing downloads as an SVG.
+  const svgLabel = await evaluate(session, "document.getElementById('export').textContent");
+  if (svgLabel.trim() !== "Download SVG") {
+    failures.push(`the 2D toolbar offers "${svgLabel.trim()}"`);
+  }
   // The colour panel styles the 3D figure; in 2D it must step aside with a note.
   const colourHidden = await evaluate(
     session,
@@ -346,6 +336,10 @@ if (isProtein) {
     "document.getElementById('colour-controls').hidden === false",
   );
   if (colourShown !== true) failures.push("the colour controls do not return in the 3D mode");
+  const pngLabel = await evaluate(session, "document.getElementById('export').textContent");
+  if (pngLabel.trim() !== "Download PNG") {
+    failures.push(`the 3D toolbar offers "${pngLabel.trim()}"`);
+  }
 }
 
 // 3c. The colour surface. Every palette and every mode has to reach the renderer and come
@@ -550,10 +544,19 @@ await evaluate(session, `(() => {
 
 // Wait for the browser's own completion event: it carries the real file path, whereas
 // polling the directory races the browser's write-then-rename.
-const download = await Promise.race([
+let download = await Promise.race([
   completion,
   new Promise((resolve) => setTimeout(() => resolve(null), 90_000)),
 ]);
+
+// The completion event is not guaranteed; the file in the directory is the same artefact.
+if (download === null || download.state !== "completed" || !download.filePath) {
+  const finished = await newestPng(downloadDir);
+  if (finished !== null) {
+    download = { state: "completed", filePath: finished };
+    console.log(`  no download event; using ${finished}`);
+  }
+}
 
 console.log(`export status: ${await evaluate(session, "document.getElementById('export-status').textContent")}`);
 
@@ -722,6 +725,22 @@ async function poll(probe, timeoutMs) {
     await new Promise((done) => setTimeout(done, 250));
   }
   return null;
+}
+
+/** Newest completed PNG in a directory, or `null`. A partial `.crdownload` is skipped. */
+async function newestPng(directory) {
+  const names = (await readdir(directory).catch(() => [])).filter((name) => name.endsWith(".png"));
+  let newest = null;
+  let newestAt = 0;
+  for (const name of names) {
+    const path = join(directory, name);
+    const info = await stat(path).catch(() => null);
+    if (info !== null && info.size > 0 && info.mtimeMs > newestAt) {
+      newest = path;
+      newestAt = info.mtimeMs;
+    }
+  }
+  return newest;
 }
 
 /** Net `{{` vs `}}` count — the cheapest check that a template is pasteable. */

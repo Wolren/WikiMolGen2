@@ -57,6 +57,7 @@
 }
 
 .stage-note {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   color: var(--faint);

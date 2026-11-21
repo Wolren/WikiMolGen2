@@ -105,10 +105,8 @@ async function boot(): Promise<void> {
 
   dom.stageMessage.hidden = true;
 
-  // patinae is WebGPU-only: there is no second backend to report. The badge says what
-  // is in use, and the note explains what a figure needs, rather than implying a
-  // fallback that does not exist.
-  dom.engine.textContent = "WebGPU";
+  // patinae is WebGPU-only: there is no second backend to report, so the page says
+  // nothing about graphics. A browser without an adapter gets the error overlay.
   state.viewer.setStageTint(stageTint());
   applyMode();
 
@@ -153,7 +151,6 @@ async function loadFromInput(): Promise<void> {
     const result = await loadCompound(identifier);
     state.compound = result.compound;
     state.compoundJson = JSON.stringify(result.compound);
-    state.sources = [];
     // A compound load leaves the protein mode: restore the small-molecule looks and tabs.
     if (state.protein !== null) {
       state.protein = null;
@@ -182,36 +179,24 @@ async function loadFromInput(): Promise<void> {
     if (state.mode === "2d" && result.depiction === null) state.mode = "3d";
 
     renderLooks();
-    renderSummary(result.warnings);
     syncAppearance();
     refreshOutput();
     const seconds = (performance.now() - started) / 1000;
     const loadedName = state.compound?.name ?? identifier;
-    setStatus(`Loaded ${loadedName} in ${seconds.toFixed(2)} s.`);
+    // Warnings went to the summary card that used to sit under the lookup form. The
+    // status line under the figure is the one place left that a user reads.
+    const warnings = result.warnings.length === 0 ? "" : ` ${result.warnings.join(" ")}`;
+    setStatus(`Loaded ${loadedName} in ${seconds.toFixed(2)} s.${warnings}`);
     // The field is no longer the thing to type into; shortcuts should work now.
     dom.identifier.blur();
 
-    // The figure is already on the stage; the other sources fill the summary after.
+    // The figure is on the stage; the other sources only add markup fields after it.
     void enrichCompound(result.compound)
-      .then(({ compound, sources }) => {
+      .then(({ compound }) => {
         if (token !== enrichmentToken || state.protein !== null) return;
         state.compound = compound;
         state.compoundJson = JSON.stringify(compound);
-        state.sources = sources;
-        renderSummary(result.warnings);
         refreshOutput();
-        const added = [
-          compound.atc_prefix === undefined
-            ? undefined
-            : `ATC ${compound.atc_prefix}${compound.atc_suffix ?? ""}`,
-          compound.routes_of_administration === undefined
-            ? undefined
-            : `routes ${compound.routes_of_administration}`,
-        ].filter((entry): entry is string => entry !== undefined);
-        setStatus(
-          `Loaded ${loadedName} in ${seconds.toFixed(2)} s.` +
-            (added.length === 0 ? "" : ` ${added.join(", ")}.`),
-        );
       })
       .catch(() => {
         // Metadata is a bonus; a failed source must not mark the load as failed.
@@ -282,7 +267,6 @@ async function loadProteinInput(id: string): Promise<void> {
     state.protein = { id, atoms, residues: sequence.residues, chains: sequence.chains, seconds };
     state.compound = { name: id, synonyms: [id] };
     state.compoundJson = JSON.stringify(state.compound);
-    state.sources = [];
     state.depictionSource = null;
     state.depiction = null;
     state.mode = "3d";
@@ -291,7 +275,6 @@ async function loadProteinInput(id: string): Promise<void> {
 
     renderLooks();
     syncAppearance();
-    renderProteinSummary();
     applyMode();
     dom.exportButton.disabled = false;
     dom.identifier.blur();
@@ -305,85 +288,6 @@ async function loadProteinInput(id: string): Promise<void> {
     else setStatus(`Could not load ${id}: ${describe(error)}`, true);
   } finally {
     setBusy(false);
-  }
-}
-
-function renderProteinSummary(): void {
-  const protein = state.protein;
-  if (protein === null) return;
-  const rows: [string, string][] = [
-    ["Name", `PDB ${protein.id}`],
-    ["Atoms", String(protein.atoms)],
-    ["Residues", String(protein.residues)],
-    ["Chains", String(protein.chains)],
-    ["Load", `${protein.seconds.toFixed(2)} s`],
-  ];
-  dom.summary.replaceChildren(
-    ...rows.flatMap(([label, value]) => {
-      const term = document.createElement("dt");
-      term.textContent = label;
-      const detail = document.createElement("dd");
-      detail.textContent = value;
-      return [term, detail];
-    }),
-  );
-  dom.summary.hidden = false;
-  for (const old of document.querySelectorAll(".summary-note")) old.remove();
-}
-
-function renderSummary(warnings: string[]): void {
-  const compound = state.compound;
-  if (compound === null) return;
-
-  const atc = `${compound.atc_prefix ?? ""}${compound.atc_suffix ?? ""}`.trim();
-  const label = [compound.dailymed_labeler, compound.dailymed_setid]
-    .filter((part): part is string => part !== undefined && part !== "")
-    .join(", ");
-  const rows: [string, string | undefined][] = [
-    ["Name", compound.name],
-    ["PubChem CID", compound.cid === undefined ? undefined : String(compound.cid)],
-    ["Formula", compound.molecular_formula],
-    ["Mass", compound.molecular_weight === undefined ? undefined : `${compound.molecular_weight} g/mol`],
-    ["SMILES", compound.smiles],
-    // Each of these comes from a source beside PubChem: ATC and the identifiers from
-    // Wikidata, the clinical fields from the Wikipedia infobox, the label from DailyMed.
-    ["ATC", atc === "" ? undefined : atc],
-    ["Routes", compound.routes_of_administration],
-    ["Legal status", compound.legal_status],
-    ["Wikidata", compound.wikidata_qid],
-    ["DrugBank", compound.drugbank_id],
-    ["ChEMBL", compound.chembl_id],
-    ["Label", label === "" ? undefined : label],
-  ];
-
-  dom.summary.replaceChildren(
-    ...rows.flatMap(([labelText, value]) => {
-      if (value === undefined) return [];
-      const term = document.createElement("dt");
-      term.textContent = labelText;
-      const detail = document.createElement("dd");
-      detail.textContent = value;
-      if (labelText === "SMILES" || labelText === "Routes") detail.style.wordBreak = "break-word";
-      return [term, detail];
-    }),
-  );
-  dom.summary.hidden = false;
-
-  // A second lookup replaces the notes too; left in place they would pile up.
-  for (const old of document.querySelectorAll(".summary-note")) old.remove();
-  for (const warning of warnings) {
-    const note = document.createElement("p");
-    note.className = "hint summary-note";
-    note.textContent = warning;
-    dom.summary.after(note);
-  }
-  if (state.sources.length > 0) {
-    const note = document.createElement("p");
-    note.className = "hint summary-note";
-    note.textContent = `Sources: ${state.sources
-      .map((source) => `${source.name} (${source.detail})`)
-      .join(", ")}.`;
-    dom.summary.after(note);
   }
 }
 

@@ -24,18 +24,20 @@ What it offers:
 * **Named looks and controls.** Publication, Flat and Dark finishes, plus light, outline,
   ambient occlusion, depth cue and transparency. The default look is WikiMolGen's preset:
   CPK spheres, grey sticks and a white page.
-* **Figures, not screenshots.** PNG at any width from 400 to 4096 px, with presets at
-  1200, 1600, 2000, 3000 and 4096. The default is 3x supersampling, with 2x and 4x
-  selectable. The background is transparent by default, and an optional colour or gradient
-  is one click away. Atom labels and a scale bar are available.
-* **Metadata beside PubChem.** Wikidata identifiers and ATC codes, Wikipedia clinical
-  fields, and an openFDA drug label.
+* **Figures, not screenshots.** The download sits in the figure toolbar. PNG at any width
+  from 400 to 4096 px, with presets at 1200, 1600, 2000, 3000 and 4096. The default is 3x
+  supersampling, with 2x and 4x selectable. The background is transparent by default, and
+  an optional colour or gradient is one click away. Atom labels and a scale bar are
+  available.
+* **Metadata for the markup.** Wikidata identifiers and ATC codes, Wikipedia clinical
+  fields and an openFDA drug label fill the infobox and chembox fields. The page shows the
+  figure and the markup; it does not repeat the fields in a panel.
 
 The 2D engine is RDKit.js, 7.39 MB, loaded only when the 2D view first opens. Until then
 the page stays at about 624 KB of wasm. The drawing has no background, so the stage tint
 shows through. A Rust V2000 parser is the fallback if the RDKit module cannot load.
 
-![molplate rendering aspirin, with its download bar and the Commons markup below it](docs/screenshot.png)
+![molplate rendering aspirin, with the download in the figure toolbar and the Commons markup below](docs/screenshot.png)
 
 The colour panel: the element palette, the stick ink and the per-element overrides.
 

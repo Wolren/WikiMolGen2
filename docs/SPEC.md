@@ -22,10 +22,10 @@ name / CID / SMILES ──► PubChem ──► 3D SDF ──► patinae ──�
 Everything runs in the browser. Structures are fetched directly from PubChem and RCSB,
 which allow cross-origin requests; nothing is uploaded anywhere.
 
-The page has two columns. The left column holds the instruments: lookup, summary, style,
-colour, appearance and the export settings. The right column is the figure, the download
-bar under it, and the generated markup below that, which is the order WikiMolGen presents
-them in.
+The page has two columns. The left column holds the instruments: lookup, style, colour,
+appearance and the export settings. The right column is the figure with its toolbar and
+status line, then the generated markup, which is the order WikiMolGen presents them in.
+The page displays no compound summary: the metadata feeds the markup instead.
 
 ## In v1
 
@@ -39,8 +39,8 @@ them in.
 | Colour | Styles the 3D figure: colour by element, chain, residue type, residue number, secondary structure, B-factor or a single ink. Seven element palettes: CPK (default), Jmol, RasMol, ChemDraw, VMD, print inks and dark figure. Sticks follow the atoms or take one flat ink. A cartoon takes three secondary-structure inks. Per-element overrides sit on top of the palette. The panel steps aside in the 2D view, which keeps RDKit's inks |
 | Appearance | Stick and sphere size, transparency, ambient, direct, reflect, specular and shininess, ambient occlusion and strength, soft shadows, outline and width, depth cue and fog. Background and gradient are export settings |
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, and keyboard shortcuts |
-| Export | PNG at any width from 400 to 4096 px; a 4 to 9 percent margin; 3x supersampling by default, 2x and 4x selectable; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
-| Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields, and an openFDA drug label |
+| Export | The download button sits in the figure toolbar. PNG at any width from 400 to 4096 px; a 4 to 9 percent margin; 3x supersampling by default, 2x and 4x selectable; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
+| Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields and an openFDA drug label, merged into the infobox and chembox fields. The page does not display them in a panel |
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects, including ATC, routes and legal status |
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
 | Commons | File name, `{{Information}}` plus licence block, pre-filled upload URL; the licence follows the structure kind |

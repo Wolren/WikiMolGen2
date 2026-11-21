@@ -39,7 +39,6 @@
             <option value="dark">Dark</option>
           </select>
         </label>
-        <span class="engine" id="engine" title="Graphics backend"></span>
       </div>
     </header>
 
@@ -60,8 +59,6 @@
           </div>
           <p class="hint">PubChem name, CID or SMILES, or a PDB ID such as 1CRN for a protein cartoon.</p>
         </form>
-
-        <dl id="summary" class="summary" hidden></dl>
 
         <section class="block">
           <h2>Style</h2>
@@ -283,6 +280,7 @@
               <button id="mode-2d" type="button" role="tab" aria-selected="false" aria-controls="depiction" disabled title="First use loads the RDKit 2D engine (7.4 MB)">2D</button>
             </div>
             <span id="stage-note" class="stage-note"></span>
+            <button id="export" type="button" class="primary" disabled>Download PNG</button>
           </div>
           <div id="viewer" class="viewer-host"></div>
           <div id="depiction" class="depiction" hidden></div>
@@ -295,10 +293,7 @@
           </div>
         </section>
 
-        <div class="figure-bar">
-          <button id="export" type="button" class="primary" disabled>Download PNG</button>
-          <p id="export-status" class="hint" role="status"></p>
-        </div>
+        <p id="export-status" class="hint figure-status" role="status"></p>
 
         <aside class="panel output" aria-label="Wikitext">
           <div class="tabs" role="tablist">
