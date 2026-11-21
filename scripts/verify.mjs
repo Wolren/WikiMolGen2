@@ -158,6 +158,20 @@ if (args.scheme === "light" || args.scheme === "dark") {
     session,
   );
 }
+// A fixed viewport checks the narrow layout without depending on the host window size.
+const viewport = /^(\d+)x(\d+)$/.exec(args.viewport ?? "");
+if (viewport !== null) {
+  await send(
+    "Emulation.setDeviceMetricsOverride",
+    {
+      width: Number(viewport[1]),
+      height: Number(viewport[2]),
+      deviceScaleFactor: 1,
+      mobile: false,
+    },
+    session,
+  );
+}
 await send("Page.navigate", { url: baseUrl }, session);
 await waitForLoad(session);
 

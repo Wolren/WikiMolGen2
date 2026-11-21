@@ -259,9 +259,6 @@
           <label class="checkbox"><input id="export-transparent" type="checkbox" checked /> Transparent background</label>
           <label class="checkbox"><input id="export-labels" type="checkbox" /> Atom labels</label>
           <label class="checkbox"><input id="export-scalebar" type="checkbox" /> Scale bar</label>
-
-          <button id="export" type="button" class="primary" disabled>Download PNG</button>
-          <p id="export-status" class="hint" role="status"></p>
         </section>
 
         <details id="shortcuts" class="shortcuts">
@@ -278,49 +275,56 @@
         </details>
       </aside>
 
-      <section class="stage" aria-label="Molecular view">
-        <div class="stage-bar">
-          <div class="segmented" role="tablist" aria-label="View">
-            <button id="mode-3d" type="button" role="tab" aria-selected="true" aria-controls="viewer">3D</button>
-            <button id="mode-2d" type="button" role="tab" aria-selected="false" aria-controls="depiction" disabled title="First use loads the RDKit 2D engine (7.4 MB)">2D</button>
+      <section class="workspace" aria-label="Figure and markup">
+        <section class="stage" aria-label="Molecular view">
+          <div class="stage-bar">
+            <div class="segmented" role="tablist" aria-label="View">
+              <button id="mode-3d" type="button" role="tab" aria-selected="true" aria-controls="viewer">3D</button>
+              <button id="mode-2d" type="button" role="tab" aria-selected="false" aria-controls="depiction" disabled title="First use loads the RDKit 2D engine (7.4 MB)">2D</button>
+            </div>
+            <span id="stage-note" class="stage-note"></span>
           </div>
-          <span id="stage-note" class="stage-note"></span>
-        </div>
-        <div id="viewer" class="viewer-host"></div>
-        <div id="depiction" class="depiction" hidden></div>
-        <div id="stage-message" class="stage-message" role="status" aria-live="polite">
-          <div class="stage-progress">
-            <span class="spinner" aria-hidden="true"></span>
-            <p id="stage-text">Loading renderer…</p>
-            <span class="progress-track" aria-hidden="true"><span></span></span>
+          <div id="viewer" class="viewer-host"></div>
+          <div id="depiction" class="depiction" hidden></div>
+          <div id="stage-message" class="stage-message" role="status" aria-live="polite">
+            <div class="stage-progress">
+              <span class="spinner" aria-hidden="true"></span>
+              <p id="stage-text">Loading renderer…</p>
+              <span class="progress-track" aria-hidden="true"><span></span></span>
+            </div>
           </div>
+        </section>
+
+        <div class="figure-bar">
+          <button id="export" type="button" class="primary" disabled>Download PNG</button>
+          <p id="export-status" class="hint" role="status"></p>
         </div>
+
+        <aside class="panel output" aria-label="Wikitext">
+          <div class="tabs" role="tablist">
+            <button role="tab" id="tab-drugbox" aria-selected="true" aria-controls="wikitext">
+              Infobox drug
+            </button>
+            <button role="tab" id="tab-chembox" aria-selected="false" aria-controls="wikitext">
+              Chembox
+            </button>
+            <button role="tab" id="tab-commons" aria-selected="false" aria-controls="wikitext">
+              Commons
+            </button>
+          </div>
+
+          <div class="output-header">
+            <code id="file-name" class="file-name">—</code>
+            <button id="copy" type="button" class="secondary">Copy</button>
+          </div>
+
+          <pre id="wikitext" class="wikitext" tabindex="0">Load a compound to generate markup.</pre>
+
+          <a id="upload" class="upload-link" href="#" target="_blank" rel="noreferrer" hidden>
+            Open the Commons upload form with this description
+          </a>
+        </aside>
       </section>
-
-      <aside class="panel output" aria-label="Wikitext">
-        <div class="tabs" role="tablist">
-          <button role="tab" id="tab-drugbox" aria-selected="true" aria-controls="wikitext">
-            Infobox drug
-          </button>
-          <button role="tab" id="tab-chembox" aria-selected="false" aria-controls="wikitext">
-            Chembox
-          </button>
-          <button role="tab" id="tab-commons" aria-selected="false" aria-controls="wikitext">
-            Commons
-          </button>
-        </div>
-
-        <div class="output-header">
-          <code id="file-name" class="file-name">—</code>
-          <button id="copy" type="button" class="secondary">Copy</button>
-        </div>
-
-        <pre id="wikitext" class="wikitext" tabindex="0">Load a compound to generate markup.</pre>
-
-        <a id="upload" class="upload-link" href="#" target="_blank" rel="noreferrer" hidden>
-          Open the Commons upload form with this description
-        </a>
-      </aside>
     </main>
   </body>
 </html>

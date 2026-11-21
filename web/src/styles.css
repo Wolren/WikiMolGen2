@@ -1,6 +1,7 @@
-/* The page is a three-column instrument: controls, the molecule, the text it produces.
-   One rhythm of spacing and one accent colour bind the three columns into one surface.
-   Three themes share every rule: Light, Paper and Dark. System follows the OS. */
+/* The page is two columns: the instruments on the left, and on the right the figure with
+   its download and, below it, the markup that figure produces. One rhythm of spacing and
+   one accent colour bind the columns into one surface. Three themes share every rule:
+   Light, Paper and Dark. System follows the OS. */
 
 :root {
   --ink: #15181d;
@@ -201,9 +202,54 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(272px, 320px) minmax(0, 1fr) minmax(340px, 440px);
+  grid-template-columns: minmax(272px, 320px) minmax(0, 1fr);
   gap: var(--gap);
   padding: var(--gap);
+}
+
+/* The main column: the figure, its download, then the markup it produces. */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The figure keeps most of the column; the markup panel stays readable below it.
+   Both keep a height rather than sharing the leftover space, so the molecule is drawn
+   large and the column scrolls when the pair is taller than the viewport. */
+.workspace .stage {
+  flex: none;
+  height: min(54vh, 500px);
+  min-height: 300px;
+}
+
+.workspace .output {
+  flex: none;
+  height: min(38vh, 340px);
+  min-height: 260px;
+  overflow: hidden;
+}
+
+/* Download sits under the figure, with the state of the last action beside it. */
+.figure-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+}
+
+.figure-bar #export {
+  flex: none;
+  min-width: 150px;
+}
+
+.figure-bar .hint {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
 }
 
 .panel {

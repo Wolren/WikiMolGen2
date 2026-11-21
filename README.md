@@ -35,7 +35,7 @@ The 2D engine is RDKit.js, 7.39 MB, loaded only when the 2D view first opens. Un
 the page stays at about 624 KB of wasm. The drawing has no background, so the stage tint
 shows through. A Rust V2000 parser is the fallback if the RDKit module cannot load.
 
-![molplate rendering aspirin, with the Commons markup beside it](docs/screenshot.png)
+![molplate rendering aspirin, with its download bar and the Commons markup below it](docs/screenshot.png)
 
 The colour panel: the element palette, the stick ink and the per-element overrides.
 

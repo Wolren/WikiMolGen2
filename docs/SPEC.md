@@ -22,6 +22,11 @@ name / CID / SMILES ──► PubChem ──► 3D SDF ──► patinae ──�
 Everything runs in the browser. Structures are fetched directly from PubChem and RCSB,
 which allow cross-origin requests; nothing is uploaded anywhere.
 
+The page has two columns. The left column holds the instruments: lookup, summary, style,
+colour, appearance and the export settings. The right column is the figure, the download
+bar under it, and the generated markup below that, which is the order WikiMolGen presents
+them in.
+
 ## In v1
 
 | Capability | Detail |
