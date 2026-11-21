@@ -1,6 +1,6 @@
 # patinae: problems and gaps
 
-What molplate hit while it built a molecule figure tool on patinae, the Rust molecular
+What WikiMolGen 2 hit while it built a molecule figure tool on patinae, the Rust molecular
 renderer behind the WebGPU viewer. The aim is a list we can turn into a feature request.
 
 | | |
@@ -8,7 +8,7 @@ renderer behind the WebGPU viewer. The aim is a list we can turn into a feature 
 | patinae version | 0.5.4 (`web/package.json` in the upstream repo) |
 | Commit under test | `a52a315618bb1476fb250c2f4e1f26d5a759ab6c` |
 | Build | `wasm-pack build --no-opt`, one local patch (live canvas supersampling) |
-| How molplate drives it | command strings through `PatinaeViewer.execute` and `loadData` |
+| How WikiMolGen 2 drives it | command strings through `PatinaeViewer.execute` and `loadData` |
 | Date | 2026-11-21 |
 
 Evidence is marked **measured** (seen in this project, with the command or run) or
@@ -34,7 +34,7 @@ command queue stays usable. Plus `abort()` for a warm-up or a long compile.
 ### 1.2 Shader compilation has no progress event and no precompile
 
 **measured.** The first cartoon frame costs 3.1 to 3.5 s while pipelines compile
-(`docs/UPGRADE-REPORT.md`). patinae reports nothing during the compile. molplate hides the
+(`docs/UPGRADE-REPORT.md`). patinae reports nothing during the compile. WikiMolGen 2 hides the
 cost by rendering a six-residue probe at startup, which is a hidden load with a fake user
 operation behind it.
 
@@ -61,7 +61,7 @@ it.
 ### 1.4 An empty selection is reported as an error
 
 **measured.** `color ss_helix, all` on a small molecule prints `Color: 0 atoms colored
-ss_helix` at error level for every molecule with no helix. molplate counts the atoms first
+ss_helix` at error level for every molecule with no helix. WikiMolGen 2 counts the atoms first
 and sends a command only for a non-empty selection, which is one round trip per secondary
 structure type.
 
@@ -70,7 +70,7 @@ level that a UI can ignore.
 
 ### 1.5 No colour read-back
 
-**source and measured.** There is no `get_color` in the wasm exports. molplate keeps its own
+**source and measured.** There is no `get_color` in the wasm exports. WikiMolGen 2 keeps its own
 copy of every ink, resolves the element scheme in JavaScript and resends it after each
 load. Any external change to a colour makes the page's state wrong.
 
@@ -96,7 +96,7 @@ canvas can only take one colour (`background`), so the stage cannot preview the 
 
 **source.** `web/public/vendor/patinae/PROVENANCE.md`: every pipeline is `sample_count: 1`,
 antialiasing is FXAA only, `antialias` merely gates FXAA (2 and 4 render identically), and
-`antialias_shader` and `offscreen_rendering_multiplier` are declared but unused. molplate
+`antialias_shader` and `offscreen_rendering_multiplier` are declared but unused. WikiMolGen 2
 patches `renderScale` to supersample the canvas 2x, which raised a silhouette edge ramp
 from 0.23 px to 0.62 px.
 
@@ -127,7 +127,7 @@ tell "unknown setting" from "bad value" or "no such object" without parsing Engl
 
 ### 1.12 The web API has no type definitions
 
-**source.** molplate declares its own `PatinaeViewer` type and learns command names from
+**source.** WikiMolGen 2 declares its own `PatinaeViewer` type and learns command names from
 the Rust source. The published facade has no `.d.ts` and no command catalog.
 
 **Request.** A generated `patinae.d.ts` and a JSON list of commands with argument types, so
@@ -136,7 +136,7 @@ an editor can check a call before a figure is rendered.
 ### 1.13 Ray tracing is not in the wasm build
 
 **source.** `plugins/raytracer` is a native cdylib and is not built for wasm
-(`PROVENANCE.md`). molplate therefore cannot offer ray-traced figures, which wikimolgen
+(`PROVENANCE.md`). WikiMolGen 2 therefore cannot offer ray-traced figures, which wikimolgen
 gets from PyMOL.
 
 **Request.** Either a wasm ray tracer (long term), or a documented scope statement with a
@@ -164,12 +164,12 @@ selections, each guarded against an empty selection (see 1.4).
 | Background gradient | absent | opaque surface, 1.7 |
 | MSAA levels | absent | FXAA only, 1.8 |
 
-Everything else in wikimolgen's 3D panel has a patinae setting and is now in molplate's
+Everything else in wikimolgen's 3D panel has a patinae setting and is now in WikiMolGen 2's
 Appearance panel: stick radius, sphere size, valence, the five light values, three
 transparencies, transparency mode, ambient occlusion with strength and radius, soft shadows
 with strength, outline, depth cue with fog and fog start, antialias, projection.
 
-## 3. Capability that exists but molplate does not expose
+## 3. Capability that exists but WikiMolGen 2 does not expose
 
 These are opportunities, not defects. Each has a setting group and a working command.
 

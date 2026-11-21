@@ -17,7 +17,7 @@ import init, {
   drugbox,
   looksJson,
   proteinLooksJson,
-} from "../pkg/molplate_wasm.js";
+} from "../pkg/wikimolgen2_wasm.js";
 import {
   appliedLook,
   bindAppearance,
@@ -52,7 +52,7 @@ import { bindTheme, stageTint } from "./theme.js";
 import "./styles.css";
 import "./stage.css";
 
-const AUTHOR = "molplate";
+const AUTHOR = "WikiMolGen 2";
 
 /** A later lookup cancels the metadata update of an earlier one. */
 let enrichmentToken = 0;
@@ -71,7 +71,7 @@ function rememberQuery(identifier: string): void {
 // A development-only handle: the end-to-end harness reads state from it. The production
 // build tree-shakes this branch because `import.meta.env.DEV` is false there.
 if (import.meta.env.DEV) {
-  (window as unknown as { __molplate?: unknown }).__molplate = {
+  (window as unknown as { __wikimolgen2?: unknown }).__wikimolgen2 = {
     state,
     count: (selection: string) => state.viewer?.count(selection) ?? -1,
     camera: () => state.viewer?.cameraView() ?? null,

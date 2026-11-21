@@ -8,7 +8,7 @@
 export type ThemeChoice = "system" | "light" | "paper" | "dark";
 export type ThemeName = "light" | "paper" | "dark";
 
-const STORAGE_KEY = "molplate.theme";
+const STORAGE_KEY = "wikimolgen2.theme";
 const CHOICES: ThemeChoice[] = ["system", "light", "paper", "dark"];
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
 

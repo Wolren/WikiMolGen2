@@ -1,4 +1,4 @@
-# New session prompt: visual and capability upgrade for molplate
+# New session prompt: visual and capability upgrade for WikiMolGen 2
 
 Paste this whole file into a fresh session. It is self-contained.
 
@@ -6,20 +6,20 @@ Paste this whole file into a fresh session. It is self-contained.
 
 ## Mission
 
-Make molplate's output and its 3D view substantially better than today. Work on visual
+Make WikiMolGen 2's output and its 3D view substantially better than today. Work on visual
 quality, graphics controls and capability. Do not replace the renderer. Improve what the app
 does with the renderer it has.
 
 Use `D:\Projects\python\WikiMolGen` as the capability reference. That Python tool is the
 mature sibling of this web app: it produces 2D SVG, ray-traced 3D PNG and protein cartoons
-for Wikipedia. Molplate is the browser counterpart and currently lacks most of that surface.
+for Wikipedia. WikiMolGen 2 is the browser counterpart and currently lacks most of that surface.
 
 Deliver working code, commits on a local branch, and a report with before and after proof.
 
 ## What exists today
 
-- App: `D:\Projects\web\molplate`, branch `patinae-rewrite`, clean, HEAD `7a61796`.
-- Stack: Vite 8, TypeScript, Rust wasm crates `molplate_core` and `molplate_wasm`.
+- App: `D:\Projects\web\WikiMolGen 2`, branch `patinae-rewrite`, clean, HEAD `7a61796`.
+- Stack: Vite 8, TypeScript, Rust wasm crates `wikimolgen2_core` and `wikimolgen2_wasm`.
 - Renderer: patinae, vendored at `web/public/vendor/patinae` (4.2 MB wasm). It owns the
   canvas, the camera and the PNG export.
 - Export path: `exportPng` at 2x, then `resizePng` (Rust, premultiplied, Triangle filter),
@@ -32,7 +32,7 @@ Deliver working code, commits on a local branch, and a report with before and af
 - Dual build: `pwsh -File scripts/build-dual.ps1` builds patinae at `/` and the old
   molar_vis renderer at `/classic/`, served on port 5182. Use it to compare looks.
 - Harnesses: `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu
-  hardware --out <png>` and `cargo test -p molplate_core`.
+  hardware --out <png>` and `cargo test -p wikimolgen2_core`.
 
 ## Reference: what WikiMolGen already does
 
@@ -49,7 +49,7 @@ Read these files before designing anything.
 
 ## Current gaps to close
 
-Molplate today offers ball-and-stick, space-filling, licorice and stick presets, element
+WikiMolGen 2 today offers ball-and-stick, space-filling, licorice and stick presets, element
 colours, a transparent background toggle, zoom buttons, PubChem loading, and wikitext
 generation. It has no 2D depiction, no protein view, no named style templates, no
 highlighting, no labels or annotations, no figure composition controls, and a thin source
@@ -126,7 +126,7 @@ export.
 ```
 pwsh -File scripts/build-dual.ps1 -NoServe
 node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware --out D:\Scratch\dsh\verify.png
-cargo test -p molplate_core
+cargo test -p wikimolgen2_core
 cd web; npm run build
 ```
 

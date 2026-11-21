@@ -74,7 +74,7 @@ integration tests and the core suite.
 
 ## B. 3D quality controls
 
-`molplate_core::style::Appearance` now carries the knobs that patinae already exposes:
+`wikimolgen2_core::style::Appearance` now carries the knobs that patinae already exposes:
 
 | Group | Controls |
 | --- | --- |
@@ -125,7 +125,7 @@ user waits once at startup, not on each protein.
 
 ## D. Figure composition
 
-`molplate_core::figure` composes the figure. The input is the raw supersampled render,
+`wikimolgen2_core::figure` composes the figure. The input is the raw supersampled render,
 which is 3x by default. The steps are:
 
 1. Trim the uniform background.
@@ -253,7 +253,7 @@ SwiftShader, which removes the hardware adapter this renderer needs.
 
 | Check | Result |
 | --- | --- |
-| `cargo test -p molplate_core` | 37 unit tests pass |
+| `cargo test -p wikimolgen2_core` | 37 unit tests pass |
 | Depiction integration tests | 6 tests pass |
 | `cd web; npm run build` | TypeScript clean, Vite build OK |
 | `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware` | OK, 2D SVG 8716 chars, export 1200x1045 at 6 percent |

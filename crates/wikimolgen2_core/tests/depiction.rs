@@ -1,6 +1,6 @@
 //! Acceptance for the 2D depiction: a real PubChem record, drawn as SVG.
 
-use molplate_core::depict::{depiction_svg, DepictionError, DepictionOptions};
+use wikimolgen2_core::depict::{depiction_svg, DepictionError, DepictionOptions};
 
 const ASPIRIN: &str = include_str!("data/aspirin-2d.sdf");
 

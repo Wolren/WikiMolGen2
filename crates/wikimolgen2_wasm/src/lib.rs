@@ -1,10 +1,10 @@
-//! Browser bindings for molplate.
+//! Browser bindings for WikiMolGen 2.
 //!
 //! Two jobs, both only meaningful on `wasm32`, and neither of them renders:
 //!
 //! 1. **Turn a renderer's PNG into a figure.** The viewer publishes whatever it drew at
 //!    the surface size; a figure is that content, cropped to the molecule and given an
-//!    even margin. The pixel work stays in [`molplate_core::image_ops`] so it is the same
+//!    even margin. The pixel work stays in [`wikimolgen2_core::image_ops`] so it is the same
 //!    code the unit tests cover.
 //! 2. **Generate Wikipedia markup.** Presets and templates are Rust so the page cannot
 //!    drift from them.
@@ -43,24 +43,24 @@ pub fn frame_figure(
     blue: u8,
     alpha: u8,
 ) -> Result<Vec<u8>, JsError> {
-    let image = molplate_core::image_ops::decode_png(&png)
+    let image = wikimolgen2_core::image_ops::decode_png(&png)
         .map_err(|error| JsError::new(&error.to_string()))?;
-    let figure = molplate_core::image_ops::frame_figure_with(&image, margin, [red, green, blue, alpha]);
-    molplate_core::image_ops::encode_png(&figure).map_err(|error| JsError::new(&error.to_string()))
+    let figure = wikimolgen2_core::image_ops::frame_figure_with(&image, margin, [red, green, blue, alpha]);
+    wikimolgen2_core::image_ops::encode_png(&figure).map_err(|error| JsError::new(&error.to_string()))
 }
 
 /// Compose a figure at an exact width, with a margin, an optional gradient and a scale bar.
 ///
-/// `spec_json` is `molplate_core::figure::FigureSpec`. The input is the raw render; the
+/// `spec_json` is `wikimolgen2_core::figure::FigureSpec`. The input is the raw render; the
 /// output is the cropped, scaled and padded figure. Returns PNG bytes.
 #[wasm_bindgen(js_name = composeFigure)]
 pub fn compose_figure(png: Vec<u8>, spec_json: String) -> Result<Vec<u8>, JsError> {
-    let spec: molplate_core::FigureSpec = serde_json::from_str(&spec_json)
+    let spec: wikimolgen2_core::FigureSpec = serde_json::from_str(&spec_json)
         .map_err(|error| JsError::new(&format!("bad figure spec: {error}")))?;
-    let image = molplate_core::image_ops::decode_png(&png)
+    let image = wikimolgen2_core::image_ops::decode_png(&png)
         .map_err(|error| JsError::new(&error.to_string()))?;
-    let figure = molplate_core::compose_figure(&image, &spec);
-    molplate_core::image_ops::encode_png(&figure).map_err(|error| JsError::new(&error.to_string()))
+    let figure = wikimolgen2_core::compose_figure(&image, &spec);
+    wikimolgen2_core::image_ops::encode_png(&figure).map_err(|error| JsError::new(&error.to_string()))
 }
 
 /// Scale a PNG to the given size with a good filter.
@@ -69,10 +69,10 @@ pub fn compose_figure(png: Vec<u8>, spec_json: String) -> Result<Vec<u8>, JsErro
 /// is roughly one hard pixel. Rendering at 2× and scaling down here is what smooths it.
 #[wasm_bindgen(js_name = resizePng)]
 pub fn resize_png(png: Vec<u8>, width: u32, height: u32) -> Result<Vec<u8>, JsError> {
-    let image = molplate_core::image_ops::decode_png(&png)
+    let image = wikimolgen2_core::image_ops::decode_png(&png)
         .map_err(|error| JsError::new(&error.to_string()))?;
-    let scaled = molplate_core::image_ops::resize(&image, width, height);
-    molplate_core::image_ops::encode_png(&scaled).map_err(|error| JsError::new(&error.to_string()))
+    let scaled = wikimolgen2_core::image_ops::resize(&image, width, height);
+    wikimolgen2_core::image_ops::encode_png(&scaled).map_err(|error| JsError::new(&error.to_string()))
 }
 
 // --- Presets and Wikipedia markup ---------------------------------------------------
@@ -83,14 +83,14 @@ pub fn resize_png(png: Vec<u8>, width: u32, height: u32) -> Result<Vec<u8>, JsEr
 /// The built-in looks as JSON, for the UI's style picker.
 #[wasm_bindgen(js_name = looksJson)]
 pub fn looks_json() -> Result<String, JsError> {
-    let looks = molplate_core::Look::small_molecule_looks();
+    let looks = wikimolgen2_core::Look::small_molecule_looks();
     serde_json::to_string(&looks).map_err(|error| JsError::new(&error.to_string()))
 }
 
 /// The looks offered for a protein, as JSON. Cartoons colour by secondary structure.
 #[wasm_bindgen(js_name = proteinLooksJson)]
 pub fn protein_looks_json() -> Result<String, JsError> {
-    let looks = molplate_core::Look::protein_looks();
+    let looks = wikimolgen2_core::Look::protein_looks();
     serde_json::to_string(&looks).map_err(|error| JsError::new(&error.to_string()))
 }
 
@@ -109,10 +109,10 @@ pub fn depict_svg(
 ) -> Result<String, JsError> {
     let text = String::from_utf8(sdf)
         .map_err(|error| JsError::new(&format!("the 2D record is not UTF-8: {error}")))?;
-    molplate_core::depiction_svg(
+    wikimolgen2_core::depiction_svg(
         &text,
         &name,
-        molplate_core::DepictionOptions { width, margin, labels, monochrome },
+        wikimolgen2_core::DepictionOptions { width, margin, labels, monochrome },
     )
     .map_err(|error| JsError::new(&error.to_string()))
 }
@@ -120,7 +120,7 @@ pub fn depict_svg(
 /// The default colour of an element, `#rrggbb`, for a UI swatch.
 #[wasm_bindgen(js_name = elementColor)]
 pub fn element_color(symbol: String) -> String {
-    molplate_core::depict::element_color(&symbol).to_string()
+    wikimolgen2_core::depict::element_color(&symbol).to_string()
 }
 
 /// The colour schemes as JSON, in the order the colour panel lists them.
@@ -129,7 +129,7 @@ pub fn element_color(symbol: String) -> String {
 /// the stick ink the scheme expects (`null` for sticks that follow the atoms).
 #[wasm_bindgen(js_name = colorSchemesJson)]
 pub fn color_schemes_json() -> Result<String, JsError> {
-    let schemes = molplate_core::palette::scheme_infos();
+    let schemes = wikimolgen2_core::palette::scheme_infos();
     serde_json::to_string(&schemes).map_err(|error| JsError::new(&error.to_string()))
 }
 
@@ -139,7 +139,7 @@ pub fn color_schemes_json() -> Result<String, JsError> {
 /// An unknown scheme id resolves as the default scheme.
 #[wasm_bindgen(js_name = schemeColor)]
 pub fn scheme_color(scheme: String, symbol: String) -> String {
-    molplate_core::palette::color(&scheme, &symbol).to_string()
+    wikimolgen2_core::palette::color(&scheme, &symbol).to_string()
 }
 
 /// The licence a new upload should offer for a structure kind.
@@ -147,36 +147,36 @@ pub fn scheme_color(scheme: String, symbol: String) -> String {
 /// The rule lives in Rust so the Commons block and the upload URL cannot disagree.
 #[wasm_bindgen(js_name = defaultLicense)]
 pub fn default_license(kind: String) -> Result<String, JsError> {
-    let kind: molplate_core::StructureKind = serde_json::from_str(&format!("\"{kind}\""))
+    let kind: wikimolgen2_core::StructureKind = serde_json::from_str(&format!("\"{kind}\""))
         .map_err(|error| JsError::new(&format!("unknown structure kind {kind:?}: {error}")))?;
-    let license = molplate_core::License::default_for(kind);
+    let license = wikimolgen2_core::License::default_for(kind);
     Ok(license.id().to_string())
 }
 
 /// `{{Infobox drug}}` for a compound (JSON) and an image file name.
 #[wasm_bindgen(js_name = drugbox)]
 pub fn drugbox_json(compound_json: String, image: String) -> Result<String, JsError> {
-    let compound: molplate_core::Compound =
+    let compound: wikimolgen2_core::Compound =
         serde_json::from_str(&compound_json).map_err(|error| JsError::new(&error.to_string()))?;
-    Ok(molplate_core::drugbox(&compound, &image))
+    Ok(wikimolgen2_core::drugbox(&compound, &image))
 }
 
 /// `{{Chembox}}` for a compound (JSON) and an image file name.
 #[wasm_bindgen(js_name = chembox)]
 pub fn chembox_json(compound_json: String, image: String) -> Result<String, JsError> {
-    let compound: molplate_core::Compound =
+    let compound: wikimolgen2_core::Compound =
         serde_json::from_str(&compound_json).map_err(|error| JsError::new(&error.to_string()))?;
-    Ok(molplate_core::chembox(&compound, &image))
+    Ok(wikimolgen2_core::chembox(&compound, &image))
 }
 
 /// The Commons file name for a compound and a kind (`"two_d"`, `"three_d"`, `"protein"`).
 #[wasm_bindgen(js_name = commonsFileName)]
 pub fn commons_file_name_json(compound_json: String, kind: String) -> Result<String, JsError> {
-    let compound: molplate_core::Compound =
+    let compound: wikimolgen2_core::Compound =
         serde_json::from_str(&compound_json).map_err(|error| JsError::new(&error.to_string()))?;
     let kind = serde_json::from_str(&format!("\"{kind}\""))
         .map_err(|error| JsError::new(&format!("unknown structure kind {kind:?}: {error}")))?;
-    Ok(molplate_core::commons_file_name(&compound, kind))
+    Ok(wikimolgen2_core::commons_file_name(&compound, kind))
 }
 
 /// The Commons `{{Information}}` block.
@@ -188,13 +188,13 @@ pub fn commons_information_json(
     license: String,
     iso_date: String,
 ) -> Result<String, JsError> {
-    let compound: molplate_core::Compound =
+    let compound: wikimolgen2_core::Compound =
         serde_json::from_str(&compound_json).map_err(|error| JsError::new(&error.to_string()))?;
     let kind = serde_json::from_str(&format!("\"{kind}\""))
         .map_err(|error| JsError::new(&format!("unknown structure kind {kind:?}: {error}")))?;
     let license = serde_json::from_str(&format!("\"{license}\""))
         .map_err(|error| JsError::new(&format!("unknown license {license:?}: {error}")))?;
-    Ok(molplate_core::commons_information(
+    Ok(wikimolgen2_core::commons_information(
         &compound, kind, &author, license, &iso_date,
     ))
 }
@@ -204,5 +204,5 @@ pub fn commons_information_json(
 pub fn commons_upload_url_json(file_name: String, description: String, license: String) -> Result<String, JsError> {
     let license = serde_json::from_str(&format!("\"{license}\""))
         .map_err(|error| JsError::new(&format!("unknown license {license:?}: {error}")))?;
-    Ok(molplate_core::commons_upload_url(&file_name, &description, license))
+    Ok(wikimolgen2_core::commons_upload_url(&file_name, &description, license))
 }

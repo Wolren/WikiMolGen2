@@ -1,12 +1,12 @@
 [workspace]
-members = ["crates/molplate_core", "crates/molplate_wasm"]
+members = ["crates/wikimolgen2_core", "crates/wikimolgen2_wasm"]
 resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/Wolren/molplate"
+repository = "https://github.com/Wolren/wikimolgen2"
 
 [workspace.dependencies]
 serde = { version = "1.0.229", features = ["derive"] }

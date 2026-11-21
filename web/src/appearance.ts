@@ -7,7 +7,7 @@
  * keeps a slider drag to one message per frame.
  */
 
-import { schemeColor } from "../pkg/molplate_wasm.js";
+import { schemeColor } from "../pkg/wikimolgen2_wasm.js";
 import {
   dom,
   setStatus,

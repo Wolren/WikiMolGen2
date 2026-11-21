@@ -1,4 +1,4 @@
-# molplate
+# WikiMolGen 2
 
 Molecule figures for Wikipedia, rendered in the browser.
 
@@ -40,7 +40,7 @@ The 2D engine is RDKit.js, 7.39 MB, loaded only when the 2D view first opens. Un
 the page stays at about 624 KB of wasm. The drawing has no background, so the stage tint
 shows through. A Rust V2000 parser is the fallback if the RDKit module cannot load.
 
-![molplate rendering aspirin, with the download in the figure toolbar and the Commons markup below](docs/screenshot.png)
+![WikiMolGen 2 rendering aspirin, with the download in the figure toolbar and the Commons markup below](docs/screenshot.png)
 
 The drug infobox, the chembox and the Commons upload text sit together below the figure,
 each with its own copy button:
@@ -76,9 +76,9 @@ Requirements: a Rust toolchain with the `wasm32-unknown-unknown` target,
 
 ```powershell
 # 1. The Rust half: figure post-processing and markup (release build)
-cargo build --target wasm32-unknown-unknown --release -p molplate_wasm
+cargo build --target wasm32-unknown-unknown --release -p wikimolgen2_wasm
 wasm-bindgen --target web --out-dir web/pkg `
-  target/wasm32-unknown-unknown/release/molplate_wasm.wasm
+  target/wasm32-unknown-unknown/release/wikimolgen2_wasm.wasm
 
 # 2. The page
 cd web
@@ -92,7 +92,7 @@ On this workstation the toolchain lives outside the user profile; source
 Tests for everything that can be tested without a browser:
 
 ```powershell
-cargo test -p molplate_core
+cargo test -p wikimolgen2_core
 ```
 
 End-to-end check in a real browser: it serves `web/dist`, loads a compound through the
@@ -104,10 +104,10 @@ node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardwar
 
 ## How it is put together
 
-* `crates/molplate_core`, the 2D depiction, the figure composition, the presets, the
+* `crates/wikimolgen2_core`, the 2D depiction, the figure composition, the presets, the
   element palettes and the wikitext generators. No browser, no GPU, so it is unit-tested
   natively.
-* `crates/molplate_wasm`, the Rust that has to run in the browser: writes the SVG,
+* `crates/wikimolgen2_wasm`, the Rust that has to run in the browser: writes the SVG,
   composes a rendered PNG into a figure, and generates the markup. It does not render.
 * `web/src/`, Vite + TypeScript: lookups, metadata, controls, downloads, and the adapter
   that drives the renderer (`renderer.ts`).

@@ -1,6 +1,6 @@
 [package]
-name = "molplate_core"
-description = "Chemistry, styling and export logic for the molplate browser app"
+name = "wikimolgen2_core"
+description = "Chemistry, styling and export logic for the WikiMolGen 2 browser app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

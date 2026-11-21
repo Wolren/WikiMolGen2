@@ -1,4 +1,4 @@
-# molplate, scope and contracts
+# WikiMolGen 2, scope and contracts
 
 What the app does, what it deliberately does not do yet, and the contracts between its
 parts. Architecture rationale lives in [ADR-0001](ADR-0001-architecture.md), and the
@@ -81,7 +81,7 @@ reach; a load then scrolls the figure into view.
 
 ### `Compound` (TypeScript → Rust)
 
-`web/src/pubchem.ts` produces it, `molplate_core::wikitext::Compound` consumes it. All
+`web/src/pubchem.ts` produces it, `wikimolgen2_core::wikitext::Compound` consumes it. All
 fields are optional; missing fields are omitted from the markup rather than rendered empty.
 Field names are `snake_case` on both sides because serde maps them directly. Metadata from
 Wikidata, Wikipedia and openFDA is merged after the figure renders, and PubChem wins where
@@ -91,7 +91,7 @@ both sources know a field.
 
 `looksJson()` and `proteinLooksJson()` return the preset lists; the page renders them and
 hands a chosen preset to `Renderer.applyLook(look)` unchanged. The object is
-`molplate_core::style::Look`, the same type in both directions, so a renamed field breaks
+`wikimolgen2_core::style::Look`, the same type in both directions, so a renamed field breaks
 one test rather than two implementations. `Look.appearance` carries the light, finish,
 background and the colour inks. The adapter, not the core, knows how a style becomes
 renderer commands.
@@ -119,9 +119,9 @@ paints one ink and is the black-and-white figure.
 `colorSchemesJson()` returns the picker entries: `id`, `label`, `description` and the stick
 ink the scheme expects. `schemeColor(scheme, symbol)` returns one element's `#rrggbb`.
 
-The tables live in `crates/molplate_core/src/palette.rs`: the CPK table (120 rows, 118
+The tables live in `crates/wikimolgen2_core/src/palette.rs`: the CPK table (120 rows, 118
 elements plus the D and T aliases) plus the handful of overrides that define each viewer's
-palette. CPK is the default, so a molplate figure matches a WikiMolGen render.
+palette. CPK is the default, so a WikiMolGen 2 figure matches a WikiMolGen render.
 
 The page resolves the palette for the elements the structure has and sends the result as
 `element_colors`, which keeps the command count to the molecule rather than the periodic
@@ -130,7 +130,7 @@ inks at all, because the mode command has already painted the atoms.
 
 ### Figure spec (TypeScript → Rust)
 
-`composeFigure(png, spec_json)` reads `molplate_core::figure::FigureSpec`:
+`composeFigure(png, spec_json)` reads `wikimolgen2_core::figure::FigureSpec`:
 
 ```json
 {
@@ -167,8 +167,8 @@ labelled; `labels` adds the carbons.
 ## Repository map
 
 ```
-crates/molplate_core/   depiction, presets, palettes, figure composition, image ops, wikitext
-crates/molplate_wasm/   SVG, figure and JSON exports  (no renderer)
+crates/wikimolgen2_core/   depiction, presets, palettes, figure composition, image ops, wikitext
+crates/wikimolgen2_wasm/   SVG, figure and JSON exports  (no renderer)
 web/src/main.ts         page controller: lookup, modes, markup
 web/src/context.ts      shared state, DOM handles, status helpers
 web/src/appearance.ts   the colour and appearance panels
@@ -190,8 +190,8 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 
 ## Acceptance
 
-* `cargo test -p molplate_core` passes natively (57 tests at the time of writing).
-* `cargo build --target wasm32-unknown-unknown -p molplate_wasm` produces the module.
+* `cargo test -p wikimolgen2_core` passes natively (57 tests at the time of writing).
+* `cargo build --target wasm32-unknown-unknown -p wikimolgen2_wasm` produces the module.
 * The page loads, accepts `aspirin`, shows a molecule, and all three outputs produce markup
   that parses as balanced templates.
 * Export at 1600 px writes a 1600 px wide PNG with 6 percent margins and no clipped atoms.

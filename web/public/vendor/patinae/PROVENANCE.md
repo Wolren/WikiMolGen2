@@ -20,7 +20,7 @@ upstream as built. See [Local patch](#local-patch-live-supersampling) below.
 **What.** A `renderScale` option that multiplies the canvas backing store on top of
 `window.devicePixelRatio`, in `web/ts/src/core/viewer.ts`: one line in `syncCanvasSize`,
 plus the option plumbed through `api.ts` -> `ViewerCore` and documented in `types.ts`.
-molplate passes `2`, so the canvas is drawn at twice its CSS size and the browser
+WikiMolGen 2 passes `2`, so the canvas is drawn at twice its CSS size and the browser
 downsamples it at present.
 
 **Why.** The web build has no MSAA, every pipeline is `sample_count: 1`, and antialiases
@@ -28,7 +28,7 @@ with FXAA only: `antialias` merely gates FXAA (2 and 4 render identically), and
 `antialias_shader` / `offscreen_rendering_multiplier` are declared but unused. Measured on
 the live canvas, a silhouette had a 0.23 px edge ramp with visible stair-steps. With the
 canvas supersampled: **0.62 px**, steps gone. Exports are unaffected, they supersample
-again in Rust (`molplate_core::image_ops::resize`).
+again in Rust (`wikimolgen2_core::image_ops::resize`).
 
 **What is deliberately not touched.** Pointer input. `devicePixelRatio` stays the value the
 wasm sees through `configure_interaction` and every `offsetX * dpr` conversion, so panning

@@ -1,7 +1,7 @@
 //! Element colour schemes: the named palettes the colour panel offers.
 //!
-//! The six viewer palettes are WikiMolGen's, so a molplate figure can match a wikimolgen
-//! render; `print` and `dark` are molplate's own inks for a white page and a dark figure.
+//! The six viewer palettes are WikiMolGen's, so a WikiMolGen 2 figure can match a wikimolgen
+//! render; `print` and `dark` are WikiMolGen 2's own inks for a white page and a dark figure.
 //!
 //! A scheme is the CPK table plus the few overrides that give it its character, which is
 //! how wikimolgen defines them: `dict(DEFAULT_ELEMENT_COLORS, C="gray40", ...)`.
@@ -212,7 +212,7 @@ const VMD: &[(&str, &str)] = &[
     ("P", "#d2b48c"),
 ];
 
-/// molplate's inks for a white Wikipedia page: the 2D drawing's palette.
+/// WikiMolGen 2's inks for a white Wikipedia page: the 2D drawing's palette.
 const PRINT: &[(&str, &str)] = &[
     ("C", "#232323"),
     ("N", "#2b4bd6"),
@@ -282,7 +282,7 @@ const SCHEMES: &[Scheme] = &[
     Scheme {
         id: "print",
         label: "Print inks",
-        description: "molplate's darker inks, the same palette its 2D drawing uses.",
+        description: "WikiMolGen 2's darker inks, the same palette its 2D drawing uses.",
         stick_color: None,
         overrides: PRINT,
         unknown: UNKNOWN_LIGHT,
@@ -358,7 +358,7 @@ mod tests {
 
     #[test]
     fn cpk_carbon_and_oxygen_are_the_wikimolgen_inks() {
-        // These four decide whether a molplate figure matches a wikimolgen figure.
+        // These four decide whether a WikiMolGen 2 figure matches a wikimolgen figure.
         assert_eq!(color("cpk", "C"), "#595959");
         assert_eq!(color("cpk", "H"), "#d9d9d9");
         assert_eq!(color("cpk", "O"), "#ff0000");

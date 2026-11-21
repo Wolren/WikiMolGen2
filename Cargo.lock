@@ -130,27 +130,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "molplate_core"
-version = "0.1.0"
-dependencies = [
- "image",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "molplate_wasm"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "molplate_core",
- "serde",
- "serde_json",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "moxcms"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -340,6 +319,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b1f9c3798725016c6ee5f2f57869ec0831e8bbc0ab0310a86e787e97f41389e"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "wikimolgen2_core"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "wikimolgen2_wasm"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "wikimolgen2_core",
 ]
 
 [[package]]

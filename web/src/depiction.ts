@@ -6,7 +6,7 @@
  * the Rust parser still draws the PubChem record.
  */
 
-import { depictSvg } from "../pkg/molplate_wasm.js";
+import { depictSvg } from "../pkg/wikimolgen2_wasm.js";
 import { depictWithRdkit } from "./rdkit.js";
 
 /** Nominal canvas size. The drawing is vector, so this only sets the viewBox. */

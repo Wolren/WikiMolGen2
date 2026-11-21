@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>molplate: molecule figures for Wikipedia</title>
+    <title>WikiMolGen 2: molecule figures for Wikipedia</title>
     <meta
       name="description"
       content="Render 3D molecular structures from PubChem in the browser and get ready-to-paste Wikipedia and Wikimedia Commons markup."
@@ -18,7 +18,7 @@
       // Set the stored theme before the first paint, so the choice does not flash.
       (() => {
         try {
-          const stored = localStorage.getItem("molplate.theme") ?? "system";
+          const stored = localStorage.getItem("wikimolgen2.theme") ?? "system";
           const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           document.documentElement.dataset.theme = stored === "system" ? (dark ? "dark" : "light") : stored;
         } catch {
@@ -31,7 +31,7 @@
   <body>
     <header class="topbar">
       <div class="brand">
-        <h1>molplate</h1>
+        <h1>WikiMolGen 2</h1>
       </div>
       <p class="tagline">Molecule figures for Wikipedia, rendered in your browser.</p>
       <div class="topbar-actions">

@@ -59,7 +59,7 @@ const PROPERTIES = [
   "Complexity",
 ].join(",");
 
-/** Mirrors `molplate_core::wikitext::Compound`; absent fields are simply not sent. */
+/** Mirrors `wikimolgen2_core::wikitext::Compound`; absent fields are simply not sent. */
 export interface Compound {
   cid?: number;
   name?: string;

@@ -541,9 +541,9 @@ pub fn commons_information(
     iso_date: &str,
 ) -> String {
     let name = compound.primary_name();
-    let author = if author.trim().is_empty() { "molplate" } else { author };
+    let author = if author.trim().is_empty() { "WikiMolGen 2" } else { author };
     format!(
-        "{{{{Information\n|description={{{{en|1={} of {name} generated with molplate}}}}\n|date={iso_date}\n|source={{{{Own work}}}}\n|author={author}\n}}}}\n\n== License ==\n{{{{{}}}}}\n\n[[Category:Chemical structures]]",
+        "{{{{Information\n|description={{{{en|1={} of {name} generated with WikiMolGen 2}}}}\n|date={iso_date}\n|source={{{{Own work}}}}\n|author={author}\n}}}}\n\n== License ==\n{{{{{}}}}}\n\n[[Category:Chemical structures]]",
         kind.description_word(),
         license.template()
     )
@@ -789,7 +789,7 @@ mod tests {
             License::PdChem,
             "2026-11-19",
         );
-        assert!(text.contains("|description={{en|1=2D structure of aspirin generated with molplate}}"));
+        assert!(text.contains("|description={{en|1=2D structure of aspirin generated with WikiMolGen 2}}"));
         assert!(text.contains("|date=2026-11-19"));
         assert!(text.contains("{{PD-chem}}"));
         assert!(text.ends_with("[[Category:Chemical structures]]"));

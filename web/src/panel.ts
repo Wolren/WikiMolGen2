@@ -6,7 +6,7 @@
  * choice is stored the same way the theme is.
  */
 
-const STORAGE_KEY = "molplate.sections";
+const STORAGE_KEY = "wikimolgen2.sections";
 
 type OpenState = Record<string, boolean>;
 

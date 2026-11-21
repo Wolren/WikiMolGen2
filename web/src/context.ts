@@ -5,12 +5,12 @@
  * one module can update a figure rendered by another without passing a dozen references.
  */
 
-import { commonsFileName } from "../pkg/molplate_wasm.js";
+import { commonsFileName } from "../pkg/wikimolgen2_wasm.js";
 import type { Depiction } from "./depiction.js";
 import type { Compound } from "./pubchem.js";
 import type { Appearance, Renderer } from "./renderer.js";
 
-/** Mirrors `molplate_core::style::Look`. */
+/** Mirrors `wikimolgen2_core::style::Look`. */
 export interface Look {
   id: string;
   label: string;
@@ -21,7 +21,7 @@ export interface Look {
   appearance: Appearance;
 }
 
-/** Mirrors `molplate_core::palette::SchemeInfo`: one entry in the palette picker. */
+/** Mirrors `wikimolgen2_core::palette::SchemeInfo`: one entry in the palette picker. */
 export interface ColorSchemeInfo {
   id: string;
   label: string;

@@ -50,7 +50,7 @@ without the clipping.
   built ES module and wasm live in `web/public/vendor/patinae` with
   [PROVENANCE.md](../web/public/vendor/patinae/PROVENANCE.md). Upgrading means re-running
   that build.
-* **`molplate_wasm` no longer renders.** It is now ~500 KB of wasm (was 17.6 MB) doing the
+* **`wikimolgen2_wasm` no longer renders.** It is now ~500 KB of wasm (was 17.6 MB) doing the
   figure crop and the markup. The renderer is reached only through `web/src/renderer.ts`.
 * **Two UI capabilities are lost.** The element-colour preset list (Default/VMD/PyMOL/…)
   has no patinae equivalent and the control was removed. `Licorice` is approximated by

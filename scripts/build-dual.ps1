@@ -7,7 +7,7 @@
 #   pwsh -File scripts/build-dual.ps1 -SkipClassic   # reuse the previous classic build
 param(
     [string]$ClassicCommit = '57e912e',
-    [string]$Worktree = 'D:\Scratch\dsh\molplate-classic',
+    [string]$Worktree = 'D:\Scratch\dsh\wikimolgen2-classic',
     [string]$Site = 'D:\Scratch\dsh\dual-site',
     [int]$Port = 5182,
     [switch]$SkipClassic,
@@ -28,7 +28,7 @@ if (-not $SkipClassic) {
 
     Step 'classic wasm build'
     $env:CARGO_TARGET_DIR = 'D:\Projects\tools\rust\tmp\classic-target'
-    cargo build --manifest-path (Join-Path $Worktree 'Cargo.toml') --target wasm32-unknown-unknown --release -p molplate_wasm
+    cargo build --manifest-path (Join-Path $Worktree 'Cargo.toml') --target wasm32-unknown-unknown --release -p wikimolgen2_wasm
 
     # wasm-bindgen cannot write into the worktree on some machines (os error 5), so it
     # writes to a temp dir and the files are copied in.
@@ -37,8 +37,8 @@ if (-not $SkipClassic) {
     New-Item -ItemType Directory -Force -Path $pkg | Out-Null
     $tmp = 'D:\Projects\tools\rust\tmp\classic-pkg'
     New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-    $wasm = Join-Path $env:CARGO_TARGET_DIR 'wasm32-unknown-unknown\release\molplate_wasm.wasm'
-    wasm-bindgen --target web --out-dir $tmp --out-name molplate_wasm $wasm
+    $wasm = Join-Path $env:CARGO_TARGET_DIR 'wasm32-unknown-unknown\release\wikimolgen2_wasm.wasm'
+    wasm-bindgen --target web --out-dir $tmp --out-name wikimolgen2_wasm $wasm
     Copy-Item (Join-Path $tmp '*') $pkg -Recurse -Force
 
     Step 'classic web build'

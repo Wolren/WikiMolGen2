@@ -5,7 +5,7 @@
  * settings, asks the renderer for the raw frame, and hands it to the composer.
  */
 
-import { composeFigure } from "../pkg/molplate_wasm.js";
+import { composeFigure } from "../pkg/wikimolgen2_wasm.js";
 import {
   describe,
   dom,
@@ -26,7 +26,7 @@ const MAX_RENDER_PIXELS = 60_000_000;
 const MIN_WIDTH = 400;
 const MAX_WIDTH = 4096;
 
-/** A figure spec, mirrored from `molplate_core::figure::FigureSpec`. */
+/** A figure spec, mirrored from `wikimolgen2_core::figure::FigureSpec`. */
 interface FigureSpec {
   width: number;
   margin: number;

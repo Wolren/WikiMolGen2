@@ -4,7 +4,7 @@
 // controls, and reports what the console said plus a screenshot. No test framework: it
 // is one script with one job, so a failure is a line of output, not a stack trace.
 //
-//   node scripts/verify.mjs --dir web/dist --out D:/Projects/tools/scratch/molplate.png
+//   node scripts/verify.mjs --dir web/dist --out D:/Projects/tools/scratch/WikiMolGen 2.png
 //   node scripts/verify.mjs --dir web --entry /                 # vite dev server variant
 //
 // Exit code is 0 only when the page loaded, produced markup, and the canvas was drawn on.
@@ -61,7 +61,7 @@ if (args.url === undefined) {
 }
 console.log(`target: ${baseUrl}`);
 
-const profile = join(process.env.TEMP ?? "/tmp", `molplate-verify-${Date.now()}`);
+const profile = join(process.env.TEMP ?? "/tmp", `wikimolgen2-verify-${Date.now()}`);
 // Headless Chrome has no WebGPU adapter, so the WebGPU path needs a real browser process.
 // `--headed true` runs it off-screen instead of popping a window in front of the user.
 // `--gpu hardware` drops the SwiftShader overrides — forcing ANGLE's software GL also
@@ -597,7 +597,7 @@ if (!isProtein && firstLook.colour !== "element") {
 
 // 4. Export a PNG through the app's own path. The renderer draws offscreen and the page
 //    composes the figure in Rust, so the downloaded file is the product, not a canvas read.
-const downloadDir = join(process.env.TEMP ?? "/tmp", `molplate-download-${Date.now()}`);
+const downloadDir = join(process.env.TEMP ?? "/tmp", `wikimolgen2-download-${Date.now()}`);
 await mkdir(downloadDir, { recursive: true });
 await send("Browser.setDownloadBehavior", {
   behavior: "allow",
@@ -877,7 +877,7 @@ if (fullscreenButton !== true) {
 await evaluate(session, "(document.getElementById('section-appearance').open = true, true)");
 await poll(
   async () => {
-    const stored = await evaluate(session, "localStorage.getItem('molplate.sections') ?? ''");
+    const stored = await evaluate(session, "localStorage.getItem('wikimolgen2.sections') ?? ''");
     return stored.includes('"section-appearance":true') ? true : null;
   },
   10_000,

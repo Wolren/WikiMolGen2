@@ -1,4 +1,4 @@
-# ADR 0001, Architecture of the molplate web app
+# ADR 0001, Architecture of the WikiMolGen 2 web app
 
 Status: **superseded by [ADR 0002](ADR-0002-renderer-patinae.md)** (2026-11-19)
 Supersedes: nothing
@@ -32,7 +32,7 @@ Two constraints shape everything:
 lacks the panel-visibility API an embedded page needs) and start it on the page's
 animation-frame loop with `eframe::WebRunner`, exactly as upstream's own JS bindings do.
 
-We wrap it in a host app (`crates/molplate_wasm`) rather than depending on
+We wrap it in a host app (`crates/wikimolgen2_wasm`) rather than depending on
 `molar_vis_js`:
 
 * the JS crate is a `cdylib` with no library target, so it cannot be composed;
@@ -101,7 +101,7 @@ dependency and is therefore deferred as one piece of work rather than two.
 
 The wikitext is the part of the product that is *specification*, not presentation: field
 names, section order, escaping rules and hazard-statement syntax all have to match what
-MediaWiki expects. It lives in `molplate_core` with unit tests, compiles natively, and is
+MediaWiki expects. It lives in `wikimolgen2_core` with unit tests, compiles natively, and is
 reached from TypeScript through small JSON-in/JSON-out functions. The TypeScript side
 never formats wikitext.
 
@@ -111,9 +111,9 @@ a numeric zero is kept (`charge = 0` is information, not an empty value), and a
 
 ### 5. Two crates and a Vite frontend
 
-* `molplate_core`, presets, image post-processing, wikitext. No browser, no GPU. This is
+* `wikimolgen2_core`, presets, image post-processing, wikitext. No browser, no GPU. This is
   where behaviour is tested.
-* `molplate_wasm`, `wasm32` only. Boots the viewer, queues jobs, captures images,
+* `wikimolgen2_wasm`, `wasm32` only. Boots the viewer, queues jobs, captures images,
   exports the JSON functions.
 * `web/`, Vite + TypeScript. DOM, state, PubChem requests, download.
 

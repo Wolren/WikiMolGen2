@@ -1,5 +1,5 @@
 [package]
-name = "molplate_wasm"
+name = "wikimolgen2_wasm"
 description = "Browser bindings: figure post-processing and wikitext for the page"
 version.workspace = true
 edition.workspace = true
@@ -8,7 +8,7 @@ repository.workspace = true
 publish = false
 
 [lib]
-# `cdylib` is what wasm-bindgen/wasm-pack turns into molplate_wasm.js + .wasm; `rlib`
+# `cdylib` is what wasm-bindgen/wasm-pack turns into wikimolgen2_wasm.js + .wasm; `rlib`
 # keeps `cargo test` on the native host able to build the crate (the wasm-only code is
 # cfg-gated out there).
 crate-type = ["cdylib", "rlib"]
@@ -17,7 +17,7 @@ crate-type = ["cdylib", "rlib"]
 # asset and driven from TypeScript. What is left here is everything that has to run in
 # Rust — the PNG framing and the wikitext — which is also what has unit tests.
 [dependencies]
-molplate_core = { path = "../molplate_core" }
+wikimolgen2_core = { path = "../wikimolgen2_core" }
 serde.workspace = true
 serde_json.workspace = true
 

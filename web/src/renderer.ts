@@ -1,17 +1,17 @@
 /**
- * The adapter between molplate's page and patinae's web viewer.
+ * The adapter between WikiMolGen 2's page and patinae's web viewer.
  *
  * patinae owns the canvas, its own animation-frame loop and the command engine; this
  * file is the only place that knows either of those facts. Everything the page asks for
  * is expressed as a method here, so the rest of `src/` stays renderer-agnostic, the same
- * property `molplate_core` has on the Rust side.
+ * property `wikimolgen2_core` has on the Rust side.
  *
  * The viewer is loaded from `public/vendor/patinae` (see the PROVENANCE.md there) rather
  * than from `node_modules`, because it is a prebuilt ES module plus wasm from another
  * repository, not a package we install.
  */
 
-/** One element colour override, mirrored from `molplate_core::style::ElementColor`. */
+/** One element colour override, mirrored from `wikimolgen2_core::style::ElementColor`. */
 export interface ElementColor {
   element: string;
   color: string;
@@ -67,7 +67,7 @@ export interface Appearance {
   element_colors: ElementColor[];
 }
 
-/** The subset of `molplate_core::style::Look` the renderer needs. */
+/** The subset of `wikimolgen2_core::style::Look` the renderer needs. */
 export interface LookSpec {
   style: string;
   color_mode: string;
@@ -151,7 +151,7 @@ const MIN_BUFFER_ANGSTROM = -1.5;
 const MAX_BUFFER_ANGSTROM = 30;
 
 /**
- * molplate's look vocabulary → patinae commands.
+ * WikiMolGen 2's look vocabulary → patinae commands.
  *
  * patinae has no compound "ball and stick" representation and no `licorice`; both are
  * composed from sticks and spheres with their own radii, which is why the numbers below
@@ -185,7 +185,7 @@ function representationCommands(look: LookSpec): string[] {
 }
 
 /**
- * molplate's colour modes → patinae's scheme names.
+ * WikiMolGen 2's colour modes → patinae's scheme names.
  *
  * `color ss` colours this scene uniformly, although the `ss` selection reports helix,
  * sheet and loop atoms correctly. The three named inks plus the `ss` selection give the
@@ -256,7 +256,7 @@ const PROBE_BACKBONE: [string, string, number, number][] = [
 ];
 
 /** Object name for the warm-up probe, so its commands never touch a real structure. */
-const WARMUP_OBJECT = "molplate_warmup";
+const WARMUP_OBJECT = "wikimolgen2_warmup";
 
 /**
  * Build a six-residue polyalanine probe.
@@ -597,12 +597,12 @@ export class Renderer {
    * `name` is the atom name the SDF reader assigns, e.g. `O2`, not the element symbol.
    */
   async setLabels(enabled: boolean): Promise<void> {
-    await this.runQuiet("delete molplate_labels");
+    await this.runQuiet("delete wikimolgen2_labels");
     if (!enabled) return;
     await this.run("set label_size, 14");
-    await this.run("label not elem C, name, object=molplate_labels");
+    await this.run("label not elem C, name, object=wikimolgen2_labels");
     // The default label colour is a screen cyan; a figure needs ink that reads on white.
-    await this.run("color black, molplate_labels");
+    await this.run("color black, wikimolgen2_labels");
   }
 
   /** Label height in render pixels. The export path scales this with the figure. */
