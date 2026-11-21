@@ -278,6 +278,7 @@ const sections = JSON.parse(
     session,
     `JSON.stringify({
        order: Array.from(document.querySelectorAll('details.section')).map((node) => node.id),
+       view: document.getElementById('section-view').open,
        style: document.getElementById('section-style').open,
        colour: document.getElementById('section-colour').open,
        appearance: document.getElementById('section-appearance').open,
@@ -285,9 +286,9 @@ const sections = JSON.parse(
      })`,
   ),
 );
-console.log(`sections: ${sections.order.join(' > ')}, all folded: ${!sections.style && !sections.colour && !sections.appearance && !sections.export}`);
-if (sections.order[0] !== "section-export") failures.push(`the first section is ${sections.order[0]}`);
-for (const id of ["style", "colour", "appearance", "export"]) {
+console.log(`sections: ${sections.order.join(' > ')}, all folded: ${!sections.view && !sections.style && !sections.colour && !sections.appearance && !sections.export}`);
+if (sections.order[0] !== "section-view") failures.push(`the first section is ${sections.order[0]}`);
+for (const id of ["view", "style", "colour", "appearance", "export"]) {
   if (sections[id] !== false) failures.push(`the ${id} section starts open`);
 }
 

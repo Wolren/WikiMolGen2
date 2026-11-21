@@ -52,8 +52,8 @@ Each box has a Copy action in its top-right corner; the Commons block carries th
 
 ![The stacked output panel](docs/output-panel.png)
 
-Export comes first, and every category starts folded. Appearance groups its controls as
-shape, light, effects, surface and view:
+View comes first, then Export, and every category starts folded. Appearance groups its controls as
+shape, light, effects and surface:
 
 ![The appearance panel](docs/appearance-panel.png)
 
