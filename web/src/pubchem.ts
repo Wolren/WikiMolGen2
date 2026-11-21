@@ -9,6 +9,23 @@ import { fetchMetadata, type SourceStatus } from "./sources.js";
 
 const PUG = "https://pubchem.ncbi.nlm.nih.gov/rest/pug";
 
+/**
+ * How long one PubChem request may take before the page gives up.
+ *
+ * `fetch` has no default timeout. Without one, a stalled connection leaves the stage on
+ * "Looking up…" with the only way out being a reload.
+ */
+const REQUEST_TIMEOUT_MS = 12_000;
+
+/** `fetch` with a deadline, so a stalled request cannot freeze the page. */
+function timedFetch(path: string): Promise<Response> {
+  return fetch(path, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+}
+
+function isTimeout(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "TimeoutError";
+}
+
 /** PubChem's answer plus the two records the figure needs. */
 export interface PubChemResult {
   compound: Compound;
@@ -249,7 +266,19 @@ async function fetchSynonyms(cid: number): Promise<string[]> {
 }
 
 async function request(path: string): Promise<Record<string, unknown>> {
-  const response = await fetch(path);
+  let response: Response;
+  try {
+    response = await timedFetch(path);
+  } catch (error) {
+    if (isTimeout(error)) {
+      throw new LookupError(
+        `PubChem did not answer within ${REQUEST_TIMEOUT_MS / 1000} s. Check the connection and try again.`,
+      );
+    }
+    throw new LookupError(
+      `Could not reach PubChem (${error instanceof Error ? error.message : String(error)}).`,
+    );
+  }
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     throw new LookupError(`PubChem request failed (${response.status}). ${firstLine(detail)}`);
@@ -261,15 +290,24 @@ async function request(path: string): Promise<Record<string, unknown>> {
 }
 
 async function requestOrNull(path: string): Promise<Record<string, unknown> | null> {
-  const response = await fetch(path);
-  if (!response.ok) return null;
-  return (await response.json()) as Record<string, unknown>;
+  try {
+    const response = await timedFetch(path);
+    if (!response.ok) return null;
+    return (await response.json()) as Record<string, unknown>;
+  } catch {
+    // A bonus field that timed out is simply absent, like one PubChem does not know.
+    return null;
+  }
 }
 
 async function requestBytes(path: string): Promise<Uint8Array | null> {
-  const response = await fetch(path);
-  if (!response.ok) return null;
-  return new Uint8Array(await response.arrayBuffer());
+  try {
+    const response = await timedFetch(path);
+    if (!response.ok) return null;
+    return new Uint8Array(await response.arrayBuffer());
+  } catch {
+    return null;
+  }
 }
 
 function asString(value: unknown): string | undefined {

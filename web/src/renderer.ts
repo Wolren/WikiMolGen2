@@ -241,6 +241,9 @@ const PROBE_BACKBONE: [string, string, number, number][] = [
   [" O  ", " O", 1.1, 1.6],
 ];
 
+/** Object name for the warm-up probe, so its commands never touch a real structure. */
+const WARMUP_OBJECT = "molplate_warmup";
+
 /**
  * Build a six-residue polyalanine probe.
  *
@@ -369,11 +372,8 @@ export class Renderer {
    * callers that need pixels should rely on {@link exportPng}, which settles first.
    */
   async loadStructure(name: string, bytes: Uint8Array): Promise<number> {
-    // A warm-up probe may still own the scene; let it finish before replacing it.
-    const warming = this.warmup;
-    if (warming !== null) await warming;
-    // `loadData` inserts an object and keeps the scene, so a second lookup would stack
-    // two molecules. Clearing first makes every load an independent figure.
+    // A warm-up probe may still be in the scene, but it is its own object, so it cannot
+    // interfere; the delete below removes it along with any previous structure.
     await this.runQuiet("delete all");
     const receipt = this.viewer.loadData(bytes, name, formatOf(name));
     if (receipt.result && "Err" in receipt.result) {
@@ -405,13 +405,18 @@ export class Renderer {
   }
 
   private async warmCartoon(): Promise<void> {
+    // The probe is its own object, so a warm-up that never finishes cannot touch a real
+    // structure, and a load no longer has to wait for it.
     const probe = new TextEncoder().encode(warmupPdb());
-    const receipt = this.viewer.loadData(probe, "warmup.pdb", "pdb");
+    const receipt = this.viewer.loadData(probe, WARMUP_OBJECT, "pdb");
     if (receipt.result && "Err" in receipt.result) return;
-    await this.run("show cartoon");
-    await this.run("color ss");
-    await frames(4);
-    await this.runQuiet("delete all");
+    try {
+      await this.run(`show cartoon, ${WARMUP_OBJECT}`);
+      await this.run(`color ss, ${WARMUP_OBJECT}`);
+      await frames(4);
+    } finally {
+      await this.runQuiet(`delete ${WARMUP_OBJECT}`);
+    }
   }
 
   /** Atoms in a selection, for summaries and for label targeting. */

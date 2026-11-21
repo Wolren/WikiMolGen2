@@ -115,6 +115,7 @@ export const dom = {
   stageNote: required<HTMLElement>("stage-note"),
   stageMessage: required<HTMLDivElement>("stage-message"),
   stageText: required<HTMLParagraphElement>("stage-text"),
+  fullscreen: required<HTMLButtonElement>("fullscreen"),
   shortcuts: required<HTMLDetailsElement>("shortcuts"),
   tabs: {
     drugbox: required<HTMLButtonElement>("tab-drugbox"),

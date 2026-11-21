@@ -12,6 +12,21 @@
   box-shadow: var(--shadow-1);
 }
 
+/* Full screen: the stage is the fullscreen element, so the card styling drops away and
+   the canvas gets the whole screen below its own toolbar. */
+.stage:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  background: var(--stage-tint);
+}
+
+.stage:fullscreen .stage-bar {
+  flex: none;
+}
+
 /* Mode switch and the one-line note about the current view. */
 .stage-bar {
   display: flex;
@@ -64,6 +79,20 @@
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Full screen sits between the note and the download: same height, lighter weight. */
+.stage-bar #fullscreen {
+  flex: none;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.stage-bar #fullscreen[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 /* The renderer owns the canvas inside this box; the box is what the page lays out and
@@ -403,11 +432,6 @@ kbd {
 
   .workspace {
     order: 1;
-  }
-
-  .workspace .stage {
-    flex: none;
-    height: min(60vh, 520px);
   }
 
   .workspace .output {

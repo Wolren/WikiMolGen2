@@ -43,6 +43,7 @@ import {
 } from "./context.js";
 import { buildDepiction, clearDepiction, showDepiction } from "./depiction.js";
 import { bindExport, exportFigure } from "./figure.js";
+import { bindFullscreen } from "./fullscreen.js";
 import { bindKeyboard } from "./keyboard.js";
 import { bindSections } from "./panel.js";
 import { enrichCompound, LookupError, loadCompound } from "./pubchem.js";
@@ -201,11 +202,14 @@ async function loadFromInput(): Promise<void> {
 
     // The markup does not need a renderer: looking a compound up and generating wikitext
     // is the half of this app that works without a GPU, so a failed renderer must not
-    // take it down with it.
+    // take it down with it. Each viewer step names itself, so a slow one is visible.
     if (state.viewer !== null) {
+      setBusy(true, "Drawing…");
       await state.viewer.loadStructure(result.structure.name, result.structure.bytes);
       state.look = state.looks[0] === undefined ? null : cloneLook(state.looks[0]);
+      setBusy(true, "Colouring…");
       if (state.look !== null) await state.viewer.applyLook(appliedLook() ?? state.look);
+      setBusy(true, "Framing…");
       await state.viewer.frameScene();
       dom.exportButton.disabled = false;
     }
@@ -592,6 +596,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 
 bindTheme();
 bindSections();
+bindFullscreen();
 document.addEventListener("themechange", () => {
   state.viewer?.setStageTint(stageTint());
 });

@@ -206,8 +206,8 @@ body {
    large and the column scrolls when the pair is taller than the viewport. */
 .workspace .stage {
   flex: none;
-  height: min(54vh, 500px);
-  min-height: 300px;
+  height: min(68vh, 640px);
+  min-height: 320px;
 }
 
 .workspace .output {

@@ -7,6 +7,9 @@
 
 const RCSB = "https://files.rcsb.org/download";
 
+/** One PDB file is a few hundred kilobytes at most; a stalled fetch is not a slow record. */
+const REQUEST_TIMEOUT_MS = 15_000;
+
 export class ProteinError extends Error {}
 
 export interface ProteinRecord {
@@ -34,7 +37,19 @@ export function pdbIdOf(identifier: string): string | null {
 
 /** Fetch one PDB entry. The acceptance target, 1CRN, is about 25 KB. */
 export async function loadProtein(id: string): Promise<ProteinRecord> {
-  const response = await fetch(`${RCSB}/${id}.pdb`);
+  let response: Response;
+  try {
+    response = await fetch(`${RCSB}/${id}.pdb`, {
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (error) {
+    const timeout = error instanceof DOMException && error.name === "TimeoutError";
+    throw new ProteinError(
+      timeout
+        ? `RCSB PDB did not answer within ${REQUEST_TIMEOUT_MS / 1000} s. Check the connection and try again.`
+        : `Could not reach RCSB PDB (${error instanceof Error ? error.message : String(error)}).`,
+    );
+  }
   if (!response.ok) {
     throw new ProteinError(`RCSB PDB has no entry ${id} (HTTP ${response.status}).`);
   }

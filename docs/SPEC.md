@@ -45,7 +45,8 @@ reach; a load then scrolls the figure into view.
 | Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by secondary structure or chain. The finishes start from the WikiMolGen preset: CPK spheres, grey sticks, a white page |
 | Colour | Styles the 3D figure: colour by element, chain, residue type, residue number, secondary structure, B-factor or a single ink. Seven element palettes: CPK (default), Jmol, RasMol, ChemDraw, VMD, print inks and dark figure. Sticks follow the atoms or take one flat ink. A cartoon takes three secondary-structure inks. Per-element overrides sit on top of the palette. The panel steps aside in the 2D view, which keeps RDKit's inks |
 | Appearance | Stick and sphere size, transparency, ambient, direct, reflect, specular and shininess, ambient occlusion and strength, soft shadows, outline and width, depth cue and fog. Background and gradient are export settings |
-| Navigation | Viewer's own mouse controls, zoom buttons, re-frame, and keyboard shortcuts |
+| Figures | The figure toolbar holds the 3D/2D switch, full screen and the download. The stage keeps a height rather than sharing the leftover space, so the molecule is drawn large and the column scrolls |
+| Navigation | Viewer's own mouse controls, zoom buttons, re-frame, full screen, and keyboard shortcuts |
 | Links | A lookup is written to `?q=` and read back on boot, so a figure can be shared or reloaded |
 | Export | The download button sits in the figure toolbar. PNG at any width from 400 to 4096 px; a 4 to 9 percent margin; 3x supersampling by default, 2x and 4x selectable; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
 | Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields and an openFDA drug label, merged into the infobox and chembox fields. The page does not display them in a panel |
@@ -198,6 +199,7 @@ scripts/dev-env.ps1     toolchain paths for this workstation
   on the CPK palette with the grey stick ink of the WikiMolGen preset.
 * The long control sections start folded, and an opened one stays open across a reload.
 * A `?q=aspirin` link loads the compound on its own.
+* Full screen gives the stage the whole display, the toolbar stays, and the button exits.
 * A browser without WebGPU explains itself. The 2D SVG and the markup still work.
 
 `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware` checks

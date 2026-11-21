@@ -672,7 +672,120 @@ await mkdir(dirname(OUT), { recursive: true });
 await writeFile(OUT, Buffer.from(shot.result.data, "base64"));
 console.log(`screenshot: ${OUT}`);
 
-// 6. A folded section is remembered, which is the only state the page keeps besides the
+// 6. Full screen: the stage fills the screen, its toolbar stays, and the canvas follows.
+//    A programmatic click does not count as a user gesture, so the press goes through
+//    the input domain as a real mouse event.
+async function clickAt(selector) {
+  const box = JSON.parse(
+    await evaluate(
+      session,
+      `(() => {
+         const node = document.querySelector(${JSON.stringify(selector)});
+         if (node === null) return JSON.stringify(null);
+         const rect = node.getBoundingClientRect();
+         return JSON.stringify({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+       })()`,
+    ),
+  );
+  if (box === null) return false;
+  for (const type of ["mousePressed", "mouseReleased"]) {
+    await send(
+      "Input.dispatchMouseEvent",
+      { type, x: box.x, y: box.y, button: "left", clickCount: 1 },
+      session,
+    );
+  }
+  return true;
+}
+
+const fullscreenButton = await evaluate(
+  session,
+  "document.getElementById('fullscreen').hidden === false",
+);
+if (fullscreenButton !== true) {
+  failures.push("the full-screen button is hidden");
+} else {
+  await evaluate(
+    session,
+    `(() => {
+       window.__fsClicks = 0;
+       document.getElementById('fullscreen').addEventListener('click', () => {
+         window.__fsClicks += 1;
+       });
+       return true;
+     })()`,
+  );
+  if (!(await clickAt("#fullscreen"))) failures.push("the full-screen button cannot be clicked");
+  await new Promise((done) => setTimeout(done, 800));
+  let probe = JSON.parse(
+    await evaluate(
+      session,
+      `JSON.stringify({
+         clicks: window.__fsClicks ?? -1,
+         enabled: document.fullscreenEnabled,
+         active: document.fullscreenElement !== null,
+         hasFocus: document.hasFocus(),
+       })`,
+    ),
+  );
+  console.log(`full screen probe: ${JSON.stringify(probe)}`);
+  if (probe.active !== true) {
+    // A synthetic mouse click does not always carry the activation fullscreen needs.
+    // A key press on the focused button is the other native path.
+    await evaluate(session, "(document.getElementById('fullscreen').focus(), true)");
+    for (const type of ["keyDown", "keyUp"]) {
+      await send(
+        "Input.dispatchKeyEvent",
+        { type, key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 },
+        session,
+      );
+    }
+    await new Promise((done) => setTimeout(done, 800));
+    probe = JSON.parse(
+      await evaluate(
+        session,
+        `JSON.stringify({ active: document.fullscreenElement !== null })`,
+      ),
+    );
+    console.log(`full screen after Enter: ${JSON.stringify(probe)}`);
+  }
+  const full = JSON.parse(
+    await evaluate(
+      session,
+      `JSON.stringify({
+         active: document.fullscreenElement !== null,
+         stage: document.fullscreenElement?.classList.contains('stage') ?? false,
+         width: Math.round(document.fullscreenElement?.getBoundingClientRect().width ?? 0),
+         height: Math.round(document.fullscreenElement?.getBoundingClientRect().height ?? 0),
+         viewport: [window.innerWidth, window.innerHeight],
+         canvas: Math.round(document.querySelector('#viewer canvas')?.getBoundingClientRect().width ?? 0),
+         label: document.getElementById('fullscreen').textContent,
+       })`,
+    ),
+  );
+  console.log(
+    `full screen: ${full.width}x${full.height} of ${full.viewport.join("x")}, canvas ${full.canvas}, button "${full.label}"`,
+  );
+  if (!full.active || !full.stage) failures.push("full screen did not take over the stage");
+  if (Math.abs(full.width - full.viewport[0]) > 2 || Math.abs(full.height - full.viewport[1]) > 2) {
+    failures.push(`the full-screen stage is ${full.width}x${full.height}, not the viewport`);
+  }
+  if (full.canvas < full.viewport[0] - 30) {
+    failures.push(`the canvas is ${full.canvas} wide in full screen`);
+  }
+  if (full.label !== "Exit full screen") failures.push(`the full-screen button reads "${full.label}"`);
+
+  // Keep the full-screen frame beside the screenshot; it is the evidence for the mode.
+  const fullShot = await send("Page.captureScreenshot", { format: "png" }, session);
+  await writeFile(join(dirname(OUT), "fullscreen.png"), Buffer.from(fullShot.result.data, "base64"));
+
+  await clickAt("#fullscreen");
+  await new Promise((done) => setTimeout(done, 600));
+  const exited = await evaluate(session, "document.fullscreenElement === null");
+  if (exited !== true) failures.push("the figure did not leave full screen");
+}
+
+// 7. A folded section is remembered, which is the only state the page keeps besides the
 //    theme. Opening one and reloading must bring it back open.
 await evaluate(session, "(document.getElementById('section-appearance').open = true, true)");
 await new Promise((done) => setTimeout(done, 300));
@@ -695,8 +808,26 @@ const linked = await poll(async () => {
   const text = await evaluate(session, "document.getElementById('export-status').textContent ?? ''");
   return typeof text === "string" && text.includes("Loaded Aspirin") ? text : null;
 }, 90_000);
-if (linked === null) failures.push("a ?q= link does not load its compound");
-else console.log(`deep link: ${linked.slice(0, 80)}`);
+if (linked === null) {
+  const current = await evaluate(
+    session,
+    `JSON.stringify({
+       status: document.getElementById('export-status')?.textContent ?? '',
+       ready: document.documentElement.dataset.ready ?? '(none)',
+       stage: document.getElementById('stage-text')?.textContent ?? '',
+       busy: document.getElementById('stage-message')?.classList.contains('busy') ?? false,
+       identifier: document.getElementById('identifier')?.value ?? '',
+       url: location.href,
+       requests: performance
+         .getEntriesByType('resource')
+         .filter((entry) => entry.name.includes('pubchem'))
+         .map((entry) => entry.name.split('/').slice(-2).join('/') + ' ' + Math.round(entry.duration) + 'ms'),
+     })`,
+  );
+  failures.push(`a ?q= link does not load its compound; ${current}`);
+} else {
+  console.log(`deep link: ${linked.slice(0, 80)}`);
+}
 
 if (consoleErrors.length > 0) {
   console.log(`console errors: ${consoleErrors.length}`);
