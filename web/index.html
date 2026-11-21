@@ -55,34 +55,28 @@
     <main class="layout">
       <aside class="panel controls" aria-label="Controls">
         <form id="lookup" class="block">
-          <label class="field-label" for="identifier">Compound</label>
+          <label class="field-label" for="identifier">Compound or protein</label>
           <div class="field-row">
-            <input
-              id="identifier"
-              name="identifier"
-              type="text"
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="aspirin, 2244, a SMILES or 1CRN"
-            />
+            <div class="lookup-field">
+              <input
+                id="identifier"
+                name="identifier"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="aspirin, 2244, a SMILES or 1CRN"
+                aria-autocomplete="list"
+                aria-controls="suggestions"
+              />
+              <div id="suggestions" class="suggestions" role="listbox" aria-label="Suggestions" hidden></div>
+            </div>
             <button id="load" type="submit" class="primary">Load</button>
           </div>
-          <p class="hint">PubChem name, CID or SMILES, or a PDB ID such as 1CRN for a protein cartoon.</p>
+          <p id="lookup-hint" class="hint">
+            Type a name; PubChem and the PDB answer as you type. A CID, a SMILES or a PDB
+            ID still works.
+          </p>
         </form>
-
-        <details id="catalogue" class="block section" open>
-          <summary><h2>Catalogue</h2></summary>
-          <p class="hint">Pick a name and the page loads it. No codes needed.</p>
-          <input
-            id="catalogue-search"
-            type="search"
-            autocomplete="off"
-            spellcheck="false"
-            placeholder="Search compounds and proteins"
-            aria-label="Search the catalogue"
-          />
-          <div id="catalogue-list" class="catalogue-list" aria-label="Catalogue"></div>
-        </details>
 
         <details id="section-export" class="block section">
           <summary><h2>Export</h2></summary>

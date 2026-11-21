@@ -468,40 +468,40 @@ button:disabled {
   color: var(--faint);
 }
 
-/* Catalogue ---------------------------------------------------------------------- */
+/* Combobox ---------------------------------------------------------------------- */
 
-/* The search box spans the panel; the list below it is its own scroll area. */
-#catalogue-search {
-  width: 100%;
-  margin-top: 10px;
+/* The suggestions hang off the field, so the list reads as part of the input. */
+.lookup-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
 }
 
-/* A scrollable list, with sticky group headings: the list is longer than the panel. */
-.catalogue-list {
-  max-height: 280px;
-  margin-top: 10px;
+.lookup-field input {
+  width: 100%;
+}
+
+.suggestions {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
   overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--surface-2);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
 }
 
-.catalogue-group {
-  position: sticky;
-  top: 0;
-  margin: 0;
-  padding: 7px 10px 5px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-2);
-}
-
-.catalogue-item {
+.suggestion {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border: 0;
   border-radius: 0;
   background: none;
@@ -509,24 +509,32 @@ button:disabled {
   text-align: left;
 }
 
-.catalogue-item:hover {
+.suggestion:hover,
+.suggestion[aria-selected="true"] {
   background: var(--accent-soft);
 }
 
-.catalogue-name {
+.suggestion-label {
+  min-width: 0;
+  overflow: hidden;
   color: var(--ink);
   font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.catalogue-hint {
+.suggestion-hint {
+  flex: none;
   color: var(--faint);
   font-size: 11px;
   white-space: nowrap;
 }
 
-.catalogue-empty {
+.suggestion-note {
   margin: 0;
-  padding: 12px 10px;
+  padding: 10px;
+  color: var(--faint);
+  font-size: 12px;
 }
 
 /* Style picker ------------------------------------------------------------------ */

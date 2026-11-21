@@ -1,13 +1,11 @@
 /**
- * A browsable catalogue of common compounds and proteins.
+ * A local index of common compounds and proteins, and the search over it.
  *
- * The lookup field accepts a name, CID, SMILES or PDB ID, but a Wikipedia editor should
- * not need to know those codes. This list is the alternative path: pick a name, and the
- * page fills the identifier and loads it. Every CID and PDB ID here was resolved against
- * PubChem and RCSB PDB before it was added.
+ * This is the instant half of the lookup: it answers while the user types, before the
+ * live PubChem and PDB suggestions arrive, and it still works when those services are
+ * unreachable. Every CID and PDB ID here was resolved against PubChem and RCSB PDB
+ * before it was added.
  */
-
-import { dom } from "./context.js";
 
 export type CatalogueKind = "compound" | "protein";
 
@@ -102,80 +100,58 @@ export const CATALOGUE: CatalogueEntry[] = [
   { kind: "protein", label: "Ubiquitin", id: "1UBQ", note: "regulatory protein" },
 ];
 
-/** Everything the search looks at, lower case. */
+/** Everything the local search looks at, lower case. */
 function searchText(entry: CatalogueEntry): string {
   return [entry.label, entry.id, entry.formula ?? "", entry.note ?? "", entry.synonyms ?? ""]
     .join(" ")
     .toLowerCase();
 }
 
-/** The line under the name: the code, so a reader learns it, plus one detail. */
-function hintOf(entry: CatalogueEntry): string {
-  const code = entry.kind === "compound" ? `CID ${entry.id}` : `PDB ${entry.id}`;
-  const detail = entry.kind === "compound" ? entry.formula : entry.note;
-  return detail === undefined ? code : `${code} · ${detail}`;
-}
-
-/** One clickable row. */
-function rowFor(entry: CatalogueEntry): HTMLButtonElement {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "catalogue-item";
-  button.dataset.id = entry.id;
-  button.title = `Load ${entry.label}`;
-
-  const name = document.createElement("span");
-  name.className = "catalogue-name";
-  name.textContent = entry.label;
-
-  const hint = document.createElement("span");
-  hint.className = "catalogue-hint";
-  hint.textContent = hintOf(entry);
-
-  button.append(name, hint);
-  return button;
-}
-
-/** Fill the list with the entries that match the query, grouped by kind. */
-function render(query: string): void {
+/**
+ * Local matches for a query, best first.
+ *
+ * A label prefix beats a label hit, which beats a synonym or formula hit, so typing
+ * "asp" puts Aspirin above compounds that merely contain the letters.
+ */
+export function searchCatalogue(query: string, limit = 6): CatalogueEntry[] {
   const needle = query.trim().toLowerCase();
-  const matches = CATALOGUE.filter((entry) => needle === "" || searchText(entry).includes(needle));
-  const groups: [CatalogueKind, string][] = [
-    ["compound", "Compounds"],
-    ["protein", "Proteins"],
-  ];
-
-  const children: HTMLElement[] = [];
-  for (const [kind, title] of groups) {
-    const entries = matches.filter((entry) => entry.kind === kind);
-    if (entries.length === 0) continue;
-    const heading = document.createElement("h3");
-    heading.className = "group-label catalogue-group";
-    heading.textContent = `${title} (${entries.length})`;
-    children.push(heading);
-    children.push(...entries.map(rowFor));
+  if (needle.length < 2) return [];
+  const scored: { entry: CatalogueEntry; rank: number }[] = [];
+  for (const entry of CATALOGUE) {
+    const label = entry.label.toLowerCase();
+    let rank = -1;
+    if (label.startsWith(needle)) rank = 0;
+    else if (label.includes(needle)) rank = 1;
+    else if (searchText(entry).includes(needle)) rank = 2;
+    if (rank >= 0) scored.push({ entry, rank });
   }
-
-  if (children.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "hint catalogue-empty";
-    empty.textContent = "No match. Type the name in the field above, or try a shorter search.";
-    children.push(empty);
-  }
-
-  dom.catalogueList.replaceChildren(...children);
+  scored.sort((a, b) => a.rank - b.rank || a.entry.label.localeCompare(b.entry.label));
+  return scored.slice(0, limit).map(({ entry }) => entry);
 }
 
-/** Wire the catalogue once, after the document exists. */
-export function bindCatalogue(): void {
-  render("");
-  dom.catalogueSearch.addEventListener("input", () => render(dom.catalogueSearch.value));
-  dom.catalogueList.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const button = target.closest("button[data-id]");
-    if (!(button instanceof HTMLButtonElement)) return;
-    dom.identifier.value = button.dataset.id ?? "";
-    dom.form.requestSubmit();
-  });
+/** The short list shown before the user types: common figures for articles. */
+export function popularEntries(limit = 10): CatalogueEntry[] {
+  const names = [
+    "Aspirin",
+    "Caffeine",
+    "Ibuprofen",
+    "Paracetamol",
+    "Morphine",
+    "Cholesterol",
+    "Glucose",
+    "Penicillin G",
+    "Nicotine",
+    "Crambin",
+  ];
+  const picked: CatalogueEntry[] = [];
+  for (const name of names) {
+    const key = name.toLowerCase();
+    const entry = CATALOGUE.find(
+      (item) =>
+        item.label.toLowerCase() === key ||
+        (item.synonyms ?? "").toLowerCase().includes(key),
+    );
+    if (entry !== undefined) picked.push(entry);
+  }
+  return picked.slice(0, limit);
 }

@@ -131,9 +131,9 @@ export const dom = {
   stageText: required<HTMLParagraphElement>("stage-text"),
   fullscreen: required<HTMLButtonElement>("fullscreen"),
   shortcuts: required<HTMLDetailsElement>("shortcuts"),
-  catalogue: required<HTMLDetailsElement>("catalogue"),
-  catalogueSearch: required<HTMLInputElement>("catalogue-search"),
-  catalogueList: required<HTMLDivElement>("catalogue-list"),
+  suggestions: required<HTMLDivElement>("suggestions"),
+  lookupHint: required<HTMLParagraphElement>("lookup-hint"),
+
   fileName: required<HTMLElement>("file-name"),
   copyDrugbox: required<HTMLButtonElement>("copy-drugbox"),
   copyChembox: required<HTMLButtonElement>("copy-chembox"),

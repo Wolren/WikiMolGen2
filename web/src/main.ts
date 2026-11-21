@@ -41,7 +41,7 @@ import {
     type ViewMode,
 } from "./context.js";
 import { buildDepiction, clearDepiction, showDepiction } from "./depiction.js";
-import { bindCatalogue } from "./catalogue.js";
+import { bindSuggestions } from "./suggest.js";
 import { bindExport, exportFigure } from "./figure.js";
 import { bindFullscreen } from "./fullscreen.js";
 import { bindKeyboard } from "./keyboard.js";
@@ -572,7 +572,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 
 bindTheme();
 bindSections();
-bindCatalogue();
+bindSuggestions();
 bindFullscreen();
 document.addEventListener("themechange", () => {
   state.viewer?.setStageTint(stageTint());
