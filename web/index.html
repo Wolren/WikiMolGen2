@@ -66,12 +66,66 @@
           <p class="hint">PubChem name, CID or SMILES, or a PDB ID such as 1CRN for a protein cartoon.</p>
         </form>
 
-        <section class="block">
-          <h2>Style</h2>
-          <div id="looks" class="looks" role="radiogroup" aria-label="Representation style"></div>
-        </section>
+        <details id="section-export" class="block section">
+          <summary><h2>Export</h2></summary>
+          <label class="field-label" for="export-width">Image width</label>
+          <div class="field-row">
+            <input
+              id="export-width"
+              type="number"
+              min="400"
+              max="4096"
+              step="100"
+              value="1600"
+              list="export-width-presets"
+            />
+            <span class="unit">px</span>
+          </div>
+          <datalist id="export-width-presets">
+            <option value="1200"></option>
+            <option value="1600"></option>
+            <option value="2000"></option>
+            <option value="3000"></option>
+            <option value="4096"></option>
+          </datalist>
 
-        <details id="section-colour" class="block section" open>
+          <label class="field-label" for="export-quality">Supersample</label>
+          <select id="export-quality">
+            <option value="2">2x</option>
+            <option value="3" selected>3x</option>
+            <option value="4">4x</option>
+          </select>
+          <p class="hint">Any width from 400 to 4096 px. Large widths cap the supersample to fit the render limit.</p>
+
+          <div class="control">
+            <label class="field-label" for="export-margin">Margin <output id="export-margin-value">6%</output></label>
+            <input id="export-margin" type="range" min="4" max="9" step="0.5" value="6" />
+          </div>
+
+          <div class="control">
+            <label class="field-label" for="background">Figure background</label>
+            <div class="field-row">
+              <input id="background" type="color" value="#ffffff" />
+              <select id="gradient">
+                <option value="none">Solid</option>
+                <option value="vertical">Gradient</option>
+              </select>
+            </div>
+            <input id="gradient-bottom" type="color" value="#dfe7f2" aria-label="Gradient end colour" hidden />
+            <p class="hint">Used when Transparent is off.</p>
+          </div>
+
+          <label class="checkbox"><input id="export-transparent" type="checkbox" checked /> Transparent background</label>
+          <label class="checkbox"><input id="export-labels" type="checkbox" /> Atom labels</label>
+          <label class="checkbox"><input id="export-scalebar" type="checkbox" /> Scale bar</label>
+        </details>
+
+        <details id="section-style" class="block section">
+          <summary><h2>Style</h2></summary>
+          <div id="looks" class="looks" role="radiogroup" aria-label="Representation style"></div>
+        </details>
+
+        <details id="section-colour" class="block section">
           <summary><h2>Colour</h2></summary>
 
           <!-- The 2D drawing is RDKit's own palette, so this group is inert in that mode. -->
@@ -137,66 +191,95 @@
         <details id="section-appearance" class="block section">
           <summary><h2>Appearance</h2></summary>
 
+          <h3 class="group-label">Shape</h3>
           <div class="control">
             <label class="field-label" for="stick-radius">Stick radius <output id="stick-radius-value">0.20</output></label>
             <input id="stick-radius" type="range" min="0.05" max="0.5" step="0.01" value="0.20" />
           </div>
-
           <div class="control">
             <label class="field-label" for="sphere-scale">Sphere size <output id="sphere-scale-value">0.30</output></label>
             <input id="sphere-scale" type="range" min="0.1" max="1.1" step="0.01" value="0.30" />
           </div>
-
-          <div class="control">
-            <label class="field-label" for="transparency">Transparency <output id="transparency-value">0%</output></label>
-            <input id="transparency" type="range" min="0" max="0.8" step="0.02" value="0" />
+          <label class="checkbox compact"><input id="valence" type="checkbox" checked /> Valence bonds</label>
+          <div class="compact-control">
+            <label class="field-label" for="valence-scale">Valence size <output id="valence-scale-value">1.00</output></label>
+            <input id="valence-scale" type="range" min="0" max="2" step="0.05" value="1" />
           </div>
 
+          <h3 class="group-label">Light</h3>
           <div class="control">
             <label class="field-label" for="ambient">Ambient <output id="ambient-value">0.25</output></label>
             <input id="ambient" type="range" min="0" max="1" step="0.01" value="0.25" />
           </div>
-
           <div class="control">
             <label class="field-label" for="direct">Direct light <output id="direct-value">0.45</output></label>
             <input id="direct" type="range" min="0" max="1" step="0.01" value="0.45" />
           </div>
-
           <div class="control">
             <label class="field-label" for="specular">Specular <output id="specular-value">1.00</output></label>
             <input id="specular" type="range" min="0" max="1" step="0.01" value="1" />
           </div>
-
           <div class="control">
             <label class="field-label" for="reflect">Reflect <output id="reflect-value">0.45</output></label>
             <input id="reflect" type="range" min="0" max="1" step="0.01" value="0.45" />
           </div>
-
           <div class="control">
             <label class="field-label" for="shininess">Shininess <output id="shininess-value">30</output></label>
             <input id="shininess" type="range" min="0" max="100" step="1" value="30" />
           </div>
 
+          <h3 class="group-label">Effects</h3>
           <div class="control">
-            <span class="field-label">Surface</span>
-            <label class="checkbox compact"><input id="ambient-occlusion" type="checkbox" /> Ambient occlusion</label>
-            <div class="compact-control">
-              <label class="field-label" for="ao-strength">AO strength <output id="ao-strength-value">0.75</output></label>
-              <input id="ao-strength" type="range" min="0" max="1" step="0.01" value="0.75" />
-            </div>
-            <label class="checkbox compact"><input id="shadows" type="checkbox" /> Soft shadows</label>
-            <label class="checkbox compact"><input id="silhouettes" type="checkbox" /> Outline</label>
-            <div class="compact-control">
-              <label class="field-label" for="outline-width">Outline width <output id="outline-width-value">1.4</output></label>
-              <input id="outline-width" type="range" min="0.5" max="4" step="0.1" value="1.4" />
-            </div>
-            <label class="checkbox compact"><input id="depth-cue" type="checkbox" /> Depth cue</label>
-            <div class="compact-control">
-              <label class="field-label" for="fog">Fog <output id="fog-value">0.00</output></label>
-              <input id="fog" type="range" min="0" max="1" step="0.02" value="0" />
-            </div>
+            <label class="field-label" for="stick-transparency">Stick transparency <output id="stick-transparency-value">0%</output></label>
+            <input id="stick-transparency" type="range" min="0" max="0.8" step="0.02" value="0" />
+          </div>
+          <div class="control">
+            <label class="field-label" for="sphere-transparency">Sphere transparency <output id="sphere-transparency-value">0%</output></label>
+            <input id="sphere-transparency" type="range" min="0" max="0.8" step="0.02" value="0" />
+          </div>
+          <div class="control">
+            <label class="field-label" for="cartoon-transparency">Cartoon transparency <output id="cartoon-transparency-value">0%</output></label>
+            <input id="cartoon-transparency" type="range" min="0" max="0.8" step="0.02" value="0" />
+          </div>
+          <label class="field-label" for="transparency-mode">Blending</label>
+          <select id="transparency-mode">
+            <option value="0">Off</option>
+            <option value="1" selected>Additive</option>
+            <option value="2">Weighted average</option>
+          </select>
+          <label class="checkbox compact"><input id="depth-cue" type="checkbox" /> Depth cue</label>
+          <div class="compact-control">
+            <label class="field-label" for="fog">Fog <output id="fog-value">0.00</output></label>
+            <input id="fog" type="range" min="0" max="1" step="0.02" value="0" />
+          </div>
+          <div class="compact-control">
+            <label class="field-label" for="fog-start">Fog start <output id="fog-start-value">1.0</output></label>
+            <input id="fog-start" type="range" min="0" max="10" step="0.5" value="1" />
           </div>
 
+          <h3 class="group-label">Surface</h3>
+          <label class="checkbox compact"><input id="ambient-occlusion" type="checkbox" /> Ambient occlusion</label>
+          <div class="compact-control">
+            <label class="field-label" for="ao-strength">AO strength <output id="ao-strength-value">0.75</output></label>
+            <input id="ao-strength" type="range" min="0" max="1" step="0.01" value="0.75" />
+          </div>
+          <div class="compact-control">
+            <label class="field-label" for="ao-radius">AO radius <output id="ao-radius-value">0.50</output></label>
+            <input id="ao-radius" type="range" min="0.1" max="2" step="0.05" value="0.5" />
+          </div>
+          <label class="checkbox compact"><input id="shadows" type="checkbox" /> Soft shadows</label>
+          <div class="compact-control">
+            <label class="field-label" for="shadow-strength">Shadow strength <output id="shadow-strength-value">0.50</output></label>
+            <input id="shadow-strength" type="range" min="0" max="1" step="0.05" value="0.5" />
+          </div>
+          <label class="checkbox compact"><input id="silhouettes" type="checkbox" /> Outline</label>
+          <div class="compact-control">
+            <label class="field-label" for="outline-width">Outline width <output id="outline-width-value">1.4</output></label>
+            <input id="outline-width" type="range" min="0.5" max="4" step="0.1" value="1.4" />
+          </div>
+          <label class="checkbox compact"><input id="antialias" type="checkbox" checked /> Smooth edges</label>
+
+          <h3 class="group-label">View</h3>
           <label class="field-label" for="projection">Projection</label>
           <select id="projection">
             <option value="perspective">Perspective</option>
@@ -208,60 +291,6 @@
             <button id="zoom-in" type="button" class="secondary" aria-label="Zoom in">+</button>
             <button id="frame" type="button" class="secondary">Re-frame view</button>
           </div>
-        </details>
-
-        <details id="section-export" class="block section">
-          <summary><h2>Export</h2></summary>
-          <label class="field-label" for="export-width">Image width</label>
-          <div class="field-row">
-            <input
-              id="export-width"
-              type="number"
-              min="400"
-              max="4096"
-              step="100"
-              value="1600"
-              list="export-width-presets"
-            />
-            <span class="unit">px</span>
-          </div>
-          <datalist id="export-width-presets">
-            <option value="1200"></option>
-            <option value="1600"></option>
-            <option value="2000"></option>
-            <option value="3000"></option>
-            <option value="4096"></option>
-          </datalist>
-
-          <label class="field-label" for="export-quality">Supersample</label>
-          <select id="export-quality">
-            <option value="2">2x</option>
-            <option value="3" selected>3x</option>
-            <option value="4">4x</option>
-          </select>
-          <p class="hint">Any width from 400 to 4096 px. Large widths cap the supersample to fit the render limit.</p>
-
-          <div class="control">
-            <label class="field-label" for="export-margin">Margin <output id="export-margin-value">6%</output></label>
-            <input id="export-margin" type="range" min="4" max="9" step="0.5" value="6" />
-          </div>
-
-          <div class="control">
-            <label class="field-label" for="background">Figure background</label>
-            <div class="field-row">
-              <input id="background" type="color" value="#ffffff" />
-              <select id="gradient">
-                <option value="none">Solid</option>
-                <option value="vertical">Gradient</option>
-              </select>
-            </div>
-            <input id="gradient-bottom" type="color" value="#dfe7f2" aria-label="Gradient end colour" hidden />
-            <p class="hint">Used when Transparent is off.</p>
-          </div>
-
-          <label class="checkbox"><input id="export-transparent" type="checkbox" checked /> Transparent background</label>
-          <label class="checkbox"><input id="export-labels" type="checkbox" /> Atom labels</label>
-          <label class="checkbox"><input id="export-scalebar" type="checkbox" /> Scale bar</label>
         </details>
 
         <details id="shortcuts" class="shortcuts">

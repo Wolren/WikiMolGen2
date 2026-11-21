@@ -98,6 +98,20 @@ pub struct Appearance {
     pub depth_cue: bool,
     /// Fog amount, 0..1. Only visible with the depth cue on.
     pub fog: f32,
+    /// Distance in Ångström where the fog starts.
+    pub fog_start: f32,
+    /// Draw the double-bond offset lines. patinae calls this `valence`.
+    pub valence: bool,
+    /// Size of that offset, `stick_valence_scale` in patinae.
+    pub stick_valence_scale: f32,
+    /// Ambient-occlusion radius, 0.1..2.
+    pub ao_radius: f32,
+    /// Shadow darkness, 0..1.
+    pub shadow_intensity: f32,
+    /// 0 off, 1 additive, 2 weighted average.
+    pub transparency_mode: u8,
+    /// Smooth polygon edges with FXAA.
+    pub antialias: bool,
     /// Element scheme id from [`palette::scheme_infos`], e.g. `"cpk"`.
     pub scheme: String,
     /// Flat stick ink, `#rrggbb`. `None` lets sticks follow the atom colours.
@@ -136,6 +150,14 @@ impl Default for Appearance {
             silhouette_width: 1.4,
             depth_cue: false,
             fog: 0.0,
+            // wikimolgen's `fog_start`; only visible with the depth cue on.
+            fog_start: 1.0,
+            valence: true,
+            stick_valence_scale: 1.0,
+            ao_radius: 0.5,
+            shadow_intensity: 0.5,
+            transparency_mode: 1,
+            antialias: true,
             scheme: palette::DEFAULT_SCHEME.to_string(),
             // The CPK scheme's own stick ink: wikimolgen's `stick_color = "gray50"`.
             stick_color: Some("#808080".to_string()),
@@ -344,6 +366,19 @@ mod tests {
         assert_eq!(appearance.helix_color, "#3399ff");
         assert_eq!(appearance.sheet_color, "#ffcc00");
         assert_eq!(appearance.loop_color, "#99aabb");
+    }
+
+    #[test]
+    fn the_finish_options_match_the_wikimolgen_defaults() {
+        // Fog start and the transparency mode are wikimolgen values.
+        let appearance = Appearance::default();
+        assert!((appearance.fog_start - 1.0).abs() < 1e-6);
+        assert!(appearance.valence);
+        assert!((appearance.stick_valence_scale - 1.0).abs() < 1e-6);
+        assert!((appearance.ao_radius - 0.5).abs() < 1e-6);
+        assert!((appearance.shadow_intensity - 0.5).abs() < 1e-6);
+        assert_eq!(appearance.transparency_mode, 1);
+        assert!(appearance.antialias);
     }
 
     #[test]

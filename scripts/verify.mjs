@@ -277,16 +277,49 @@ const sections = JSON.parse(
   await evaluate(
     session,
     `JSON.stringify({
+       order: Array.from(document.querySelectorAll('details.section')).map((node) => node.id),
+       style: document.getElementById('section-style').open,
        colour: document.getElementById('section-colour').open,
        appearance: document.getElementById('section-appearance').open,
        export: document.getElementById('section-export').open,
      })`,
   ),
 );
-console.log(`sections: colour ${sections.colour}, appearance ${sections.appearance}, export ${sections.export}`);
-if (sections.colour !== true) failures.push("the colour section starts folded");
-if (sections.appearance !== false) failures.push("the appearance section starts open");
-if (sections.export !== false) failures.push("the export section starts open");
+console.log(`sections: ${sections.order.join(' > ')}, all folded: ${!sections.style && !sections.colour && !sections.appearance && !sections.export}`);
+if (sections.order[0] !== "section-export") failures.push(`the first section is ${sections.order[0]}`);
+for (const id of ["style", "colour", "appearance", "export"]) {
+  if (sections[id] !== false) failures.push(`the ${id} section starts open`);
+}
+
+// The finish controls read the same defaults the Rust side ships.
+const finish = JSON.parse(
+  await evaluate(
+    session,
+    `JSON.stringify({
+       valence: document.getElementById('valence').checked,
+       valenceScale: document.getElementById('valence-scale').value,
+       stick: document.getElementById('stick-transparency').value,
+       sphere: document.getElementById('sphere-transparency').value,
+       cartoon: document.getElementById('cartoon-transparency').value,
+       blending: document.getElementById('transparency-mode').value,
+       antialias: document.getElementById('antialias').checked,
+       fogStart: document.getElementById('fog-start').value,
+       aoRadius: document.getElementById('ao-radius').value,
+       shadow: document.getElementById('shadow-strength').value,
+     })`,
+  ),
+);
+console.log(`finish defaults: ${JSON.stringify(finish)}`);
+if (finish.valence !== true) failures.push("valence bonds start off");
+if (finish.valenceScale !== "1") failures.push(`valence size starts at ${finish.valenceScale}`);
+if (finish.stick !== "0" || finish.sphere !== "0" || finish.cartoon !== "0") {
+  failures.push("a transparency slider does not start at zero");
+}
+if (finish.blending !== "1") failures.push(`blending starts at ${finish.blending}`);
+if (finish.antialias !== true) failures.push("smooth edges starts off");
+if (finish.fogStart !== "1") failures.push(`fog start starts at ${finish.fogStart}`);
+if (finish.aoRadius !== "0.5") failures.push(`AO radius starts at ${finish.aoRadius}`);
+if (finish.shadow !== "0.5") failures.push(`shadow strength starts at ${finish.shadow}`);
 
 // 2. Load a compound through the page's own form.
 await evaluate(
@@ -566,11 +599,20 @@ await evaluate(session, `(() => {
   return true;
 })()`);
 
-// Wait for the browser's own completion event: it carries the real file path, whereas
-// polling the directory races the browser's write-then-rename.
+// The app writes "Saved ..." after the PNG is composed, so that line is the completion
+// signal. The browser's download event is the fast path; it can lag or go missing in an
+// offscreen window, which made the check flaky.
+const saved = await poll(async () => {
+  const text = await evaluate(
+    session,
+    "document.getElementById('export-status').textContent ?? ''",
+  );
+  return typeof text === "string" && text.startsWith("Saved ") ? text : null;
+}, 90_000);
+
 let download = await Promise.race([
   completion,
-  new Promise((resolve) => setTimeout(() => resolve(null), 90_000)),
+  new Promise((resolve) => setTimeout(() => resolve(null), 1500)),
 ]);
 
 // The completion event is not guaranteed; the file in the directory is the same artefact.
@@ -584,8 +626,9 @@ if (download === null || download.state !== "completed" || !download.filePath) {
 
 console.log(`export status: ${await evaluate(session, "document.getElementById('export-status').textContent")}`);
 
-if (download === null || download.state !== "completed" || !download.filePath) {
-  failures.push(`export did not complete (${download?.state ?? "no download event"})`);
+if (saved === null) failures.push(`export did not finish; the status line says nothing`);
+else if (download === null || download.state !== "completed" || !download.filePath) {
+  failures.push("the export says Saved but no PNG is in the download directory");
 } else {
   const bytes = await readFile(download.filePath);
   // Keep the artefact next to the screenshot: the browser's download directory is
@@ -651,6 +694,21 @@ async function samplePng(bytes) {
   return JSON.parse(result);
 }
 
+// `--open appearance` expands a folded section before the screenshot, so the panel's
+// inner groups can be shown without clicking through the page.
+if (args.open) {
+  await evaluate(
+    session,
+    `(() => {
+       for (const name of ${JSON.stringify(String(args.open).split(","))}) {
+         document.getElementById('section-' + name.trim())?.setAttribute('open', '');
+       }
+       return true;
+     })()`,
+  );
+  await new Promise((done) => setTimeout(done, 200));
+}
+
 // 5. Screenshot for a human to look at. `--scroll <id>` brings one control into view and
 //    `--scroll-offset <px>` shifts the panel after that, which is how the colour section
 //    is captured with its heading instead of mid-field.
@@ -705,6 +763,9 @@ const fullscreenButton = await evaluate(
 if (fullscreenButton !== true) {
   failures.push("the full-screen button is hidden");
 } else {
+  // Fullscreen needs an active tab; the test window is offscreen, so activate it here.
+  await send("Page.bringToFront", {}, session);
+  await new Promise((done) => setTimeout(done, 300));
   await evaluate(
     session,
     `(() => {
@@ -786,9 +847,16 @@ if (fullscreenButton !== true) {
 }
 
 // 7. A folded section is remembered, which is the only state the page keeps besides the
-//    theme. Opening one and reloading must bring it back open.
+//    theme. Opening one and reloading must bring it back open. The write happens in the
+//    element's toggle event, so wait for the store rather than for the clock.
 await evaluate(session, "(document.getElementById('section-appearance').open = true, true)");
-await new Promise((done) => setTimeout(done, 300));
+await poll(
+  async () => {
+    const stored = await evaluate(session, "localStorage.getItem('molplate.sections') ?? ''");
+    return stored.includes('"section-appearance":true') ? true : null;
+  },
+  10_000,
+);
 await send("Page.reload", {}, session);
 const reloaded = await poll(
   async () => (await evaluate(session, "document.documentElement.dataset.ready === '1'")) ? true : null,

@@ -44,7 +44,8 @@ reach; a load then scrolls the figure into view.
 | 2D depiction | RDKit's MinimalLib draws the skeletal SVG with canonical layout, stereo and element colours. The SVG has no background. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback |
 | Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by secondary structure or chain. The finishes start from the WikiMolGen preset: CPK spheres, grey sticks, a white page |
 | Colour | Styles the 3D figure: colour by element, chain, residue type, residue number, secondary structure, B-factor or a single ink. Seven element palettes: CPK (default), Jmol, RasMol, ChemDraw, VMD, print inks and dark figure. Sticks follow the atoms or take one flat ink. A cartoon takes three secondary-structure inks. Per-element overrides sit on top of the palette. The panel steps aside in the 2D view, which keeps RDKit's inks |
-| Appearance | Stick and sphere size, transparency, ambient, direct, reflect, specular and shininess, ambient occlusion and strength, soft shadows, outline and width, depth cue and fog. Background and gradient are export settings |
+| Appearance | Grouped as shape, light, effects, surface and view: stick radius, sphere size, valence and its size, the five light values, three transparencies, blending, depth cue with fog and fog start, ambient occlusion with strength and radius, soft shadows with strength, outline and width, smooth edges, projection, zoom and re-frame. Background and gradient are export settings |
+| Controls | Export comes first, then style, colour and appearance. Every category starts folded, and an opened one stays open across reloads |
 | Figures | The figure toolbar holds the 3D/2D switch, full screen and the download. The stage keeps a height rather than sharing the leftover space, so the molecule is drawn large and the column scrolls |
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, full screen, and keyboard shortcuts |
 | Links | A lookup is written to `?q=` and read back on boot, so a figure can be shared or reloaded |
@@ -73,6 +74,7 @@ reach; a load then scrolls the figure into view.
 | Protein 2D or sequence view | A cartoon is the useful figure for an article | A sequence panel and a depiction path |
 | Element palettes in the 2D drawing | RDKit's MinimalLib draws the SVG with its own atom inks. The vendored build reads an `atomColourPalette` keyed by atomic number, not by symbol, and the drawing is cached after the first build | A symbol-to-atomic-number table plus a redraw when the palette changes |
 | Element labels in 3D by symbol | The renderer's label expression has no element field; atom names are the substitute | A renderer label expression, or browser-side projection |
+| Two-sided lighting, stick and sphere quality | patinae carries them as session fields, and its `set` registry rejects the names. See [PATINAE-GAPS.md](PATINAE-GAPS.md) | A patinae registry fix, or a session-level setter |
 
 ## Contracts
 

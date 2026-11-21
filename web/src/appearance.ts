@@ -122,24 +122,28 @@ export function syncAppearance(): void {
   dom.gradientBottom.value = appearance.gradient?.[1] ?? "#dfe7f2";
   dom.stickRadius.value = String(appearance.stick_radius);
   dom.sphereScale.value = String(appearance.sphere_scale);
-  const transparency = Math.max(
-    appearance.stick_transparency,
-    appearance.sphere_transparency,
-    appearance.cartoon_transparency,
-  );
-  dom.transparency.value = String(transparency);
+  dom.valence.checked = appearance.valence;
+  dom.valenceScale.value = String(appearance.stick_valence_scale);
+  dom.stickTransparency.value = String(appearance.stick_transparency);
+  dom.sphereTransparency.value = String(appearance.sphere_transparency);
+  dom.cartoonTransparency.value = String(appearance.cartoon_transparency);
+  dom.transparencyMode.value = String(appearance.transparency_mode);
   dom.ambient.value = String(appearance.ambient);
   dom.direct.value = String(appearance.direct);
   dom.specular.value = String(appearance.specular);
   dom.reflect.value = String(appearance.reflect);
   dom.shininess.value = String(appearance.shininess);
+  dom.antialias.checked = appearance.antialias;
   dom.ambientOcclusion.checked = appearance.ambient_occlusion;
   dom.aoStrength.value = String(appearance.ao_strength);
+  dom.aoRadius.value = String(appearance.ao_radius);
   dom.shadows.checked = appearance.shadows;
+  dom.shadowStrength.value = String(appearance.shadow_intensity);
   dom.silhouettes.checked = appearance.silhouettes;
   dom.outlineWidth.value = String(appearance.silhouette_width);
   dom.depthCue.checked = appearance.depth_cue;
   dom.fog.value = String(appearance.fog);
+  dom.fogStart.value = String(appearance.fog_start);
   syncOutputs();
 }
 
@@ -177,20 +181,21 @@ function syncOutputs(): void {
   const appearance = look.appearance;
   dom.stickRadiusValue.textContent = appearance.stick_radius.toFixed(2);
   dom.sphereScaleValue.textContent = appearance.sphere_scale.toFixed(2);
+  dom.valenceScaleValue.textContent = appearance.stick_valence_scale.toFixed(2);
+  dom.stickTransparencyValue.textContent = `${Math.round(appearance.stick_transparency * 100)}%`;
+  dom.sphereTransparencyValue.textContent = `${Math.round(appearance.sphere_transparency * 100)}%`;
+  dom.cartoonTransparencyValue.textContent = `${Math.round(appearance.cartoon_transparency * 100)}%`;
   dom.ambientValue.textContent = appearance.ambient.toFixed(2);
   dom.directValue.textContent = appearance.direct.toFixed(2);
   dom.specularValue.textContent = appearance.specular.toFixed(2);
   dom.reflectValue.textContent = appearance.reflect.toFixed(2);
   dom.shininessValue.textContent = appearance.shininess.toFixed(0);
   dom.aoStrengthValue.textContent = appearance.ao_strength.toFixed(2);
+  dom.aoRadiusValue.textContent = appearance.ao_radius.toFixed(2);
+  dom.shadowStrengthValue.textContent = appearance.shadow_intensity.toFixed(2);
   dom.outlineWidthValue.textContent = appearance.silhouette_width.toFixed(1);
   dom.fogValue.textContent = appearance.fog.toFixed(2);
-  const transparency = Math.max(
-    appearance.stick_transparency,
-    appearance.sphere_transparency,
-    appearance.cartoon_transparency,
-  );
-  dom.transparencyValue.textContent = `${Math.round(transparency * 100)}%`;
+  dom.fogStartValue.textContent = appearance.fog_start.toFixed(1);
 }
 
 /** Read every appearance control into the current look. */
@@ -203,22 +208,28 @@ function readAppearance(): void {
     dom.gradient.value === "vertical" ? [appearance.background, dom.gradientBottom.value] : null;
   appearance.stick_radius = Number(dom.stickRadius.value);
   appearance.sphere_scale = Number(dom.sphereScale.value);
-  const transparency = Number(dom.transparency.value);
-  appearance.stick_transparency = transparency;
-  appearance.sphere_transparency = transparency;
-  appearance.cartoon_transparency = transparency;
+  appearance.valence = dom.valence.checked;
+  appearance.stick_valence_scale = Number(dom.valenceScale.value);
+  appearance.stick_transparency = Number(dom.stickTransparency.value);
+  appearance.sphere_transparency = Number(dom.sphereTransparency.value);
+  appearance.cartoon_transparency = Number(dom.cartoonTransparency.value);
+  appearance.transparency_mode = Number(dom.transparencyMode.value);
   appearance.ambient = Number(dom.ambient.value);
   appearance.direct = Number(dom.direct.value);
   appearance.specular = Number(dom.specular.value);
   appearance.reflect = Number(dom.reflect.value);
   appearance.shininess = Number(dom.shininess.value);
+  appearance.antialias = dom.antialias.checked;
   appearance.ambient_occlusion = dom.ambientOcclusion.checked;
   appearance.ao_strength = Number(dom.aoStrength.value);
+  appearance.ao_radius = Number(dom.aoRadius.value);
   appearance.shadows = dom.shadows.checked;
+  appearance.shadow_intensity = Number(dom.shadowStrength.value);
   appearance.silhouettes = dom.silhouettes.checked;
   appearance.silhouette_width = Number(dom.outlineWidth.value);
   appearance.depth_cue = dom.depthCue.checked;
   appearance.fog = Number(dom.fog.value);
+  appearance.fog_start = Number(dom.fogStart.value);
 }
 
 /** Read the colour controls into the current look. */
@@ -310,15 +321,21 @@ export function bindAppearance(): void {
   for (const input of [
     dom.stickRadius,
     dom.sphereScale,
-    dom.transparency,
+    dom.valenceScale,
+    dom.stickTransparency,
+    dom.sphereTransparency,
+    dom.cartoonTransparency,
     dom.ambient,
     dom.direct,
     dom.specular,
     dom.reflect,
     dom.shininess,
     dom.aoStrength,
+    dom.aoRadius,
+    dom.shadowStrength,
     dom.outlineWidth,
     dom.fog,
+    dom.fogStart,
   ]) {
     input.addEventListener("input", () => {
       readAppearance();
@@ -343,7 +360,7 @@ export function bindAppearance(): void {
     scheduleApply();
   });
 
-  for (const toggle of [dom.ambientOcclusion, dom.silhouettes, dom.depthCue]) {
+  for (const toggle of [dom.valence, dom.ambientOcclusion, dom.silhouettes, dom.depthCue, dom.antialias]) {
     toggle.addEventListener("change", () => {
       readAppearance();
       // Depth cue is invisible at zero fog, so switching it on adds a light haze.
@@ -354,6 +371,11 @@ export function bindAppearance(): void {
       scheduleApply();
     });
   }
+
+  dom.transparencyMode.addEventListener("change", () => {
+    readAppearance();
+    scheduleApply();
+  });
 
   dom.shadows.addEventListener("change", () => {
     readAppearance();

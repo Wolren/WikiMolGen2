@@ -38,6 +38,20 @@ export interface Appearance {
   silhouette_width: number;
   depth_cue: boolean;
   fog: number;
+  /** Distance where the fog starts, in Ångström. */
+  fog_start: number;
+  /** Draw the double-bond offset lines. */
+  valence: boolean;
+  /** Size of that offset. */
+  stick_valence_scale: number;
+  /** Ambient-occlusion radius, 0.1..2. */
+  ao_radius: number;
+  /** Shadow darkness, 0..1. */
+  shadow_intensity: number;
+  /** 0 off, 1 additive, 2 weighted average. */
+  transparency_mode: number;
+  /** Smooth polygon edges with FXAA. */
+  antialias: boolean;
   /** Element scheme id, e.g. `"cpk"`. Resolved to inks by `appliedLook`. */
   scheme: string;
   /** Flat stick ink, or `null` for sticks that follow the atom colours. */
@@ -489,22 +503,33 @@ export class Renderer {
     );
     await this.once("stick_radius", `set stick_radius, ${decimal(appearance.stick_radius)}`);
     await this.once("sphere_scale", `set sphere_scale, ${decimal(appearance.sphere_scale)}`);
+    await this.once("valence", `set valence, ${appearance.valence ? 1 : 0}`);
+    await this.once(
+      "stick_valence_scale",
+      `set stick_valence_scale, ${decimal(appearance.stick_valence_scale)}`,
+    );
 
     await this.once("ambient", `set ambient, ${decimal(appearance.ambient)}`);
     await this.once("direct", `set direct, ${decimal(appearance.direct)}`);
     await this.once("reflect", `set reflect, ${decimal(appearance.reflect)}`);
     await this.once("specular", `set specular, ${decimal(appearance.specular)}`);
     await this.once("shininess", `set shininess, ${decimal(appearance.shininess)}`);
+    await this.once("transparency_mode", `set transparency_mode, ${appearance.transparency_mode}`);
+    await this.once("fxaa_enabled", `set fxaa_enabled, ${appearance.antialias ? 1 : 0}`);
 
     // These switch a shader or a pipeline, so each one is only sent when it changes.
     await this.once(
       "shading_mode",
       `set shading_mode, ${appearance.shadows ? "full" : "classic"}`,
     );
+    await this.once(
+      "shadow_intensity",
+      `set shadow_intensity, ${decimal(appearance.shadow_intensity)}`,
+    );
     await this.once("ssao_enabled", `set ssao_enabled, ${appearance.ambient_occlusion ? 1 : 0}`);
     if (appearance.ambient_occlusion) {
       await this.once("ssao_intensity", `set ssao_intensity, ${decimal(appearance.ao_strength)}`);
-      await this.once("ssao_radius", "set ssao_radius, 0.5");
+      await this.once("ssao_radius", `set ssao_radius, ${decimal(appearance.ao_radius)}`);
     }
     await this.once("silhouettes", `set silhouettes, ${appearance.silhouettes ? 1 : 0}`);
     if (appearance.silhouettes) {
@@ -516,6 +541,7 @@ export class Renderer {
     }
     await this.once("depth_cue", `set depth_cue, ${appearance.depth_cue ? 1 : 0}`);
     await this.once("fog", `set fog, ${decimal(appearance.fog)}`);
+    await this.once("fog_start", `set fog_start, ${decimal(appearance.fog_start)}`);
   }
 
   /**

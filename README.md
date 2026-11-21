@@ -42,6 +42,11 @@ shows through. A Rust V2000 parser is the fallback if the RDKit module cannot lo
 
 ![molplate rendering aspirin, with the download in the figure toolbar and the Commons markup below](docs/screenshot.png)
 
+Export comes first, and every category starts folded. Appearance groups its controls as
+shape, light, effects, surface and view:
+
+![The appearance panel](docs/appearance-panel.png)
+
 The colour panel: the element palette, the stick ink and the per-element overrides.
 
 ![The colour panel](docs/colour-panel.png)
@@ -120,7 +125,9 @@ Wikidata, Wikipedia and openFDA fills the summary and the infobox fields.
 Known gaps are listed in [docs/SPEC.md](docs/SPEC.md): conformer generation for a SMILES
 that PubChem does not know, ray tracing, MSAA in the live view, a live background
 gradient, export edges above 8192 px, and a direct DailyMed read (openFDA serves the same
-labels). The Rust 2D fallback reads V2000 only; the RDKit path also reads V3000.
+labels). The renderer's own problems, and the feature requests that follow from them, are
+recorded in [docs/PATINAE-GAPS.md](docs/PATINAE-GAPS.md). The Rust 2D fallback reads V2000
+only; the RDKit path also reads V3000.
 
 WebGPU is required for 3D and the path is exercised: `scripts/verify.mjs --gpu hardware`
 reports the live backend, loads aspirin and exports a figure on real hardware. The 2D SVG

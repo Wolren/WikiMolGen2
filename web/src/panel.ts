@@ -1,9 +1,9 @@
 /**
  * Foldable control sections, remembered across visits.
  *
- * The controls column is longer than a laptop viewport. The default figure is the common
- * case, so the finish and export knobs start folded; a click opens one and the choice is
- * stored the same way the theme is.
+ * Every category starts folded: the figure and the export controls are the common path,
+ * and the panel is long enough to hide the figure on a laptop. A click opens one and the
+ * choice is stored the same way the theme is.
  */
 
 const STORAGE_KEY = "molplate.sections";
