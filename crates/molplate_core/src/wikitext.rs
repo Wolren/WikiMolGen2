@@ -141,6 +141,18 @@ pub enum License {
 }
 
 impl License {
+    /// The stable identifier the page and the templates share.
+    pub fn id(self) -> &'static str {
+        match self {
+            License::CcBySa40 => "cc-by-sa-4.0",
+            License::CcBy40 => "cc-by-4.0",
+            License::CcBySa30 => "cc-by-sa-3.0",
+            License::CcZero => "cc-zero",
+            License::PdChem => "pd-chem",
+            License::PdSelf => "pd-self",
+        }
+    }
+
     /// The `{{…}}` body written under `== License ==`.
     fn template(self) -> &'static str {
         match self {

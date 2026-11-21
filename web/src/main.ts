@@ -13,11 +13,20 @@ import init, {
   commonsFileName,
   commonsInformation,
   commonsUploadUrl,
+  defaultLicense,
   drugbox,
   frameFigure,
   looksJson,
   resizePng,
 } from "../pkg/molplate_wasm.js";
+import {
+  buildDepiction,
+  clearDepiction,
+  depictionBytes,
+  downloadSvg,
+  showDepiction,
+  type Depiction,
+} from "./depiction.js";
 import { LookupError, loadCompound, type Compound } from "./pubchem.js";
 import { Renderer, RendererUnavailable } from "./renderer.js";
 import "./styles.css";
@@ -33,10 +42,10 @@ interface Look {
 }
 
 type TabId = "drugbox" | "chembox" | "commons";
+type StructureKindId = "two_d" | "three_d" | "protein";
+type ViewMode = "3d" | "2d";
 
 const AUTHOR = "molplate";
-const LICENSE_3D = "cc-by-sa-4.0";
-const STRUCTURE_KIND = "three_d";
 /** Margin around a figure, as a fraction of the molecule's longer side. */
 const FIGURE_MARGIN = 0.06;
 /**
@@ -64,6 +73,10 @@ const dom = {
   exportButton: required<HTMLButtonElement>("export"),
   exportStatus: required<HTMLParagraphElement>("export-status"),
   viewerHost: required<HTMLElement>("viewer"),
+  depiction: required<HTMLDivElement>("depiction"),
+  mode3d: required<HTMLButtonElement>("mode-3d"),
+  mode2d: required<HTMLButtonElement>("mode-2d"),
+  stageNote: required<HTMLElement>("stage-note"),
   stageMessage: required<HTMLDivElement>("stage-message"),
   engine: required<HTMLElement>("engine"),
   tabs: {
@@ -84,6 +97,8 @@ const state: {
   look: Look | null;
   tab: TabId;
   compoundJson: string;
+  mode: ViewMode;
+  depiction: Depiction | null;
 } = {
   viewer: null,
   looks: [],
@@ -91,6 +106,8 @@ const state: {
   look: null,
   tab: "drugbox",
   compoundJson: "{}",
+  mode: "3d",
+  depiction: null,
 };
 
 /** The markup currently shown, for the copy button. */
@@ -142,6 +159,7 @@ async function boot(): Promise<void> {
   // is in use, and the note explains what a figure needs, rather than implying a
   // fallback that does not exist.
   dom.engine.textContent = "WebGPU";
+  applyMode();
 }
 
 // --- Compound lookup ---------------------------------------------------------------
@@ -175,9 +193,22 @@ async function loadFromInput(): Promise<void> {
       dom.exportButton.disabled = false;
     }
 
+    // The 2D drawing comes from the flat record, so it works even when there is no 3D
+    // viewer. It is built once per load and then shown or hidden by the mode switch.
+    state.depiction = null;
+    if (result.depiction !== null) {
+      const built = buildDepiction(result.compound.name ?? identifier, result.depiction.bytes);
+      state.depiction = built.depiction;
+      if (built.error !== null) result.warnings.push(`No 2D drawing: ${built.error}`);
+    } else {
+      result.warnings.push("PubChem has no flat record for this compound, so 2D is unavailable.");
+    }
+    dom.mode2d.disabled = state.depiction === null;
+    if (state.mode === "2d" && state.depiction === null) state.mode = "3d";
+
     renderLooks();
     renderSummary(result.warnings);
-    refreshOutput();
+    applyMode();
     setStatus(result.warnings.join(" "));
   } catch (error) {
     if (error instanceof LookupError) {
@@ -215,9 +246,11 @@ function renderSummary(warnings: string[]): void {
   );
   dom.summary.hidden = false;
 
+  // A second lookup replaces the notes too; left in place they would pile up.
+  for (const old of document.querySelectorAll(".summary-note")) old.remove();
   for (const warning of warnings) {
     const note = document.createElement("p");
-    note.className = "hint";
+    note.className = "hint summary-note";
     note.textContent = warning;
     dom.summary.after(note);
   }
@@ -264,6 +297,55 @@ async function chooseLook(look: Look): Promise<void> {
   }
 }
 
+// --- View mode ---------------------------------------------------------------------
+
+/** Which image the markup describes: the flat drawing or the 3D render. */
+function structureKind(): StructureKindId {
+  return state.mode === "2d" ? "two_d" : "three_d";
+}
+
+/** The Commons file name for a kind. A 2D figure is vector, so it ends in `.svg`. */
+function figureName(kind: StructureKindId): string {
+  const png = commonsFileName(state.compoundJson, kind);
+  return kind === "two_d" ? png.replace(/\.png$/, ".svg") : png;
+}
+
+/** Swap the stage between the 3D viewer and the inline drawing. */
+function applyMode(): void {
+  const twoDimensional = state.mode === "2d";
+  dom.mode3d.setAttribute("aria-selected", String(!twoDimensional));
+  dom.mode2d.setAttribute("aria-selected", String(twoDimensional));
+  dom.viewerHost.hidden = twoDimensional;
+  dom.depiction.hidden = !twoDimensional;
+
+  if (twoDimensional) {
+    if (state.depiction !== null) {
+      showDepiction(dom.depiction, state.depiction.svg);
+      dom.stageNote.textContent = "Vector skeletal drawing";
+    } else {
+      clearDepiction(dom.depiction);
+      dom.depiction.textContent = "Load a compound to see its 2D drawing.";
+      dom.stageNote.textContent = "";
+    }
+  } else {
+    dom.stageNote.textContent = "";
+  }
+
+  dom.exportButton.textContent = twoDimensional ? "Download SVG" : "Download PNG";
+  refreshOutput();
+}
+
+dom.mode3d.addEventListener("click", () => {
+  state.mode = "3d";
+  applyMode();
+});
+
+dom.mode2d.addEventListener("click", () => {
+  if (dom.mode2d.disabled) return;
+  state.mode = "2d";
+  applyMode();
+});
+
 dom.projection.addEventListener("change", () => {
   void state.viewer?.setProjection(dom.projection.value);
 });
@@ -308,8 +390,29 @@ dom.viewerHost.addEventListener(
 // --- Export ------------------------------------------------------------------------
 
 dom.exportButton.addEventListener("click", () => {
-  void exportPng();
+  void exportFigure();
 });
+
+/** Download what the stage shows: the vector drawing in 2D mode, a PNG in 3D mode. */
+async function exportFigure(): Promise<void> {
+  if (state.mode === "2d") {
+    exportSvg();
+    return;
+  }
+  await exportPng();
+}
+
+/** Save the inline SVG. It is already the full document, so no work is needed here. */
+function exportSvg(): void {
+  if (state.depiction === null) {
+    setStatus("Load a compound before downloading a 2D drawing.", true);
+    return;
+  }
+  const name = figureName("two_d");
+  downloadSvg(name, state.depiction.svg);
+  dom.fileName.textContent = name;
+  setStatus(`Saved ${name} (${depictionBytes(state.depiction.svg)} bytes).`);
+}
 
 /**
  * Render at the wanted width, then crop to the molecule and pad an even margin.
@@ -347,7 +450,7 @@ async function exportPng(): Promise<void> {
 
     const name = state.compound === null
       ? "molecule-3D.png"
-      : commonsFileName(state.compoundJson, STRUCTURE_KIND);
+      : figureName("three_d");
     download(name, framed);
     setStatus(`Saved ${name}${transparent ? " with a transparent background" : ""}.`);
     dom.fileName.textContent = name;
@@ -391,7 +494,8 @@ function refreshOutput(): void {
     return;
   }
 
-  const fileName = commonsFileName(state.compoundJson, STRUCTURE_KIND);
+  const kind = structureKind();
+  const fileName = figureName(kind);
   dom.fileName.textContent = fileName;
 
   switch (state.tab) {
@@ -405,14 +509,15 @@ function refreshOutput(): void {
       break;
     case "commons": {
       const today = new Date().toISOString().slice(0, 10);
+      const license = defaultLicense(kind);
       currentText = commonsInformation(
         state.compoundJson,
-        STRUCTURE_KIND,
+        kind,
         AUTHOR,
-        LICENSE_3D,
+        license,
         today,
       );
-      dom.upload.href = commonsUploadUrl(fileName, currentText, LICENSE_3D);
+      dom.upload.href = commonsUploadUrl(fileName, currentText, license);
       dom.upload.hidden = false;
       break;
     }

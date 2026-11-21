@@ -56,9 +56,12 @@ export interface Compound {
 /** A `Compound` while it is being assembled: keys may be present but undefined. */
 type CompoundFields = { [K in keyof Compound]?: Compound[K] | undefined };
 
-export interface LoadResult {  compound: Compound;
+export interface LoadResult {
+  compound: Compound;
   /** Structure to hand to the renderer, named for its format. */
   structure: { name: string; bytes: Uint8Array };
+  /** Flat record for the 2D depiction, or `null` when PubChem has only one kind. */
+  depiction: { name: string; bytes: Uint8Array } | null;
   /** Things the user should know about, e.g. a missing 3D record. */
   warnings: string[];
 }
@@ -74,7 +77,23 @@ export async function loadCompound(identifier: string): Promise<LoadResult> {
   const cid = properties.CID as number;
   const warnings: string[] = [];
 
-  const [synonyms, structure] = await Promise.all([fetchSynonyms(cid), fetchStructure(cid, warnings)]);
+  // Both records are cheap and independent: the 3D one feeds the viewer, the 2D one feeds
+  // the skeletal depiction. Fetching them together keeps a load to one round trip.
+  const [synonyms, three, two] = await Promise.all([
+    fetchSynonyms(cid),
+    requestBytes(`${PUG}/compound/cid/${cid}/record/SDF?record_type=3d`),
+    requestBytes(`${PUG}/compound/cid/${cid}/record/SDF?record_type=2d`),
+  ]);
+
+  let structure: { name: string; bytes: Uint8Array };
+  if (three !== null) {
+    structure = { name: `${cid}.sdf`, bytes: three };
+  } else if (two !== null) {
+    warnings.push("PubChem has no 3D record for this compound; showing its 2D coordinates.");
+    structure = { name: `${cid}.sdf`, bytes: two };
+  } else {
+    throw new LookupError("PubChem returned no structure record for this compound.");
+  }
 
   // Built without a `Compound` annotation on purpose: with
   // `exactOptionalPropertyTypes` the literal would be checked against it before
@@ -102,7 +121,7 @@ export async function loadCompound(identifier: string): Promise<LoadResult> {
     heavy_atoms: asNumber(properties.HeavyAtomCount),
   });
 
-  return { compound, structure, warnings };
+  return { compound, structure, depiction: two === null ? null : { name: `${cid}-2d.sdf`, bytes: two }, warnings };
 }
 
 /**
@@ -169,28 +188,6 @@ async function fetchSynonyms(cid: number): Promise<string[]> {
   const synonyms = information?.[0]?.Synonym ?? [];
   // Twelve is plenty: the infobox shows three, and the rest is for picking a file name.
   return synonyms.filter((entry) => entry.trim().length > 0).slice(0, 12);
-}
-
-/**
- * Fetch the 3D record, falling back to the 2D one.
- *
- * PubChem only has 3D coordinates for compounds somebody computed them for. A flat 2D
- * record still renders (it is honest: the molecule is planar in that file), but the
- * figure is not what the user asked for, so it is reported as a warning.
- */
-async function fetchStructure(
-  cid: number,
-  warnings: string[],
-): Promise<{ name: string; bytes: Uint8Array }> {
-  const three = await requestBytes(`${PUG}/compound/cid/${cid}/record/SDF?record_type=3d`);
-  if (three !== null) return { name: `${cid}.sdf`, bytes: three };
-
-  const two = await requestBytes(`${PUG}/compound/cid/${cid}/record/SDF?record_type=2d`);
-  if (two !== null) {
-    warnings.push("PubChem has no 3D record for this compound; showing its 2D coordinates.");
-    return { name: `${cid}.sdf`, bytes: two };
-  }
-  throw new LookupError("PubChem returned no structure record for this compound.");
 }
 
 async function request(path: string): Promise<Record<string, unknown>> {

@@ -82,7 +82,15 @@
       </aside>
 
       <section class="stage" aria-label="Molecular view">
+        <div class="stage-bar">
+          <div class="segmented" role="tablist" aria-label="View">
+            <button id="mode-3d" type="button" role="tab" aria-selected="true" aria-controls="viewer">3D</button>
+            <button id="mode-2d" type="button" role="tab" aria-selected="false" aria-controls="depiction" disabled>2D</button>
+          </div>
+          <span id="stage-note" class="stage-note"></span>
+        </div>
         <div id="viewer" class="viewer-host"></div>
+        <div id="depiction" class="depiction" hidden></div>
         <div id="stage-message" class="stage-message" role="status">
           Loading renderer…
         </div>

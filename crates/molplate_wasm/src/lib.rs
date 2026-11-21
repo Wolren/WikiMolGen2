@@ -73,6 +73,40 @@ pub fn looks_json() -> Result<String, JsError> {
     serde_json::to_string(&looks).map_err(|error| JsError::new(&error.to_string()))
 }
 
+/// Draw a V2000 mol block as a 2D skeletal SVG.
+///
+/// The drawing is vector, so the width only sets the nominal canvas. Heteroatoms are
+/// always labelled; `labels` adds the carbons, and `monochrome` prints one ink colour.
+#[wasm_bindgen(js_name = depictSvg)]
+pub fn depict_svg(
+    sdf: Vec<u8>,
+    width: u32,
+    margin: f32,
+    labels: bool,
+    monochrome: bool,
+    name: String,
+) -> Result<String, JsError> {
+    let text = String::from_utf8(sdf)
+        .map_err(|error| JsError::new(&format!("the 2D record is not UTF-8: {error}")))?;
+    molplate_core::depiction_svg(
+        &text,
+        &name,
+        molplate_core::DepictionOptions { width, margin, labels, monochrome },
+    )
+    .map_err(|error| JsError::new(&error.to_string()))
+}
+
+/// The licence a new upload should offer for a structure kind.
+///
+/// The rule lives in Rust so the Commons block and the upload URL cannot disagree.
+#[wasm_bindgen(js_name = defaultLicense)]
+pub fn default_license(kind: String) -> Result<String, JsError> {
+    let kind: molplate_core::StructureKind = serde_json::from_str(&format!("\"{kind}\""))
+        .map_err(|error| JsError::new(&format!("unknown structure kind {kind:?}: {error}")))?;
+    let license = molplate_core::License::default_for(kind);
+    Ok(license.id().to_string())
+}
+
 /// `{{Infobox drug}}` for a compound (JSON) and an image file name.
 #[wasm_bindgen(js_name = drugbox)]
 pub fn drugbox_json(compound_json: String, image: String) -> Result<String, JsError> {

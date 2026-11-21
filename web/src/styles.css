@@ -274,6 +274,8 @@ button:disabled {
 
 .stage {
   position: relative;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -281,13 +283,76 @@ button:disabled {
   background: var(--surface);
 }
 
+/* Mode switch and the one-line note about the current view. */
+.stage-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--canvas);
+}
+
+.segmented button {
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.segmented button[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgb(15 24 40 / 12%);
+}
+
+.segmented button:disabled {
+  opacity: 0.4;
+}
+
+.stage-note {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The renderer owns the canvas inside this box; the box is what the page lays out and
    what the export aspect is measured from. */
 .viewer-host {
   position: relative;
+  flex: 1;
   width: 100%;
-  height: 100%;
   min-height: 0;
+}
+
+/* The 2D drawing scales to the stage without ever cropping. */
+.depiction {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  overflow: auto;
+}
+
+.depiction svg {
+  max-width: 100%;
+  max-height: 100%;
+  height: auto;
 }
 
 .stage canvas {
