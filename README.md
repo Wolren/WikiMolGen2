@@ -19,7 +19,8 @@ What it offers:
 * **Named looks and controls.** Publication, Flat and Dark finishes, plus light, outline,
   ambient occlusion, depth cue, transparency and per-element colour overrides.
 * **Figures, not screenshots.** PNG at exactly 1200, 1600 or 2000 px wide, with a 4 to 9
-  percent margin, optional atom labels, a scale bar, transparency and a gradient.
+  percent margin. The background is transparent by default, and an optional colour or
+  gradient is one click away. Atom labels and a scale bar are available.
 * **Metadata beside PubChem.** Wikidata identifiers and ATC codes, Wikipedia clinical
   fields, and an openFDA drug label.
 

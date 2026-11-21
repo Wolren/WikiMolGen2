@@ -33,7 +33,7 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by secondary structure or chain |
 | Appearance | Background, stick and sphere size, transparency, ambient and direct light, specular, ambient occlusion, outline, depth cue, per-element colour overrides |
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, and keyboard shortcuts |
-| Export | PNG at exactly 1200, 1600 or 2000 px wide; a 4 to 9 percent margin; 2x supersampling; optional atom labels, scale bar, transparent background and export gradient |
+| Export | PNG at exactly 1200, 1600 or 2000 px wide; a 4 to 9 percent margin; 2x supersampling; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
 | Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields, and an openFDA drug label |
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects, including ATC, routes and legal status |
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
@@ -88,6 +88,9 @@ renderer commands.
   "scale_bar": { "angstrom_per_pixel": 0.0039 }
 }
 ```
+
+The app passes `[0, 0, 0, 0]` by default, so the PNG margin is transparent. The background
+or gradient applies when Transparent is off.
 
 The output width is exact. The content is scaled to `width - 2 * margin_px`, so the
 horizontal margin is exact and no atom leaves the canvas. The scale bar is drawn in the

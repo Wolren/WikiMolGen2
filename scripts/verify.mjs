@@ -349,16 +349,18 @@ if (download === null || download.state !== "completed" || !download.filePath) {
   console.log(`export: ${isPng ? "PNG" : "NOT PNG"}, ${width}x${height} -> ${exportedCopy}`);
   if (!isPng) failures.push("exported file is not a PNG");
   // The figure is cropped to the molecule and padded, so the width is content-driven;
-  // what must hold is that it is a real image and that its border is clean white.
+  // what must hold is that it is a real image and that its border is clean: white or
+  // transparent.
   if (width < 400 || height < 400) failures.push(`exported image is only ${width}x${height}`);
 
   const painted = await samplePng(bytes);
   console.log(
-    `export pixels: ${painted.differing}/${painted.samples} samples differ from the background; corner rgb(${painted.corner.join(",")})`,
+    `export pixels: ${painted.differing}/${painted.samples} samples differ from the background; corner rgba(${painted.corner.join(",")})`,
   );
   if (painted.differing < 5) failures.push("exported image looks blank");
-  if (painted.corner.some((channel) => channel < 250)) {
-    failures.push(`exported image has a non-white border: rgb(${painted.corner.join(",")})`);
+  const [red, green, blue, alpha] = painted.corner;
+  if (alpha !== 0 && [red, green, blue].some((channel) => channel < 250)) {
+    failures.push(`exported image has a non-white border: rgba(${painted.corner.join(",")})`);
   }
 }
 
@@ -380,16 +382,19 @@ async function samplePng(bytes) {
        const context = canvas.getContext('2d');
        context.drawImage(image, 0, 0);
        const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
-       const [r, g, b] = [data[0], data[1], data[2]];
+       const [r, g, b, a] = [data[0], data[1], data[2], data[3]];
        let differing = 0;
        let samples = 0;
        for (let i = 0; i < data.length; i += 4 * 53) {
          samples += 1;
-         if (Math.abs(data[i] - r) + Math.abs(data[i + 1] - g) + Math.abs(data[i + 2] - b) > 24) {
+         if (
+           Math.abs(data[i] - r) + Math.abs(data[i + 1] - g) +
+           Math.abs(data[i + 2] - b) + Math.abs(data[i + 3] - a) > 24
+         ) {
            differing += 1;
          }
        }
-       return JSON.stringify({ differing, samples, corner: [r, g, b] });
+       return JSON.stringify({ differing, samples, corner: [r, g, b, a] });
      })()`,
   );
   return JSON.parse(result);

@@ -13,12 +13,12 @@ sources and offers a keyboard path from load to export.
 
 | Workstream | Acceptance | Result |
 | --- | --- | --- |
-| A. 2D depiction | Aspirin SVG under 100 KB, element colours, downloads from the UI | RDKit SVG 8757 bytes, `#FF0000` oxygen, `aspirin-2D.svg` |
+| A. 2D depiction | Aspirin SVG under 100 KB, element colours, downloads from the UI | RDKit SVG 8652 bytes, `#FF0000` oxygen, `aspirin-2D.svg` |
 | B. 3D quality | Artwork, three named looks, pair against `/classic/` | Publication, Flat and Dark look data in Rust; images below |
 | C. Protein cartoons | 1CRN cartoon in under 3 s, colour by secondary structure | 0.09 to 1.82 s, 327 atoms, 46 residues, 131 helix atoms in pink |
-| D. Composition | 1600 px wide, margins 5 to 7 percent, no clipped atoms | 1600x1393, 6.00 percent on all sides, 0 edge ink |
+| D. Composition | 1600 px wide, margins 5 to 7 percent, no clipped atoms | 1600x1393, 6.00 percent on all sides, 0 edge ink, transparent by default |
 | E. Sources | Same render by name, CID and SMILES, one new field | SHA-256 `0E9E…B6FD` for all three; ATC, routes and legal status added |
-| F. Interface | 1280 and 800 px screenshots, no overflow, keyboard path | Scroll width equals viewport at both widths; keyboard export wrote 637313 bytes |
+| F. Interface | 1280 and 800 px screenshots, no overflow, keyboard path | Scroll width equals viewport at both widths; keyboard export completed |
 
 ## Before
 
@@ -154,8 +154,10 @@ Rust, so the edges stay clean.
 
 ![A dark figure with a vertical gradient](upgrade/after-gradient.png)
 
-Transparent export: 1200x1045, corner alpha 0, molecule alpha 255. Width presets are 1200,
-1600 and 2000. The margin range is 4 to 9 percent.
+Exports are transparent by default. The 1600 px default is 1600x1393 and 640319 bytes.
+All four corners have alpha 0. The image has 409910 pixels at alpha 255 and 24216 partial
+pixels. The background and gradient controls apply when Transparent is off. Width presets
+are 1200, 1600 and 2000. The margin range is 4 to 9 percent.
 
 ## E. Sources and metadata
 
@@ -216,7 +218,7 @@ Shortcuts: `/` focuses the compound field. `Ctrl+Enter` loads. `2` and `3` switc
 ![The progress state during a lookup](upgrade/after-progress.png)
 
 The keyboard path needs no mouse. Type `aspirin`, press `Ctrl+Enter`, wait for the figure,
-then press `E`. The browser reported a completed download of 637313 bytes.
+then press `E`. The browser completed the download.
 
 Layout at 1280 px. The page scroll width equals the viewport, 1280 px. The code panel
 scrolls inside itself, as a code block should.
@@ -241,7 +243,7 @@ SwiftShader, which removes the hardware adapter this renderer needs.
 | `cd web; npm run build` | TypeScript clean, Vite build OK |
 | `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware` | OK, 2D SVG 8716 chars, export 1200x1045 at 6 percent |
 | `pwsh -File scripts/build-dual.ps1 -NoServe` | classic and current builds OK |
-| Keyboard export | completed, 637313 bytes |
+| Keyboard export | completed |
 | Themes | Light, Paper and Dark apply; a stored choice survives a reload |
 | Stage tint | canvas pixel matches the theme: light (245,247,250), dark (15,21,28) |
 | Layout overflow | page scroll width equals the viewport at 1280 and 800 |
