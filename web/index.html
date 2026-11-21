@@ -86,7 +86,7 @@
               id="export-width"
               type="number"
               min="400"
-              max="4096"
+              max="8192"
               step="100"
               value="1600"
               list="export-width-presets"
@@ -99,6 +99,8 @@
             <option value="2000"></option>
             <option value="3000"></option>
             <option value="4096"></option>
+            <option value="6000"></option>
+            <option value="8192"></option>
           </datalist>
 
           <label class="field-label" for="export-quality">Supersample</label>
@@ -107,7 +109,7 @@
             <option value="3" selected>3x</option>
             <option value="4">4x</option>
           </select>
-          <p class="hint">Any width from 400 to 4096 px. Large widths cap the supersample to fit the render limit.</p>
+          <p class="hint">Any width from 400 to 8192 px. Large widths cap the supersample to fit the render budget.</p>
 
           <div class="control">
             <label class="field-label" for="export-margin">Margin <output id="export-margin-value">6%</output></label>
@@ -302,6 +304,18 @@
             <button id="zoom-out" type="button" class="secondary" aria-label="Zoom out">−</button>
             <button id="zoom-in" type="button" class="secondary" aria-label="Zoom in">+</button>
             <button id="frame" type="button" class="secondary">Re-frame view</button>
+          </div>
+
+          <label class="field-label" for="zoom-selection">Zoom to a selection</label>
+          <div class="field-row">
+            <input
+              id="zoom-selection"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="resi 46, chain A, resn HEM"
+            />
+            <button id="zoom-selection-go" type="button" class="secondary">Zoom</button>
           </div>
         </details>
 

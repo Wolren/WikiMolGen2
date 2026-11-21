@@ -31,8 +31,8 @@ What it offers:
   state. A lookup writes `?q=` to the address, so a reload or a shared link reopens the
   same compound.
 * **Figures, not screenshots.** The view switch, full screen and the download sit in the
-  figure toolbar. PNG at any width from 400 to 4096 px, with presets at 1200, 1600, 2000,
-  3000 and 4096. The default is 3x supersampling, with 2x and 4x selectable. The background
+  figure toolbar. PNG at any width from 400 to 8192 px, with presets at 1200, 1600, 2000,
+  3000, 4096, 6000 and 8192. The default is 3x supersampling, with 2x and 4x selectable. The background
   is transparent by default, and an optional colour or gradient is one click away. Atom
   labels and a scale bar are available.
 * **Metadata for the markup.** Wikidata identifiers and ATC codes, Wikipedia clinical

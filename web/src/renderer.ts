@@ -667,6 +667,11 @@ export class Renderer {
     return true;
   }
 
+  /** Fit the camera to a selection, so a deep zoom can start from any part. */
+  async zoomTo(selection: string): Promise<void> {
+    await this.run(`zoom ${selection}, buffer=${FRAME_BUFFER_ANGSTROM}`);
+  }
+
   /**
    * Render a PNG at the requested size.
    *

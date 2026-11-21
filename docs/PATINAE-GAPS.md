@@ -103,11 +103,13 @@ from 0.23 px to 0.62 px.
 **Request.** MSAA 4x on the main passes, or a documented offscreen render multiplier that
 works.
 
-### 1.9 The export edge cap is 8192 px
+### 1.9 The export renders one view, so large figures need tiles
 
 **measured.** A 4x export at 2000 px wide (8000x10884) did not complete; 3x
-(6000x8163) did. The adapter reports a 16384 limit, so the cap is the app's own safety
-margin (`docs/SPEC.md`). A tiled export is the useful next step.
+(6000x8163) did. The adapter reports a 16384 limit, so the cap is the app's own 60 MP
+budget (`docs/SPEC.md`). A single 8000x6963 export now succeeds at 1x. True tiling needs an
+export that takes a region: `export_png(width, height, { x, y, w, h })` over a virtual
+canvas, or a viewport offset on the camera.
 
 ### 1.10 A prefetch cannot load a hidden object
 

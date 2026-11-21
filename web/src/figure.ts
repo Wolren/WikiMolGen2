@@ -24,7 +24,7 @@ const MAX_RENDER_EDGE = 8192;
 const MAX_RENDER_PIXELS = 60_000_000;
 /** The figure width range. The height follows the stage aspect and the content. */
 const MIN_WIDTH = 400;
-const MAX_WIDTH = 4096;
+const MAX_WIDTH = 8192;
 
 /** A figure spec, mirrored from `wikimolgen2_core::figure::FigureSpec`. */
 interface FigureSpec {
@@ -80,6 +80,10 @@ async function exportPng(): Promise<void> {
   const rect = dom.viewerHost.getBoundingClientRect();
   const aspect = rect.width > 0 && rect.height > 0 ? rect.width / rect.height : 1;
   const targetHeight = Math.max(1, Math.round(targetWidth / aspect));
+  if (targetWidth * targetHeight > MAX_RENDER_PIXELS) {
+    setStatus("This figure would need more pixels than the GPU budget allows. Lower the width.", true);
+    return;
+  }
   const requestedFactor = Number(dom.exportQuality.value);
   const maxEdge = Math.max(targetWidth, targetHeight);
   const factorByEdge = Math.floor(MAX_RENDER_EDGE / maxEdge);

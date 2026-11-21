@@ -49,7 +49,7 @@ reach; a load then scrolls the figure into view.
 | Figures | The figure toolbar holds the 3D/2D switch, full screen and the download. The stage keeps a height rather than sharing the leftover space, so the molecule is drawn large and the column scrolls |
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, full screen, and keyboard shortcuts |
 | Links | A lookup is written to `?q=` and read back on boot, so a figure can be shared or reloaded |
-| Export | The download button sits in the figure toolbar. PNG at any width from 400 to 4096 px; a 4 to 9 percent margin; 3x supersampling by default, 2x and 4x selectable; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
+| Export | The download button sits in the figure toolbar. PNG at any width from 400 to 8192 px; a 4 to 9 percent margin; 3x supersampling by default, lowered automatically when the render budget needs it; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
 | Lookup | A combobox on the identifier field. A local index of 58 compounds and 13 proteins answers at once; PubChem autocomplete and RCSB full-text search add live results. A row fills the field and loads it; arrows, Enter and Escape work |
 | Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields and an openFDA drug label, merged into the infobox and chembox fields. The page does not display them in a panel |
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects, including ATC, routes and legal status |
@@ -71,7 +71,7 @@ reach; a load then scrolls the figure into view.
 | MSAA in the live view | patinae has no MSAA; FXAA and a 2x supersampled canvas are the substitutes | A renderer change, not an app change |
 | Live background gradient | The canvas surface is opaque, so a CSS gradient cannot show through | Renderer support for a gradient clear, or an accept of the export-only option |
 | True alpha in the live view | The patinae surface is opaque. The stage paints the theme tint instead | Renderer support for an alpha surface, or an accept of the tint |
-| Export edges above 8192 px | The 4x 2000 px export (8000x10884) did not complete; the 3x export (6000x8163) did. The GPU reports 16384 | A tiled export, or a patinae change |
+| Export edges above 8192 px | The renderer exports one view at a time; 8000x6963 completes at 1x, while 8000x10884 exceeded the 60 MP budget. The GPU reports 16384 | A tiled export, or an export offset in patinae |
 | Supersampling above 4x | The quality select stops at 4x; the 8192 edge cap limits it further at large widths | A tiled export, or a lower-level renderer option |
 | Direct DailyMed reads | The DailyMed service sends no CORS header, so the browser cannot read it | A proxy, or an upstream CORS header; openFDA serves the same SPL labels today |
 | Protein 2D or sequence view | A cartoon is the useful figure for an article | A sequence panel and a depiction path |

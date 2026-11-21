@@ -697,7 +697,7 @@ const completion = new Promise((resolve) => {
 
 await evaluate(session, `(() => {
   const width = document.getElementById('export-width');
-  width.value = '1200';
+  width.value = ${JSON.stringify(String(args["export-width"] ?? "1200"))};
   width.dispatchEvent(new Event('change'));
   document.getElementById('export').click();
   return true;
@@ -813,6 +813,27 @@ if (args.open) {
   );
   await new Promise((done) => setTimeout(done, 200));
 }
+
+// 4b. A typed selection refits the camera; re-frame then restores the full view.
+const zoomSelection = isProtein ? "resi 1" : "elem C";
+await evaluate(
+  session,
+  `(() => {
+     const input = document.getElementById('zoom-selection');
+     input.value = ${JSON.stringify(zoomSelection)};
+     input.dispatchEvent(new Event('input', { bubbles: true }));
+     document.getElementById('zoom-selection-go').click();
+     return true;
+   })()`,
+);
+const zoomed = await poll(async () => {
+  const text = await evaluate(session, "document.getElementById('export-status').textContent ?? ''");
+  return text.startsWith("Zoomed to") ? text : null;
+}, 15_000);
+if (zoomed === null) failures.push("zoom to a selection did not run");
+else console.log(`zoom selection: ${zoomed.slice(0, 60)}`);
+await evaluate(session, "document.getElementById('frame').click(), true");
+await new Promise((done) => setTimeout(done, 400));
 
 // `--suggest aspirin` opens the dropdown so the screenshot shows the combobox.
 if (args.suggest) {

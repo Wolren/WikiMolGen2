@@ -497,6 +497,25 @@ function zoomScene(notches: number): void {
 dom.zoomIn.addEventListener("click", () => zoomScene(1));
 dom.zoomOut.addEventListener("click", () => zoomScene(-1));
 
+/** Fit the camera to a typed selection, then the zoom acts on that part. */
+async function zoomToSelection(): Promise<void> {
+  const selection = dom.zoomSelection.value.trim();
+  if (selection === "" || state.viewer === null || state.compound === null) return;
+  try {
+    await state.viewer.zoomTo(selection);
+    setStatus(`Zoomed to ${selection}.`);
+  } catch (error) {
+    setStatus(`Zoom failed: ${describe(error)}`, true);
+  }
+}
+
+dom.zoomSelectionGo.addEventListener("click", () => void zoomToSelection());
+dom.zoomSelection.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  void zoomToSelection();
+});
+
 // The renderer maps a released wheel to clipping-plane changes and only zooms while a
 // button is held, so a plain wheel does nothing visible. A viewer is expected to zoom, so
 // take that case in the capture phase, before the canvas sees it, and leave the

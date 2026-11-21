@@ -111,6 +111,8 @@ export const dom = {
   resetColors: required<HTMLButtonElement>("reset-colors"),
   projection: required<HTMLSelectElement>("projection"),
   frame: required<HTMLButtonElement>("frame"),
+  zoomSelection: required<HTMLInputElement>("zoom-selection"),
+  zoomSelectionGo: required<HTMLButtonElement>("zoom-selection-go"),
   zoomIn: required<HTMLButtonElement>("zoom-in"),
   zoomOut: required<HTMLButtonElement>("zoom-out"),
   exportWidth: required<HTMLInputElement>("export-width"),
