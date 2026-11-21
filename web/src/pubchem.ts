@@ -5,7 +5,20 @@
  * compound never touches a server of ours, the page talks to NCBI directly.
  */
 
+import { fetchMetadata, type SourceStatus } from "./sources.js";
+
 const PUG = "https://pubchem.ncbi.nlm.nih.gov/rest/pug";
+
+/** PubChem's answer plus the two records the figure needs. */
+export interface PubChemResult {
+  compound: Compound;
+  /** Structure to hand to the renderer, named for its format. */
+  structure: { name: string; bytes: Uint8Array };
+  /** Flat record for the 2D depiction, or `null` when PubChem has only one kind. */
+  depiction: { name: string; bytes: Uint8Array } | null;
+  /** Things the user should know about, e.g. a missing 3D record. */
+  warnings: string[];
+}
 
 /** Properties requested in one call; the names are PubChem's, the mapping is ours. */
 const PROPERTIES = [
@@ -51,25 +64,48 @@ export interface Compound {
   h_bond_acceptors?: number;
   rotatable_bonds?: number;
   heavy_atoms?: number;
+
+  // Identifiers from Wikidata.
+  chemspider_id?: string;
+  chembl_id?: string;
+  chebi_id?: string;
+  drugbank_id?: string;
+  kegg_id?: string;
+  unii?: string;
+  pubchem_substance?: string;
+  wikidata_qid?: string;
+
+  // Clinical fields from the Wikipedia infobox.
+  atc_prefix?: string;
+  atc_suffix?: string;
+  routes_of_administration?: string;
+  legal_status?: string;
+  pregnancy_category?: string;
+  bioavailability?: string;
+  protein_bound?: string;
+  metabolism?: string;
+  elimination_half_life?: string;
+  excretion?: string;
+  drug_class?: string;
+
+  // Drug label data from DailyMed or its openFDA fallback.
+  dailymed_setid?: string;
+  dailymed_labeler?: string;
+  dailymed_effective?: string;
 }
 
 /** A `Compound` while it is being assembled: keys may be present but undefined. */
 type CompoundFields = { [K in keyof Compound]?: Compound[K] | undefined };
 
-export interface LoadResult {
-  compound: Compound;
-  /** Structure to hand to the renderer, named for its format. */
-  structure: { name: string; bytes: Uint8Array };
-  /** Flat record for the 2D depiction, or `null` when PubChem has only one kind. */
-  depiction: { name: string; bytes: Uint8Array } | null;
-  /** Things the user should know about, e.g. a missing 3D record. */
-  warnings: string[];
-}
-
 export class LookupError extends Error {}
 
-/** Resolve a name, CID or SMILES and fetch everything the figure needs. */
-export async function loadCompound(identifier: string): Promise<LoadResult> {
+/**
+ * Resolve a name, CID or SMILES and fetch the structure records.
+ *
+ * Metadata is not part of this call: the figure can appear while Wikidata, Wikipedia and
+ * the drug label are still answering.
+ */
+export async function loadCompound(identifier: string): Promise<PubChemResult> {
   const query = identifier.trim();
   if (!query) throw new LookupError("Enter a compound name, CID or SMILES.");
 
@@ -121,7 +157,29 @@ export async function loadCompound(identifier: string): Promise<LoadResult> {
     heavy_atoms: asNumber(properties.HeavyAtomCount),
   });
 
-  return { compound, structure, depiction: two === null ? null : { name: `${cid}-2d.sdf`, bytes: two }, warnings };
+  return {
+    compound,
+    structure,
+    depiction: two === null ? null : { name: `${cid}-2d.sdf`, bytes: two },
+    warnings,
+  };
+}
+
+/**
+ * Add the metadata sources to a loaded compound.
+ *
+ * PubChem wins where both know a field, because its values are the ones the figure was
+ * drawn from. A field only Wikidata or Wikipedia has fills the gap. The caller can render
+ * first and call this after, so the image does not wait on three other services.
+ */
+export async function enrichCompound(
+  compound: Compound,
+): Promise<{ compound: Compound; sources: SourceStatus[] }> {
+  const metadata = await fetchMetadata(compound.name ?? "");
+  return {
+    compound: compact({ ...metadata.fields, ...compound }),
+    sources: metadata.sources,
+  };
 }
 
 /**

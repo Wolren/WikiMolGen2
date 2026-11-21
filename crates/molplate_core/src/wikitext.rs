@@ -679,6 +679,27 @@ mod tests {
     }
 
     #[test]
+    fn drugbox_emits_fields_from_the_other_sources() {
+        // ATC comes from Wikidata, the routes and the legal status from the Wikipedia
+        // infobox. PubChem alone has none of them.
+        let mut compound = aspirin();
+        compound.atc_prefix = Some("A01".to_string());
+        compound.atc_suffix = Some("AD05".to_string());
+        compound.routes_of_administration = Some("Oral, rectal".to_string());
+        compound.legal_status = Some("SE: OTC".to_string());
+        let box_text = drugbox(&compound, "Aspirin-3D.png");
+        assert!(box_text.contains("| ATC_prefix = A01"));
+        assert!(box_text.contains("| ATC_suffix = AD05"));
+        assert!(box_text.contains("| routes_of_administration = Oral, rectal"));
+        assert!(box_text.contains("| legal_status = SE: OTC"));
+        assert!(box_text.contains("<!-- Legal status -->"));
+
+        let chem = chembox(&compound, "Aspirin-3D.png");
+        assert!(chem.contains("| ATCCodePrefix = A01"));
+        assert!(chem.contains("| AdminRoutes = Oral, rectal"));
+    }
+
+    #[test]
     fn empty_box_keeps_the_template_shape() {
         // Nothing to report: the template still has to be well formed, or pasting it
         // into an article leaves an unclosed box on the page.

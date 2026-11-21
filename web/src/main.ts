@@ -28,9 +28,10 @@ import {
   showDepiction,
   type Depiction,
 } from "./depiction.js";
-import { LookupError, loadCompound, type Compound } from "./pubchem.js";
+import { enrichCompound, LookupError, loadCompound, type Compound } from "./pubchem.js";
 import { ProteinError, loadProtein, pdbIdOf } from "./protein.js";
 import { Renderer, RendererUnavailable, type Appearance, type ElementColor } from "./renderer.js";
+import type { SourceStatus } from "./sources.js";
 import "./styles.css";
 
 /** Mirrors `molplate_core::style::Look`. */
@@ -124,6 +125,7 @@ const state: {
   mode: ViewMode;
   depiction: Depiction | null;
   protein: { id: string; atoms: number; residues: number; chains: number; seconds: number } | null;
+  sources: SourceStatus[];
 } = {
   viewer: null,
   looks: [],
@@ -134,10 +136,14 @@ const state: {
   mode: "3d",
   depiction: null,
   protein: null,
+  sources: [],
 };
 
 /** The markup currently shown, for the copy button. */
 let currentText = "";
+
+/** A later lookup cancels the metadata update of an earlier one. */
+let enrichmentToken = 0;
 
 // A development-only handle: the end-to-end harness reads state from it. The production
 // build tree-shakes this branch because `import.meta.env.DEV` is false there.
@@ -223,15 +229,19 @@ async function loadFromInput(): Promise<void> {
 
   const pdb = pdbIdOf(identifier);
   if (pdb !== null) {
+    enrichmentToken += 1;
     await loadProteinInput(pdb);
     return;
   }
 
+  const token = ++enrichmentToken;
   setBusy(true, "Looking up…");
+  const started = performance.now();
   try {
     const result = await loadCompound(identifier);
     state.compound = result.compound;
     state.compoundJson = JSON.stringify(result.compound);
+    state.sources = [];
     // A compound load leaves the protein mode: restore the small-molecule looks and tabs.
     if (state.protein !== null) {
       state.protein = null;
@@ -266,7 +276,35 @@ async function loadFromInput(): Promise<void> {
     renderSummary(result.warnings);
     applyMode();
     syncAppearance();
-    setStatus(result.warnings.join(" "));
+    const seconds = (performance.now() - started) / 1000;
+    const loadedName = state.compound?.name ?? identifier;
+    setStatus(`Loaded ${loadedName} in ${seconds.toFixed(2)} s.`);
+
+    // The figure is already on the stage; the other sources fill the summary after.
+    void enrichCompound(result.compound)
+      .then(({ compound, sources }) => {
+        if (token !== enrichmentToken || state.protein !== null) return;
+        state.compound = compound;
+        state.compoundJson = JSON.stringify(compound);
+        state.sources = sources;
+        renderSummary(result.warnings);
+        refreshOutput();
+        const added = [
+          compound.atc_prefix === undefined
+            ? undefined
+            : `ATC ${compound.atc_prefix}${compound.atc_suffix ?? ""}`,
+          compound.routes_of_administration === undefined
+            ? undefined
+            : `routes ${compound.routes_of_administration}`,
+        ].filter((entry): entry is string => entry !== undefined);
+        setStatus(
+          `Loaded ${loadedName} in ${seconds.toFixed(2)} s.` +
+            (added.length === 0 ? "" : ` ${added.join(", ")}.`),
+        );
+      })
+      .catch(() => {
+        // Metadata is a bonus; a failed source must not mark the load as failed.
+      });
   } catch (error) {
     if (error instanceof LookupError) {
       setStatus(error.message, true);
@@ -325,6 +363,7 @@ async function loadProteinInput(id: string): Promise<void> {
     state.protein = { id, atoms, residues: sequence.residues, chains: sequence.chains, seconds };
     state.compound = { name: id, synonyms: [id] };
     state.compoundJson = JSON.stringify(state.compound);
+    state.sources = [];
     state.depiction = null;
     state.mode = "3d";
     state.tab = "commons";
@@ -375,22 +414,35 @@ function renderSummary(warnings: string[]): void {
   const compound = state.compound;
   if (compound === null) return;
 
+  const atc = `${compound.atc_prefix ?? ""}${compound.atc_suffix ?? ""}`.trim();
+  const label = [compound.dailymed_labeler, compound.dailymed_setid]
+    .filter((part): part is string => part !== undefined && part !== "")
+    .join(", ");
   const rows: [string, string | undefined][] = [
     ["Name", compound.name],
     ["PubChem CID", compound.cid === undefined ? undefined : String(compound.cid)],
     ["Formula", compound.molecular_formula],
     ["Mass", compound.molecular_weight === undefined ? undefined : `${compound.molecular_weight} g/mol`],
     ["SMILES", compound.smiles],
+    // Each of these comes from a source beside PubChem: ATC and the identifiers from
+    // Wikidata, the clinical fields from the Wikipedia infobox, the label from DailyMed.
+    ["ATC", atc === "" ? undefined : atc],
+    ["Routes", compound.routes_of_administration],
+    ["Legal status", compound.legal_status],
+    ["Wikidata", compound.wikidata_qid],
+    ["DrugBank", compound.drugbank_id],
+    ["ChEMBL", compound.chembl_id],
+    ["Label", label === "" ? undefined : label],
   ];
 
   dom.summary.replaceChildren(
-    ...rows.flatMap(([label, value]) => {
+    ...rows.flatMap(([labelText, value]) => {
       if (value === undefined) return [];
       const term = document.createElement("dt");
-      term.textContent = label;
+      term.textContent = labelText;
       const detail = document.createElement("dd");
       detail.textContent = value;
-      if (label === "SMILES") detail.style.wordBreak = "break-all";
+      if (labelText === "SMILES" || labelText === "Routes") detail.style.wordBreak = "break-word";
       return [term, detail];
     }),
   );
@@ -402,6 +454,14 @@ function renderSummary(warnings: string[]): void {
     const note = document.createElement("p");
     note.className = "hint summary-note";
     note.textContent = warning;
+    dom.summary.after(note);
+  }
+  if (state.sources.length > 0) {
+    const note = document.createElement("p");
+    note.className = "hint summary-note";
+    note.textContent = `Sources: ${state.sources
+      .map((source) => `${source.name} (${source.detail})`)
+      .join(", ")}.`;
     dom.summary.after(note);
   }
 }
