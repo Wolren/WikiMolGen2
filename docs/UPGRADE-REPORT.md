@@ -1,8 +1,8 @@
 # Upgrade report: visuals and capability
 
 Date: 2026-11-21. Branch: `patinae-rewrite`. Base commit: `5d06e5d`, the session prompt
-commit on top of `7a61796`. The work is six commits, one per workstream, plus this report.
-Nothing is pushed.
+commit on top of `7a61796`. The work is six workstream commits, this report, and two
+follow-ups for the RDKit engine and the themes. Nothing is pushed.
 
 The renderer is unchanged. Every improvement uses patinae's command surface or runs in
 Rust and the page. The figure path now composes an offscreen render at an exact width.
@@ -188,9 +188,19 @@ openFDA. The drugbox now emits:
 
 ## F. Interface
 
+The top bar has a theme picker with Light, Paper, Dark and System. An inline script applies
+the stored choice before the first paint. Light uses cool neutrals, Paper uses warm cream,
+Dark uses a deep slate. The accent is teal in Light and Dark, and copper in Paper. The
+figure keeps its own background, so a white Wikipedia figure stays white in every theme.
+
+![The dark theme with aspirin](upgrade/after-dark-ui.png)
+
+![The paper theme with aspirin](upgrade/after-paper-ui.png)
+
 The stage has a 3D and 2D switch, and the stage note says which view is live. The style
-picker is a two-column list. The appearance panel exposes every look field. A spinner and
-an indeterminate bar show slow steps, with the step name.
+picker is a two-column list with a CSS swatch per representation. The appearance panel
+exposes every look field. A spinner and an indeterminate bar show slow steps, with the
+step name.
 
 Shortcuts: `/` focuses the compound field. `Ctrl+Enter` loads. `2` and `3` switch view.
 `E` exports. `F` re-frames. `+` and `-` zoom. `?` shows the list.
@@ -200,14 +210,13 @@ Shortcuts: `/` focuses the compound field. `Ctrl+Enter` loads. `2` and `3` switc
 The keyboard path needs no mouse. Type `aspirin`, press `Ctrl+Enter`, wait for the figure,
 then press `E`. The browser reported a completed download of 637313 bytes.
 
-Layout at 1280 px. The page scroll width equals the viewport, 1280 px. Only the code
-panel scrolls inside itself, as a code block should.
+Layout at 1280 px. The page scroll width equals the viewport, 1280 px. The code panel
+scrolls inside itself, as a code block should.
 
 ![The page at 1280 px](upgrade/after-1280.png)
 
-Layout at 800 px. The page scroll width equals the viewport, 800 px, and no element
-overflows. The stage comes first, so the molecule stays visible above the long control
-panel.
+Layout at 800 px. The page scroll width equals the viewport, 800 px. The stage comes first,
+so the molecule stays visible above the long control panel.
 
 ![The page at 800 px](upgrade/after-800.png)
 
@@ -225,9 +234,10 @@ SwiftShader, which removes the hardware adapter this renderer needs.
 | `node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware` | OK, 2D SVG 8821 chars, export 1200x1045 at 6 percent |
 | `pwsh -File scripts/build-dual.ps1 -NoServe` | classic and current builds OK |
 | Keyboard export | completed, 637313 bytes |
-| Layout overflow | none at 1280 or 800 |
+| Themes | Light, Paper and Dark apply; a stored choice survives a reload |
+| Layout overflow | page scroll width equals the viewport at 1280 and 800 |
 
-Bundle: the page is 43.02 KB of JavaScript and 8.65 KB of CSS. The app's wasm grows from
+Bundle: the page is 43.77 KB of JavaScript and 13.27 KB of CSS. The app's wasm grows from
 531.77 KB to 623.61 KB, and it gzips to 222.40 KB. The 2D engine is a separate 7.39 MB
 wasm, loaded only when 2D opens. The fallback depiction, the composer and the scale bar
 font live in the app wasm. The classic renderer's wasm is 17.6 MB for comparison.

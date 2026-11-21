@@ -38,7 +38,9 @@ import { bindKeyboard } from "./keyboard.js";
 import { enrichCompound, LookupError, loadCompound } from "./pubchem.js";
 import { ProteinError, loadProtein, pdbIdOf } from "./protein.js";
 import { Renderer, RendererUnavailable } from "./renderer.js";
+import { bindTheme } from "./theme.js";
 import "./styles.css";
+import "./stage.css";
 
 const AUTHOR = "molplate";
 
@@ -390,10 +392,16 @@ function renderLooks(): void {
       input.checked = checked;
       input.addEventListener("change", () => void chooseLook(look));
 
+      const swatch = document.createElement("span");
+      swatch.className = "look-swatch";
+      swatch.dataset.style = look.style;
+      swatch.setAttribute("aria-hidden", "true");
+
       const text = document.createElement("span");
+      text.className = "look-label";
       text.textContent = look.label;
 
-      label.append(input, text);
+      label.append(input, swatch, text);
       return label;
     }),
   );
@@ -612,6 +620,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   ]);
 }
 
+bindTheme();
 bindAppearance();
 bindExport();
 bindKeyboard({

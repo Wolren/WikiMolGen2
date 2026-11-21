@@ -39,6 +39,7 @@ which allow cross-origin requests; nothing is uploaded anywhere.
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
 | Commons | File name, `{{Information}}` plus licence block, pre-filled upload URL; the licence follows the structure kind |
 | Keyboard | `Ctrl+Enter` load, `2`/`3` view, `E` export, `F` frame, `+`/`-` zoom, `/` focus, `?` help |
+| Theme | Light, Paper and Dark, plus System. The choice persists and applies before the first paint |
 | Graphics | WebGPU only. There is no WebGL2 fallback, so a browser without an adapter gets an explanation instead of a lesser image |
 
 ## Not in v1
@@ -111,6 +112,7 @@ web/src/context.ts      shared state, DOM handles, status helpers
 web/src/appearance.ts   the appearance panel
 web/src/figure.ts       export: PNG composition and SVG download
 web/src/keyboard.ts     shortcuts
+web/src/theme.ts        Light, Paper, Dark and System
 web/src/depiction.ts    inline SVG and the engine choice
 web/src/rdkit.ts        RDKit MinimalLib loader
 web/src/pubchem.ts      PubChem lookups and the compound type

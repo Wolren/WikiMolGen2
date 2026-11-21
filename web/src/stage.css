@@ -1,0 +1,395 @@
+/* Stage ------------------------------------------------------------------------- */
+
+.stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+/* Mode switch and the one-line note about the current view. */
+.stage-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.segmented button {
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  box-shadow: none;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.segmented button:hover:not(:disabled) {
+  background: none;
+  color: var(--ink);
+}
+
+.segmented button[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+
+.segmented button:disabled {
+  opacity: 0.4;
+}
+
+.stage-note {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The renderer owns the canvas inside this box; the box is what the page lays out and
+   what the export aspect is measured from. */
+.viewer-host {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  padding: 10px;
+  background: var(--surface-2);
+}
+
+/* The 2D drawing scales to the stage without cropping, on a paper-like card. */
+.depiction {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  overflow: auto;
+  background: var(--surface-2);
+}
+
+.depiction svg {
+  max-width: 100%;
+  max-height: 100%;
+  height: auto;
+  border-radius: 3px;
+  background: #ffffff;
+  box-shadow: var(--shadow-2);
+}
+
+.stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  touch-action: none;
+}
+
+.stage-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.stage-message[hidden] {
+  display: none;
+}
+
+.stage-message p {
+  margin: 0;
+  max-width: 34ch;
+}
+
+/* A slow step says what it is doing and shows that work is in flight. */
+.stage-progress {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.spinner {
+  display: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+}
+
+.progress-track {
+  display: none;
+  width: 180px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.progress-track span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  background: var(--accent);
+  animation: slide 1200ms ease-in-out infinite;
+}
+
+.stage-message.busy .spinner,
+.stage-message.busy .progress-track {
+  display: block;
+}
+
+.stage-message.error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  pointer-events: auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+
+/* Output ------------------------------------------------------------------------ */
+
+.output {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 8px 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: none;
+  box-shadow: none;
+  padding: 9px 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tabs button:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.tabs button[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.output-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 0;
+}
+
+.file-name {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.output-header button {
+  flex: none;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.wikitext {
+  flex: 1;
+  min-height: 0;
+  margin: 12px 14px;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--code);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.upload-link {
+  margin: 0 14px 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 550;
+  text-decoration: none;
+}
+
+.upload-link:hover {
+  text-decoration: underline;
+}
+
+/* Keyboard help ----------------------------------------------------------------- */
+
+.shortcuts {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.shortcuts summary {
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.shortcuts dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  margin: 10px 0 0;
+}
+
+.shortcuts dt {
+  white-space: nowrap;
+}
+
+.shortcuts dd {
+  margin: 0;
+  color: var(--faint);
+}
+
+kbd {
+  padding: 1px 4px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* Scrollbars -------------------------------------------------------------------- */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--line-strong);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Motion ------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .progress-track span {
+    animation: none;
+  }
+
+  button,
+  .look {
+    transition: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .tagline {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .looks {
+    grid-template-columns: 1fr;
+  }
+
+  .theme-picker select {
+    min-width: 0;
+  }
+}
+
+/* Narrow screens: stack the columns, and put the molecule above the long control list. */
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-auto-rows: min-content;
+    overflow-y: auto;
+  }
+
+  .stage {
+    order: -1;
+    height: min(60vh, 520px);
+  }
+
+  .wikitext {
+    max-height: 340px;
+  }
+}

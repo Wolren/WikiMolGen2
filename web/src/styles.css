@@ -1,18 +1,81 @@
 /* The page is a three-column instrument: controls, the molecule, the text it produces.
-   Everything is sized from one rhythm so the three columns read as one surface. */
+   One rhythm of spacing and one accent colour bind the three columns into one surface.
+   Three themes share every rule: Light, Paper and Dark. System follows the OS. */
 
 :root {
   --ink: #15181d;
   --muted: #5c6470;
-  --faint: #8b929c;
-  --line: #e3e6eb;
+  --faint: #858d99;
+  --line: #e2e6ec;
+  --line-strong: #cdd4de;
   --surface: #ffffff;
-  --canvas: #f6f7f9;
+  --surface-2: #f5f7fa;
+  --surface-3: #eceff4;
+  --field: #ffffff;
+  --canvas: #f1f4f8;
+  --code: #fbfcfe;
   --accent: #0e6d68;
-  --accent-soft: #e6f2f1;
-  --radius: 10px;
-  --gap: 16px;
+  --accent-strong: #0a5a56;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3f1ef;
+  --accent-ring: rgb(14 109 104 / 26%);
+  --danger: #a3231b;
+  --danger-soft: #fdf1ef;
+  --shadow-1: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 4%);
+  --shadow-2: 0 18px 42px rgb(16 24 40 / 12%);
+  --radius: 12px;
+  --gap: 18px;
   --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Consolas", monospace;
+  color-scheme: light;
+}
+
+/* Dark. The figure keeps its own background; this themes the instrument around it. */
+[data-theme="dark"] {
+  --ink: #e8ecf2;
+  --muted: #a3adba;
+  --faint: #7c8797;
+  --line: #27313c;
+  --line-strong: #3a4655;
+  --surface: #131a22;
+  --surface-2: #0f151c;
+  --surface-3: #1b242e;
+  --field: #0d131a;
+  --canvas: #090d12;
+  --code: #0c1218;
+  --accent: #4cc9bd;
+  --accent-strong: #6ad9ce;
+  --accent-ink: #04211f;
+  --accent-soft: #123230;
+  --accent-ring: rgb(76 201 189 / 30%);
+  --danger: #ff9a90;
+  --danger-soft: #2a1514;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-2: 0 18px 42px rgb(0 0 0 / 45%);
+  color-scheme: dark;
+}
+
+/* Paper. A warm low-contrast theme for long reading sessions. */
+[data-theme="paper"] {
+  --ink: #2b2620;
+  --muted: #6a5d4d;
+  --faint: #93846f;
+  --line: #e0d6c4;
+  --line-strong: #cbbda6;
+  --surface: #fbf7ef;
+  --surface-2: #f4eddf;
+  --surface-3: #ece2d1;
+  --field: #fffdf7;
+  --canvas: #ebe3d4;
+  --code: #f7f1e4;
+  --accent: #8a5a2b;
+  --accent-strong: #6f4720;
+  --accent-ink: #ffffff;
+  --accent-soft: #f1e5d1;
+  --accent-ring: rgb(138 90 43 / 28%);
+  --danger: #9a3b2a;
+  --danger-soft: #f8e9e2;
+  --shadow-1: 0 1px 2px rgb(60 45 30 / 7%);
+  --shadow-2: 0 18px 42px rgb(60 45 30 / 14%);
   color-scheme: light;
 }
 
@@ -24,6 +87,18 @@
    <dl>/<a> stays on the page as an empty box. */
 [hidden] {
   display: none !important;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 html,
@@ -41,11 +116,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Top bar ---------------------------------------------------------------------- */
+
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
-  align-items: baseline;
-  gap: 16px;
-  padding: 14px 20px;
+  align-items: center;
+  gap: 14px;
+  min-height: 58px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
@@ -53,21 +134,21 @@ body {
 .brand {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
 }
 
 .brand-mark {
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
-  background: var(--accent);
+  background: radial-gradient(circle at 32% 28%, var(--accent-soft) 0 32%, var(--accent) 33% 100%);
   box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 .topbar h1 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 650;
+  font-size: 16px;
+  font-weight: 680;
   letter-spacing: 0.01em;
 }
 
@@ -77,22 +158,41 @@ body {
   font-size: 13px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.theme-picker select {
+  width: auto;
+  min-width: 104px;
+  height: 32px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background-color: var(--surface-2);
+  font-size: 12px;
+  font-weight: 550;
+}
+
 /* Which GPU path is live. WebGPU is the only one this app starts on. */
 .engine {
-  margin-left: auto;
   padding: 3px 9px;
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
   font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .engine:empty {
   display: none;
 }
+
+/* Layout ----------------------------------------------------------------------- */
 
 .layout {
   flex: 1;
@@ -109,29 +209,30 @@ body {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 20px;
+  box-shadow: var(--shadow-1);
 }
 
-/* Controls ------------------------------------------------------------------ */
+/* Controls --------------------------------------------------------------------- */
 
 .block + .block {
-  margin-top: 22px;
-  padding-top: 18px;
+  margin-top: 24px;
+  padding-top: 20px;
   border-top: 1px solid var(--line);
 }
 
 h2 {
   margin: 0 0 10px;
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--faint);
 }
 
 .field-label {
   display: block;
-  margin: 12px 0 6px;
+  margin: 14px 0 6px;
   font-size: 12px;
   font-weight: 550;
   color: var(--muted);
@@ -153,15 +254,30 @@ input[type="color"] {
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--surface);
+  background: var(--field);
   color: var(--ink);
   font: inherit;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 160ms ease;
+}
+
+input[type="text"]:hover,
+select:hover {
+  border-color: var(--line-strong);
+}
+
+input[type="text"]:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 input[type="text"]:focus-visible,
 select:focus-visible,
 button:focus-visible,
-.wikitext:focus-visible {
+.wikitext:focus-visible,
+summary:focus-visible,
+input[type="range"]:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
@@ -179,24 +295,31 @@ button {
   color: var(--ink);
   padding: 8px 12px;
   cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  box-shadow: var(--shadow-1);
+  transition: background-color 120ms ease, border-color 120ms ease, transform 80ms ease;
 }
 
 button:hover:not(:disabled) {
-  border-color: #cfd4db;
-  background: #fafbfc;
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
-  font-weight: 550;
+  color: var(--accent-ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px var(--accent-ring);
 }
 
 button.primary:hover:not(:disabled) {
-  background: #0b5c58;
-  border-color: #0b5c58;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 
 button.secondary {
@@ -211,6 +334,7 @@ button.secondary {
 button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .hint {
@@ -222,11 +346,12 @@ button:disabled {
 .summary {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 4px 12px;
+  gap: 5px 14px;
   margin: 18px 0 0;
-  padding: 12px;
-  border-radius: 8px;
-  background: var(--canvas);
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
   font-size: 13px;
 }
 
@@ -239,7 +364,12 @@ button:disabled {
   font-variant-numeric: tabular-nums;
 }
 
-/* Style picker --------------------------------------------------------------- */
+/* The source note closes the summary block; the next heading needs air after it. */
+.summary-note {
+  margin-bottom: 14px;
+}
+
+/* Style picker ------------------------------------------------------------------ */
 
 .looks {
   display: grid;
@@ -250,24 +380,20 @@ button:disabled {
 .look {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
   padding: 7px 9px;
   border: 1px solid var(--line);
   border-radius: 8px;
+  background: var(--surface);
   font-size: 12px;
   cursor: pointer;
-}
-
-.look span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  transition: border-color 120ms ease, background-color 120ms ease;
 }
 
 .look:hover {
-  border-color: #cfd4db;
+  border-color: var(--line-strong);
+  background: var(--surface-2);
 }
 
 .look[aria-checked="true"] {
@@ -275,188 +401,72 @@ button:disabled {
   background: var(--accent-soft);
 }
 
-.look input {
-  accent-color: var(--accent);
-  margin: 0;
+.look[aria-checked="true"]::after {
+  content: "";
+  flex: none;
+  width: 4px;
+  height: 8px;
+  margin-left: auto;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: rotate(45deg) translateY(-1px);
 }
 
-/* Stage ---------------------------------------------------------------------- */
-
-.stage {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--surface);
-}
-
-/* Mode switch and the one-line note about the current view. */
-.stage-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.segmented {
-  display: inline-flex;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--canvas);
-}
-
-.segmented button {
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.segmented button[aria-selected="true"] {
-  background: var(--surface);
-  color: var(--ink);
-  box-shadow: 0 1px 2px rgb(15 24 40 / 12%);
-}
-
-.segmented button:disabled {
-  opacity: 0.4;
-}
-
-.stage-note {
+.look-label {
   min-width: 0;
   overflow: hidden;
-  color: var(--faint);
-  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* The renderer owns the canvas inside this box; the box is what the page lays out and
-   what the export aspect is measured from. */
-.viewer-host {
-  position: relative;
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-}
-
-/* The 2D drawing scales to the stage without ever cropping. */
-.depiction {
-  flex: 1;
-  min-height: 0;
-  display: grid;
-  place-items: center;
-  padding: 14px;
-  overflow: auto;
-}
-
-.depiction svg {
-  max-width: 100%;
-  max-height: 100%;
-  height: auto;
-}
-
-.stage canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  touch-action: none;
-}
-
-.stage-message {
+.look input {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  text-align: center;
-  color: var(--muted);
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  opacity: 0;
   pointer-events: none;
 }
 
-.stage-message[hidden] {
-  display: none;
+/* The card is the radio; a hidden input keeps the group keyboard accessible. */
+.look:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
-.stage-message p {
-  margin: 0;
-  max-width: 34ch;
-}
-
-/* A slow step says what it is doing and shows that work is in flight. */
-.stage-progress {
-  display: grid;
-  justify-items: center;
-  gap: 12px;
-}
-
-.spinner {
-  display: none;
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--line);
-  border-top-color: var(--accent);
+/* A small hint of the representation, drawn in CSS. */
+.look-swatch {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--line-strong);
   border-radius: 50%;
-  animation: spin 900ms linear infinite;
+  background: var(--surface);
 }
 
-.progress-track {
-  display: none;
-  width: 180px;
-  height: 3px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: var(--line);
+.look-swatch[data-style="ball_stick"] {
+  background: radial-gradient(circle at 34% 30%, #c4ccd5 0 24%, #68737f 25% 62%, #2b333c 63% 100%);
 }
 
-.progress-track span {
-  display: block;
-  width: 40%;
-  height: 100%;
-  background: var(--accent);
-  animation: slide 1200ms ease-in-out infinite;
+.look-swatch[data-style="vdw"] {
+  background: radial-gradient(circle at 34% 30%, #ff7a6e 0 30%, #d42a1e 31% 100%);
 }
 
-.stage-message.busy .spinner,
-.stage-message.busy .progress-track {
-  display: block;
+.look-swatch[data-style="licorice"],
+.look-swatch[data-style="lines"] {
+  border-radius: 4px;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.look-swatch[data-style="licorice"] {
+  background: linear-gradient(135deg, transparent 0 36%, #3a4450 37% 63%, transparent 64%);
 }
 
-@keyframes slide {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(350%);
-  }
+.look-swatch[data-style="lines"] {
+  background: repeating-linear-gradient(135deg, #3a4450 0 1.5px, transparent 1.5px 4.5px);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .spinner,
-  .progress-track span {
-    animation: none;
-  }
-}
-
-.stage-message.error {
-  color: #a3231b;
-  background: #fdf4f3;
-  pointer-events: auto;
+.look-swatch[data-style="cartoon"] {
+  background: conic-gradient(from 210deg, #d9c34a, #d95f9a, #8a93a0, #d9c34a);
 }
 
 /* A checkbox in the controls column, aligned with the fields above it. */
@@ -481,7 +491,7 @@ button:disabled {
   font-size: 12px;
 }
 
-/* Appearance sliders ---------------------------------------------------------- */
+/* Appearance sliders ------------------------------------------------------------ */
 
 .control + .control {
   margin-top: 14px;
@@ -516,8 +526,14 @@ input[type="range"] {
   padding: 0;
   color: var(--accent);
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 700;
+  box-shadow: none;
   cursor: pointer;
+}
+
+.link-button:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
 }
 
 .element-colors {
@@ -533,6 +549,7 @@ input[type="range"] {
   padding: 4px 6px;
   border: 1px solid var(--line);
   border-radius: 7px;
+  background: var(--surface-2);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -562,156 +579,3 @@ input[type="range"] {
   flex: 1;
 }
 
-/* Output --------------------------------------------------------------------- */
-
-.output {
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-}
-
-.tabs {
-  display: flex;
-  gap: 2px;
-  padding: 8px 8px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.tabs button {
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: none;
-  padding: 9px 10px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.tabs button[aria-selected="true"] {
-  color: var(--ink);
-  border-bottom-color: var(--accent);
-  font-weight: 600;
-}
-
-.output-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 14px 0;
-}
-
-.file-name {
-  flex: 1;
-  min-width: 0;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: var(--canvas);
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.output-header button {
-  flex: none;
-  padding: 6px 10px;
-  font-size: 12px;
-}
-
-.wikitext {
-  flex: 1;
-  min-height: 0;
-  margin: 12px 14px;
-  padding: 12px;
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fbfcfd;
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1.55;
-  tab-size: 2;
-  white-space: pre;
-}
-
-.upload-link {
-  margin: 0 14px 14px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 13px;
-  font-weight: 550;
-  text-decoration: none;
-}
-
-.upload-link:hover {
-  text-decoration: underline;
-}
-
-/* Keyboard help -------------------------------------------------------------- */
-
-.shortcuts {
-  margin-top: 22px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.shortcuts summary {
-  font-weight: 550;
-  cursor: pointer;
-}
-
-.shortcuts dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 10px;
-  margin: 10px 0 0;
-}
-
-.shortcuts dt {
-  white-space: nowrap;
-}
-
-.shortcuts dd {
-  margin: 0;
-  color: var(--faint);
-}
-
-kbd {
-  padding: 1px 4px;
-  border: 1px solid var(--line);
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  background: var(--surface);
-  font-family: var(--mono);
-  font-size: 11px;
-}
-
-@media (max-width: 560px) {
-  .looks {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Narrow screens: stack the columns, and put the molecule above the long control list. */
-@media (max-width: 1100px) {
-  .layout {
-    grid-template-columns: 1fr;
-    grid-auto-rows: min-content;
-    overflow-y: auto;
-  }
-
-  .stage {
-    order: -1;
-    height: min(60vh, 520px);
-  }
-
-  .wikitext {
-    max-height: 340px;
-  }
-}

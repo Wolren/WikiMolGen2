@@ -13,6 +13,7 @@ What it offers:
 
 * **2D and 3D.** RDKit's MinimalLib draws the skeletal SVG, with element colours and
   stereo. Ball-and-stick, space-filling, licorice, stick and protein cartoons cover 3D.
+* **Three themes.** Light, Paper and Dark, plus System. The choice persists across visits.
 * **Named looks and controls.** Publication, Flat and Dark finishes, plus light, outline,
   ambient occlusion, depth cue, transparency and per-element colour overrides.
 * **Figures, not screenshots.** PNG at exactly 1200, 1600 or 2000 px wide, with a 4 to 9
