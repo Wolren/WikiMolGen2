@@ -851,6 +851,21 @@ if (args.suggest) {
   await new Promise((done) => setTimeout(done, 1500));
 }
 
+// `--dialog` opens the batch dialog so the screenshot shows its layout.
+if (args.dialog) {
+  await evaluate(
+    session,
+    `(() => {
+       document.getElementById('batch-open').click();
+       const input = document.getElementById('batch-input');
+       input.value = 'aspirin\\nibuprofen';
+       input.dispatchEvent(new Event('input', { bubbles: true }));
+       return true;
+     })()`,
+  );
+  await new Promise((done) => setTimeout(done, 300));
+}
+
 // `--zoom 12` clicks zoom-in that many times, so a screenshot can show a deep view.
 if (args.zoom) {
   const notches = Number(args.zoom);
@@ -1005,6 +1020,47 @@ if (fullscreenButton !== true) {
   }
 }
 
+// 6b. Batch export: two identifiers, two rows, one ZIP with two figures.
+const batchItems = isProtein ? "1CRN\n1UBQ" : "aspirin\nibuprofen";
+await evaluate(session, "document.getElementById('batch-open').click(), true");
+if ((await evaluate(session, "document.getElementById('batch').open")) !== true) {
+  failures.push("the batch dialog did not open");
+}
+await evaluate(
+  session,
+  `(() => {
+     const input = document.getElementById('batch-input');
+     input.value = ${JSON.stringify(batchItems)};
+     input.dispatchEvent(new Event('input', { bubbles: true }));
+     document.getElementById('batch-run').click();
+     return true;
+   })()`,
+);
+const rows = await poll(async () => {
+  const states = JSON.parse(
+    await evaluate(
+      session,
+      "JSON.stringify([...document.querySelectorAll('#batch-list .batch-row')].map((row) => row.dataset.state))",
+    ),
+  );
+  if (states.length !== 2) return null;
+  return states.every((state) => state === "done" || state === "failed") ? states : null;
+}, 60_000);
+if (rows === null) failures.push("the batch did not finish");
+else console.log(`batch rows: ${JSON.stringify(rows)}`);
+
+const zipPath = await poll(async () => newestZip(downloadDir), 10_000);
+if (zipPath === null) failures.push("the batch ZIP did not download");
+else {
+  const zipBytes = await readFile(zipPath);
+  await writeFile(join(dirname(OUT), `batch-${Date.now()}.zip`), zipBytes);
+  const names = zipEntries(zipBytes);
+  console.log(`batch zip: ${names.join(", ")}`);
+  if (names.length !== 2) failures.push(`the batch ZIP holds ${names.length} figures, not 2`);
+  if (!names.every((name) => name.endsWith(".png"))) failures.push("a batch entry is not a PNG");
+}
+await evaluate(session, "document.getElementById('batch-close').click(), true");
+
 // 7. A folded section is remembered, which is the only state the page keeps besides the
 //    theme. Opening one and reloading must bring it back open. The write happens in the
 //    element's toggle event, so wait for the store rather than for the clock.
@@ -1150,6 +1206,42 @@ async function newestPng(directory) {
   }
   return newest;
 }
+
+/** The newest `.zip` the browser wrote, which is the batch archive. */
+async function newestZip(directory) {
+  const names = (await readdir(directory).catch(() => [])).filter((name) => name.endsWith(".zip"));
+  let newest = null;
+  let newestAt = 0;
+  for (const name of names) {
+    const path = join(directory, name);
+    const info = await stat(path).catch(() => null);
+    if (info !== null && info.size > 0 && info.mtimeMs > newestAt) {
+      newest = path;
+      newestAt = info.mtimeMs;
+    }
+  }
+  return newest;
+}
+
+/** File names from a ZIP central directory, without unpacking the entries. */
+function zipEntries(bytes) {
+  const end = bytes.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  if (end < 0) return [];
+  const count = bytes.readUInt16LE(end + 10);
+  const start = bytes.readUInt32LE(end + 16);
+  const names = [];
+  let at = start;
+  for (let index = 0; index < count; index += 1) {
+    if (at + 46 > bytes.length || bytes.readUInt32LE(at) !== 0x02014b50) break;
+    const nameLength = bytes.readUInt16LE(at + 28);
+    const extraLength = bytes.readUInt16LE(at + 30);
+    const commentLength = bytes.readUInt16LE(at + 32);
+    names.push(bytes.toString("utf8", at + 46, at + 46 + nameLength));
+    at += 46 + nameLength + extraLength + commentLength;
+  }
+  return names;
+}
+
 
 /** Net `{{` vs `}}` count — the cheapest check that a template is pasteable. */
 function countUnbalanced(text) {

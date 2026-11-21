@@ -17,6 +17,7 @@ import {
   structureKind,
 } from "./context.js";
 import { depictionBytes, downloadSvg } from "./depiction.js";
+import type { Renderer } from "./renderer.js";
 
 /** patinae's offscreen export tops out at 8192 per edge on this build. */
 const MAX_RENDER_EDGE = 8192;
@@ -33,6 +34,29 @@ interface FigureSpec {
   background: [number, number, number, number];
   gradient: [[number, number, number], [number, number, number]] | null;
   scale_bar: { angstrom_per_pixel: number } | null;
+}
+
+/** The Export panel's settings, shared by a single download and a batch. */
+export interface FigureSettings {
+  /** Figure width in pixels, clamped to the supported range. */
+  width: number;
+  /** Margin as a fraction of the width. */
+  margin: number;
+  /** Requested supersample factor, lowered when the budget needs it. */
+  quality: number;
+  transparent: boolean;
+  labels: boolean;
+  scaleBar: boolean;
+}
+
+/** One composed figure, ready to download or pack into an archive. */
+export interface RenderedFigure {
+  name: string;
+  bytes: Uint8Array;
+  width: number;
+  height: number;
+  factor: number;
+  marginPercent: number;
 }
 
 /** Download what the stage shows: the vector drawing in 2D mode, a PNG in 3D mode. */
@@ -68,48 +92,88 @@ async function exportPng(): Promise<void> {
   const viewer = state.viewer;
   if (viewer === null) return;
 
-  const requestedWidth = Number(dom.exportWidth.value);
-  const targetWidth = Number.isFinite(requestedWidth)
-    ? Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(requestedWidth)))
-    : 1600;
-  if (dom.exportWidth.value !== String(targetWidth)) {
-    dom.exportWidth.value = String(targetWidth);
-  }
-
-  const margin = Number(dom.exportMargin.value) / 100;
-  const rect = dom.viewerHost.getBoundingClientRect();
-  const aspect = rect.width > 0 && rect.height > 0 ? rect.width / rect.height : 1;
-  const targetHeight = Math.max(1, Math.round(targetWidth / aspect));
-  if (targetWidth * targetHeight > MAX_RENDER_PIXELS) {
-    setStatus("This figure would need more pixels than the GPU budget allows. Lower the width.", true);
-    return;
-  }
-  const requestedFactor = Number(dom.exportQuality.value);
-  const maxEdge = Math.max(targetWidth, targetHeight);
-  const factorByEdge = Math.floor(MAX_RENDER_EDGE / maxEdge);
-  const factorByPixels = Math.floor(
-    Math.sqrt(MAX_RENDER_PIXELS / (targetWidth * targetHeight)),
-  );
-  const factor = Math.max(1, Math.min(requestedFactor, factorByEdge, factorByPixels));
-  const renderWidth = targetWidth * factor;
-  const renderHeight = targetHeight * factor;
-  const transparent = dom.exportTransparent.checked;
-  const labels = dom.exportLabels.checked;
+  const settings = readFigureSettings();
+  const name = state.compound === null ? "molecule-3D.png" : figureName(structureKind());
 
   setBusy(true, "Rendering…");
   dom.exportButton.disabled = true;
 
   try {
-    if (labels) {
-      await viewer.setLabels(true);
-      // The label is measured in render pixels; the figure scales it down with the scene.
-      await viewer.setLabelSize(Math.round(18 * (targetWidth / 1600) * factor));
-    } else {
-      await viewer.setLabels(false);
-    }
+    const figure = await renderFigure(viewer, settings, name);
+    download(figure.name, figure.bytes);
+    dom.fileName.textContent = figure.name;
+    setStatus(
+      `Saved ${figure.name} at ${figure.width}x${figure.height} px, ${figure.marginPercent}% margin, ` +
+        `${figure.factor}x supersample` +
+        `${figure.factor < settings.quality ? " (capped)" : ""}` +
+        `${settings.transparent ? ", transparent" : ""}${settings.scaleBar ? ", with a scale bar" : ""}.`,
+    );
+  } catch (error) {
+    setStatus(`Export failed: ${describe(error)}`, true);
+  } finally {
+    dom.exportButton.disabled = false;
+    setBusy(false);
+  }
+}
 
+/** Read the Export panel into the values a render needs. */
+export function readFigureSettings(): FigureSettings {
+  const requested = Number(dom.exportWidth.value);
+  const width = Number.isFinite(requested)
+    ? Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(requested)))
+    : 1600;
+  if (dom.exportWidth.value !== String(width)) {
+    dom.exportWidth.value = String(width);
+  }
+  return {
+    width,
+    margin: Number(dom.exportMargin.value) / 100,
+    quality: Number(dom.exportQuality.value),
+    transparent: dom.exportTransparent.checked,
+    labels: dom.exportLabels.checked,
+    scaleBar: dom.exportScaleBar.checked,
+  };
+}
+
+/**
+ * Render and compose one figure from the current scene.
+ *
+ * The caller loads the structure, applies the look and frames it first; this function
+ * only measures, renders offscreen and hands the pixels to the Rust composer.
+ */
+export async function renderFigure(
+  viewer: Renderer,
+  settings: FigureSettings,
+  name: string,
+): Promise<RenderedFigure> {
+  const targetWidth = settings.width;
+  const rect = dom.viewerHost.getBoundingClientRect();
+  const aspect = rect.width > 0 && rect.height > 0 ? rect.width / rect.height : 1;
+  const targetHeight = Math.max(1, Math.round(targetWidth / aspect));
+  if (targetWidth * targetHeight > MAX_RENDER_PIXELS) {
+    throw new Error("This figure needs more pixels than the GPU budget allows. Lower the width.");
+  }
+
+  const maxEdge = Math.max(targetWidth, targetHeight);
+  const factorByEdge = Math.floor(MAX_RENDER_EDGE / maxEdge);
+  const factorByPixels = Math.floor(
+    Math.sqrt(MAX_RENDER_PIXELS / (targetWidth * targetHeight)),
+  );
+  const factor = Math.max(1, Math.min(settings.quality, factorByEdge, factorByPixels));
+  const renderWidth = targetWidth * factor;
+  const renderHeight = targetHeight * factor;
+
+  if (settings.labels) {
+    await viewer.setLabels(true);
+    // The label is measured in render pixels; the figure scales it down with the scene.
+    await viewer.setLabelSize(Math.round(18 * (targetWidth / 1600) * factor));
+  } else {
+    await viewer.setLabels(false);
+  }
+
+  try {
     let scaleBar: { angstrom_per_pixel: number } | null = null;
-    if (dom.exportScaleBar.checked) {
+    if (settings.scaleBar) {
       const camera = await viewer.cameraView();
       if (camera !== null) {
         scaleBar = { angstrom_per_pixel: camera.viewHeight / renderHeight };
@@ -119,47 +183,42 @@ async function exportPng(): Promise<void> {
     // A gradient cannot be keyed out of an opaque render: the content rectangle would
     // show its own flat background. Render with alpha and composite the gradient behind.
     const gradient: [[number, number, number], [number, number, number]] | null =
-      transparent || state.look === null || state.look.appearance.gradient === null
+      settings.transparent || state.look === null || state.look.appearance.gradient === null
         ? null
         : [
             hexToBytes(state.look.appearance.gradient[0]),
             hexToBytes(state.look.appearance.gradient[1]),
           ];
 
+    const background = state.look?.appearance.background ?? dom.background.value;
     const blob = await viewer.exportPng({
       width: renderWidth,
       height: renderHeight,
-      transparent: transparent || gradient !== null,
-      background: state.look?.appearance.background ?? dom.background.value,
+      transparent: settings.transparent || gradient !== null,
+      background,
     });
     const rendered = new Uint8Array(await blob.arrayBuffer());
-    const [red, green, blue] = hexToBytes(state.look?.appearance.background ?? dom.background.value);
+    const [red, green, blue] = hexToBytes(background);
 
     const spec: FigureSpec = {
       width: targetWidth,
-      margin,
-      background: transparent ? [0, 0, 0, 0] : [red, green, blue, 255],
+      margin: settings.margin,
+      background: settings.transparent ? [0, 0, 0, 0] : [red, green, blue, 255],
       gradient,
       scale_bar: scaleBar,
     };
     const framed = composeFigure(rendered, JSON.stringify(spec));
     const size = pngSize(framed);
-
-    const name = state.compound === null ? "molecule-3D.png" : figureName(structureKind());
-    download(name, framed);
-    dom.fileName.textContent = name;
-    setStatus(
-      `Saved ${name} at ${size.width}x${size.height} px, ${dom.exportMargin.value}% margin, ` +
-        `${factor}x supersample` +
-        `${factor < requestedFactor ? " (capped)" : ""}` +
-        `${transparent ? ", transparent" : ""}${scaleBar === null ? "" : ", with a scale bar"}.`,
-    );
-  } catch (error) {
-    setStatus(`Export failed: ${describe(error)}`, true);
+    return {
+      name,
+      bytes: framed,
+      width: size.width,
+      height: size.height,
+      factor,
+      marginPercent: Math.round(settings.margin * 100),
+    };
   } finally {
-    if (labels) await viewer.setLabelSize(14).catch(() => undefined);
-    dom.exportButton.disabled = false;
-    setBusy(false);
+    if (settings.labels) await viewer.setLabelSize(14).catch(() => undefined);
   }
 }
 

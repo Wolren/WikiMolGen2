@@ -132,6 +132,8 @@
           <label class="checkbox"><input id="export-transparent" type="checkbox" checked /> Transparent background</label>
           <label class="checkbox"><input id="export-labels" type="checkbox" /> Atom labels</label>
           <label class="checkbox"><input id="export-scalebar" type="checkbox" /> Scale bar</label>
+
+          <button id="batch-open" type="button" class="secondary batch-open">Export a batch…</button>
         </details>
 
         <details id="section-style" class="block section">
@@ -398,5 +400,26 @@
         </aside>
       </section>
     </main>
+
+    <dialog id="batch" class="batch-dialog" aria-labelledby="batch-title">
+      <h2 id="batch-title">Batch export</h2>
+      <p class="hint">
+        One identifier per line: a compound name, CID or SMILES, or a PDB ID. The current
+        look and export settings apply.
+      </p>
+      <textarea
+        id="batch-input"
+        rows="6"
+        spellcheck="false"
+        placeholder="aspirin&#10;ibuprofen&#10;1CRN"
+        aria-label="Identifiers for the batch"
+      ></textarea>
+      <div class="batch-actions">
+        <button id="batch-run" type="button" class="primary">Export figures</button>
+        <button id="batch-close" type="button" class="secondary">Close</button>
+      </div>
+      <ul id="batch-list" class="batch-list" hidden></ul>
+    </dialog>
   </body>
 </html>
+

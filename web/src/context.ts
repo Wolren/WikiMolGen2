@@ -135,6 +135,12 @@ export const dom = {
   shortcuts: required<HTMLDetailsElement>("shortcuts"),
   suggestions: required<HTMLDivElement>("suggestions"),
   lookupHint: required<HTMLParagraphElement>("lookup-hint"),
+  batchOpen: required<HTMLButtonElement>("batch-open"),
+  batchDialog: required<HTMLDialogElement>("batch"),
+  batchInput: required<HTMLTextAreaElement>("batch-input"),
+  batchRun: required<HTMLButtonElement>("batch-run"),
+  batchClose: required<HTMLButtonElement>("batch-close"),
+  batchList: required<HTMLUListElement>("batch-list"),
 
   fileName: required<HTMLElement>("file-name"),
   copyDrugbox: required<HTMLButtonElement>("copy-drugbox"),

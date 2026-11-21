@@ -42,6 +42,7 @@ import {
 } from "./context.js";
 import { buildDepiction, clearDepiction, showDepiction } from "./depiction.js";
 import { bindSuggestions } from "./suggest.js";
+import { bindBatch } from "./batch.js";
 import { bindExport, exportFigure } from "./figure.js";
 import { bindFullscreen } from "./fullscreen.js";
 import { bindKeyboard } from "./keyboard.js";
@@ -594,6 +595,21 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 bindTheme();
 bindSections();
 bindSuggestions();
+bindBatch({
+  beforeRun: () => {
+    if (state.mode !== "2d") return;
+    state.mode = "3d";
+    applyMode();
+  },
+  onFinished: () => {
+    dom.mode2d.disabled = state.depictionSource === null;
+    renderLooks();
+    syncAppearance();
+    applyMode();
+    refreshOutput();
+    dom.exportButton.disabled = false;
+  },
+});
 bindFullscreen();
 document.addEventListener("themechange", () => {
   state.viewer?.setStageTint(stageTint());
