@@ -24,6 +24,9 @@ What it offers:
 * **Named looks and controls.** Publication, Flat and Dark finishes, plus light, outline,
   ambient occlusion, depth cue and transparency. The default look is WikiMolGen's preset:
   CPK spheres, grey sticks and a white page.
+* **Short panel, shareable links.** The long control sections fold away and remember their
+  state. A lookup writes `?q=` to the address, so a reload or a shared link reopens the
+  same compound.
 * **Figures, not screenshots.** The download sits in the figure toolbar. PNG at any width
   from 400 to 4096 px, with presets at 1200, 1600, 2000, 3000 and 4096. The default is 3x
   supersampling, with 2x and 4x selectable. The background is transparent by default, and

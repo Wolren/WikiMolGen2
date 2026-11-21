@@ -179,6 +179,12 @@
   pointer-events: auto;
 }
 
+/* The empty hint floats over the figure without dimming the toolbar above it. */
+.stage-message.empty {
+  background: none;
+  backdrop-filter: none;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -272,7 +278,9 @@
   font-size: 12px;
   line-height: 1.55;
   tab-size: 2;
-  white-space: pre;
+  /* The panel is narrower than a long template line; wrapping beats a horizontal scroll. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .upload-link {
@@ -384,7 +392,8 @@ kbd {
   }
 }
 
-/* Narrow screens: stack the columns, and put the figure above the long control list. */
+/* Narrow screens: one column, controls first so the lookup is the first thing in reach,
+   then the figure and its markup. A load scrolls the figure into view. */
 @media (max-width: 1100px) {
   .layout {
     grid-template-columns: 1fr;
@@ -393,7 +402,7 @@ kbd {
   }
 
   .workspace {
-    order: -1;
+    order: 1;
   }
 
   .workspace .stage {

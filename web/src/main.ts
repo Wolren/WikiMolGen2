@@ -44,6 +44,7 @@ import {
 import { buildDepiction, clearDepiction, showDepiction } from "./depiction.js";
 import { bindExport, exportFigure } from "./figure.js";
 import { bindKeyboard } from "./keyboard.js";
+import { bindSections } from "./panel.js";
 import { enrichCompound, LookupError, loadCompound } from "./pubchem.js";
 import { ProteinError, loadProtein, pdbIdOf } from "./protein.js";
 import { Renderer, RendererUnavailable } from "./renderer.js";
@@ -58,6 +59,17 @@ let currentText = "";
 
 /** A later lookup cancels the metadata update of an earlier one. */
 let enrichmentToken = 0;
+
+/** Put the lookup in the URL, so a figure can be linked and reopened. */
+function rememberQuery(identifier: string): void {
+  try {
+    const url = new URL(location.href);
+    url.searchParams.set("q", identifier);
+    history.replaceState(null, "", url);
+  } catch {
+    // A blocked history API only means the URL does not follow the lookup.
+  }
+}
 
 // A development-only handle: the end-to-end harness reads state from it. The production
 // build tree-shakes this branch because `import.meta.env.DEV` is false there.
@@ -86,6 +98,9 @@ async function boot(): Promise<void> {
   renderSchemeOptions();
   renderLooks();
 
+  // A link carries its lookup; the render is a bonus if this browser cannot start one.
+  const requested = new URLSearchParams(location.search).get("q") ?? "";
+
   try {
     state.viewer = await withTimeout(
       Renderer.create(dom.viewerHost),
@@ -100,6 +115,10 @@ async function boot(): Promise<void> {
     } else {
       showStageError("This app renders with WebGPU, and the renderer did not start.", error);
     }
+    if (requested.trim() !== "") {
+      dom.identifier.value = requested;
+      await loadFromInput();
+    }
     return;
   }
 
@@ -110,17 +129,40 @@ async function boot(): Promise<void> {
   state.viewer.setStageTint(stageTint());
   applyMode();
 
-  // Compile the cartoon pipelines before the first request. The first cartoon frame
-  // costs 3 s of pipeline compilation; paying it here keeps a protein load responsive.
-  const viewer = state.viewer;
-  if (viewer !== null) {
-    dom.stageMessage.hidden = false;
-    dom.stageMessage.classList.add("busy");
-    dom.stageText.textContent = "Preparing the 3D view…";
-    await viewer.startWarmup();
-    dom.stageMessage.classList.remove("busy");
-    dom.stageMessage.hidden = true;
+  // Compile the cartoon pipelines in the background: the first protein pays the cost on
+  // its own load, and the page is ready now rather than after three seconds of shaders.
+  void state.viewer.startWarmup();
+  showEmptyStage();
+  // The end-to-end check waits on this rather than on the overlay, which now shows the
+  // empty-state hint until the first load.
+  document.documentElement.dataset.ready = "1";
+
+  if (requested.trim() !== "") {
+    dom.identifier.value = requested;
+    await loadFromInput();
   }
+}
+
+/** Say what to do with an empty stage; the overlay is also the busy and error surface. */
+function showEmptyStage(): void {
+  if (isRendererFailed() || state.compound !== null) return;
+  dom.stageMessage.classList.remove("busy", "error");
+  dom.stageMessage.classList.add("empty");
+  dom.stageText.textContent = "Load a compound, or paste a PDB ID, to draw a figure.";
+  dom.stageMessage.hidden = false;
+}
+
+/**
+ * Bring the figure into view after a load on a stacked layout.
+ *
+ * In one column the controls come first, so the result is a screen below the button that
+ * produced it. Only the narrow layout scrolls; on the two-column layout nothing moves.
+ */
+function revealFigure(): void {
+  if (!window.matchMedia("(max-width: 1100px)").matches) return;
+  // The stage holds both views, so the scroll works in the 2D mode as well.
+  const stage = dom.viewerHost.closest(".stage");
+  stage?.scrollIntoView({ block: "center" });
 }
 
 // --- Compound lookup ---------------------------------------------------------------
@@ -187,6 +229,7 @@ async function loadFromInput(): Promise<void> {
     // status line under the figure is the one place left that a user reads.
     const warnings = result.warnings.length === 0 ? "" : ` ${result.warnings.join(" ")}`;
     setStatus(`Loaded ${loadedName} in ${seconds.toFixed(2)} s.${warnings}`);
+    rememberQuery(identifier);
     // The field is no longer the thing to type into; shortcuts should work now.
     dom.identifier.blur();
 
@@ -209,6 +252,7 @@ async function loadFromInput(): Promise<void> {
     } else {
       applyMode();
     }
+    revealFigure();
   } catch (error) {
     if (error instanceof LookupError) {
       setStatus(error.message, true);
@@ -276,6 +320,7 @@ async function loadProteinInput(id: string): Promise<void> {
     renderLooks();
     syncAppearance();
     applyMode();
+    revealFigure();
     dom.exportButton.disabled = false;
     dom.identifier.blur();
     setStatus(
@@ -283,6 +328,7 @@ async function loadProteinInput(id: string): Promise<void> {
         `(fetch ${((fetched - started) / 1000).toFixed(2)}, load ${((parsed - fetched) / 1000).toFixed(2)}, ` +
         `style ${((styled - parsed) / 1000).toFixed(2)}, draw ${((drawn - styled) / 1000).toFixed(2)}).`,
     );
+    rememberQuery(id);
   } catch (error) {
     if (error instanceof ProteinError) setStatus(error.message, true);
     else setStatus(`Could not load ${id}: ${describe(error)}`, true);
@@ -413,7 +459,12 @@ function applyMode(): void {
       state.protein === null
         ? ""
         : `${state.protein.id} cartoon, secondary structure colours`;
+    // The overlay doubles as the empty-stage hint and the error surface; a slow step
+    // owns it while it runs, so its own text must not be replaced here.
     if (isRendererFailed()) dom.stageMessage.hidden = false;
+    else if (state.compound === null && !dom.stageMessage.classList.contains("busy")) {
+      showEmptyStage();
+    }
   }
 
   dom.exportButton.textContent = twoDimensional ? "Download SVG" : "Download PNG";
@@ -540,6 +591,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 }
 
 bindTheme();
+bindSections();
 document.addEventListener("themechange", () => {
   state.viewer?.setStageTint(stageTint());
 });

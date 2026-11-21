@@ -118,8 +118,10 @@ const SETTLE_FRAMES = 3;
  *
  * The exported figure is cropped to its content afterwards, so this only has to
  * guarantee no atom is clipped by the viewport; the visible margin comes from the crop.
+ * Measured on aspirin: 1.5 Å drew the molecule at 46 percent of the stage height, 0.5 Å
+ * draws it at 56 percent and still clears a carbon sphere (0.51 Å at scale 0.3).
  */
-const FRAME_BUFFER_ANGSTROM = 1.5;
+const FRAME_BUFFER_ANGSTROM = 0.5;
 
 /**
  * Zoom is expressed as a change to that buffer, because the viewer exposes no camera
@@ -304,17 +306,12 @@ export class Renderer {
   /** In-flight pipeline warm-up, awaited before the first real structure load. */
   private warmup: Promise<void> | null = null;
 
-  // Last values of the settings whose change reloads a shader or a pipeline. They start
-  // at the renderer's defaults, so the first look does not reload a shader for nothing.
-  private lastBackground = "";
+  // Last command sent for each setting. A slider drag then costs one command per frame
+  // instead of one per control, and the export can swap the background and restore it.
+  private readonly sent = new Map<string, string>();
+
   /** Theme tint for the live stage; the export keeps its own background. */
   private stageTint: string | null = null;
-  private lastShading = "classic";
-  private lastAo = false;
-  private lastSilhouettes = false;
-  private lastDepthCue = true;
-  /** Last stick ink sent, so a fill-mode recolour does not rebuild the sticks. */
-  private lastStickInk = "\u0000";
 
   private constructor(private readonly viewer: PatinaeViewer) {}
 
@@ -382,6 +379,8 @@ export class Renderer {
     if (receipt.result && "Err" in receipt.result) {
       throw new Error(`Could not parse ${name}: ${receipt.result.Err}`);
     }
+    // Settings survive a load, but the new object starts uncoloured; resend every look.
+    this.sent.clear();
     return this.viewer.countAtoms("all");
   }
 
@@ -446,71 +445,84 @@ export class Renderer {
    */
   async applyColoring(look: LookSpec): Promise<void> {
     const appearance = look.appearance;
-    const structure: Structure = {
-      helix: this.count("ss H") > 0,
-      sheet: this.count("ss S") > 0,
-    };
+    // Only the secondary-structure mode needs these selections, and each is a wasm call.
+    const byStructure = look.color_mode === "sec_struct" || look.color_mode === "secstruct";
+    const structure: Structure = byStructure
+      ? { helix: this.count("ss H") > 0, sheet: this.count("ss S") > 0 }
+      : { helix: false, sheet: false };
     for (const command of colourCommands(look, structure)) {
       await this.run(command);
     }
     await this.applyElementInks(appearance.element_colors);
     // `stick_color` rebuilds the stick buffers, so a chip drag must not resend it.
     const stickInk = appearance.stick_color === null ? "inherit" : ink(appearance.stick_color);
-    if (stickInk !== this.lastStickInk) {
-      await this.run(`set stick_color, ${stickInk}`);
-      this.lastStickInk = stickInk;
-    }
+    await this.once("stick_color", `set stick_color, ${stickInk}`);
   }
 
   /**
    * Apply only the appearance: light, finish and background.
    *
    * A slider drag calls this instead of {@link applyLook}, so the representation is not
-   * hidden and shown again on every input event.
+   * hidden and shown again on every input event. Each setting is sent only when its value
+   * differs from the last one, so a frame costs one command, not twenty.
    */
   async applyAppearance(look: LookSpec): Promise<void> {
     const appearance = look.appearance;
-    await this.setBackgroundHex(this.stageTint ?? appearance.background);
+    await this.once("bg_color", `bg_color ${ink(this.stageTint ?? appearance.background)}`);
 
-    await this.run(`set stick_transparency, ${decimal(appearance.stick_transparency)}`);
-    await this.run(`set sphere_transparency, ${decimal(appearance.sphere_transparency)}`);
-    await this.run(`set cartoon_transparency, ${decimal(appearance.cartoon_transparency)}`);
-    await this.run(`set stick_radius, ${decimal(appearance.stick_radius)}`);
-    await this.run(`set sphere_scale, ${decimal(appearance.sphere_scale)}`);
+    await this.once(
+      "stick_transparency",
+      `set stick_transparency, ${decimal(appearance.stick_transparency)}`,
+    );
+    await this.once(
+      "sphere_transparency",
+      `set sphere_transparency, ${decimal(appearance.sphere_transparency)}`,
+    );
+    await this.once(
+      "cartoon_transparency",
+      `set cartoon_transparency, ${decimal(appearance.cartoon_transparency)}`,
+    );
+    await this.once("stick_radius", `set stick_radius, ${decimal(appearance.stick_radius)}`);
+    await this.once("sphere_scale", `set sphere_scale, ${decimal(appearance.sphere_scale)}`);
 
-    await this.run(`set ambient, ${decimal(appearance.ambient)}`);
-    await this.run(`set direct, ${decimal(appearance.direct)}`);
-    await this.run(`set reflect, ${decimal(appearance.reflect)}`);
-    await this.run(`set specular, ${decimal(appearance.specular)}`);
-    await this.run(`set shininess, ${decimal(appearance.shininess)}`);
+    await this.once("ambient", `set ambient, ${decimal(appearance.ambient)}`);
+    await this.once("direct", `set direct, ${decimal(appearance.direct)}`);
+    await this.once("reflect", `set reflect, ${decimal(appearance.reflect)}`);
+    await this.once("specular", `set specular, ${decimal(appearance.specular)}`);
+    await this.once("shininess", `set shininess, ${decimal(appearance.shininess)}`);
 
-    // These settings trigger a shader reload. Only send the command when it changes.
-    const shading = appearance.shadows ? "full" : "classic";
-    if (shading !== this.lastShading) {
-      await this.run(`set shading_mode, ${shading}`);
-      this.lastShading = shading;
-    }
-    if (appearance.ambient_occlusion !== this.lastAo) {
-      await this.run(`set ssao_enabled, ${appearance.ambient_occlusion ? 1 : 0}`);
-      this.lastAo = appearance.ambient_occlusion;
-    }
+    // These switch a shader or a pipeline, so each one is only sent when it changes.
+    await this.once(
+      "shading_mode",
+      `set shading_mode, ${appearance.shadows ? "full" : "classic"}`,
+    );
+    await this.once("ssao_enabled", `set ssao_enabled, ${appearance.ambient_occlusion ? 1 : 0}`);
     if (appearance.ambient_occlusion) {
-      await this.run(`set ssao_intensity, ${decimal(appearance.ao_strength)}`);
-      await this.run("set ssao_radius, 0.5");
+      await this.once("ssao_intensity", `set ssao_intensity, ${decimal(appearance.ao_strength)}`);
+      await this.once("ssao_radius", "set ssao_radius, 0.5");
     }
-    if (appearance.silhouettes !== this.lastSilhouettes) {
-      await this.run(`set silhouettes, ${appearance.silhouettes ? 1 : 0}`);
-      this.lastSilhouettes = appearance.silhouettes;
-    }
+    await this.once("silhouettes", `set silhouettes, ${appearance.silhouettes ? 1 : 0}`);
     if (appearance.silhouettes) {
-      await this.run(`set silhouette_width, ${decimal(appearance.silhouette_width)}`);
-      await this.run("set silhouette_color, 0x1a1a1a");
+      await this.once(
+        "silhouette_width",
+        `set silhouette_width, ${decimal(appearance.silhouette_width)}`,
+      );
+      await this.once("silhouette_color", "set silhouette_color, 0x1a1a1a");
     }
-    if (appearance.depth_cue !== this.lastDepthCue) {
-      await this.run(`set depth_cue, ${appearance.depth_cue ? 1 : 0}`);
-      this.lastDepthCue = appearance.depth_cue;
-    }
-    await this.run(`set fog, ${decimal(appearance.fog)}`);
+    await this.once("depth_cue", `set depth_cue, ${appearance.depth_cue ? 1 : 0}`);
+    await this.once("fog", `set fog, ${decimal(appearance.fog)}`);
+  }
+
+  /**
+   * Send a command unless it is the one already live for that setting.
+   *
+   * The export swaps the background and restores it, which works because the map holds
+   * the last command rather than a set of everything ever sent.
+   */
+  private async once(key: string, command: string): Promise<void> {
+    if (this.sent.get(key) === command) return;
+    await this.run(command);
+    this.sent.set(key, command);
   }
 
   /**
@@ -544,9 +556,7 @@ export class Renderer {
 
   /** Set the background from a colour input value. */
   private async setBackgroundHex(hex: string): Promise<void> {
-    if (hex === this.lastBackground) return;
-    await this.run(`bg_color ${ink(hex)}`);
-    this.lastBackground = hex;
+    await this.once("bg_color", `bg_color ${ink(hex)}`);
   }
 
   /**

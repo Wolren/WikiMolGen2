@@ -173,6 +173,7 @@ if (viewport !== null) {
   );
 }
 await send("Page.navigate", { url: baseUrl }, session);
+const bootStart = Date.now();
 await waitForLoad(session);
 
 const failures = [];
@@ -246,23 +247,46 @@ if (verbose) {
   console.log(`app path: ${appPath}`);
 }
 
-// 1. The renderer must have started. Startup is asynchronous (wasm init + GPU device),
-//    so wait for the stage overlay to clear or turn into an error.
+// 1. The renderer must have started. Startup is asynchronous (wasm init + GPU device);
+//    boot sets `data-ready` when it finishes, and a failed renderer leaves an error
+//    overlay instead. The stage overlay itself now carries the empty-state hint.
 const stageReady = await poll(async () => {
-  const hidden = await evaluate(session, "document.getElementById('stage-message')?.hidden ?? false");
+  const flagged = await evaluate(
+    session,
+    "document.documentElement.dataset.ready === '1'",
+  );
   const failed = await evaluate(
     session,
     "document.getElementById('stage-message')?.classList.contains('error') ?? false",
   );
-  return hidden || failed ? { hidden, failed } : null;
+  return flagged || failed ? { ready: flagged, failed } : null;
 }, 60_000);
 
 const stageText = await evaluate(session, "document.getElementById('stage-message')?.textContent ?? ''");
 if (stageReady === null) failures.push("renderer never finished starting");
-if (stageReady !== null && !stageReady.hidden) failures.push(`renderer did not start: ${stageText.trim()}`);
-console.log(
-  `renderer: ${stageReady?.hidden ? "started" : "FAILED — " + stageText.trim()}`,
+if (stageReady !== null && !stageReady.ready) failures.push(`renderer did not start: ${stageText.trim()}`);
+console.log(`renderer: ${stageReady?.ready ? "started" : "FAILED — " + stageText.trim()}`);
+console.log(`boot: ${((Date.now() - bootStart) / 1000).toFixed(2)} s from navigation to ready`);
+
+// The empty stage says what to do, and the long sections start folded.
+const emptyText = await evaluate(session, "document.getElementById('stage-text')?.textContent ?? ''");
+if (!emptyText.includes("Load a compound")) {
+  failures.push(`the empty stage reads "${emptyText.trim()}"`);
+}
+const sections = JSON.parse(
+  await evaluate(
+    session,
+    `JSON.stringify({
+       colour: document.getElementById('section-colour').open,
+       appearance: document.getElementById('section-appearance').open,
+       export: document.getElementById('section-export').open,
+     })`,
+  ),
 );
+console.log(`sections: colour ${sections.colour}, appearance ${sections.appearance}, export ${sections.export}`);
+if (sections.colour !== true) failures.push("the colour section starts folded");
+if (sections.appearance !== false) failures.push("the appearance section starts open");
+if (sections.export !== false) failures.push("the export section starts open");
 
 // 2. Load a compound through the page's own form.
 await evaluate(
@@ -647,6 +671,32 @@ const shot = await send("Page.captureScreenshot", { format: "png" }, session);
 await mkdir(dirname(OUT), { recursive: true });
 await writeFile(OUT, Buffer.from(shot.result.data, "base64"));
 console.log(`screenshot: ${OUT}`);
+
+// 6. A folded section is remembered, which is the only state the page keeps besides the
+//    theme. Opening one and reloading must bring it back open.
+await evaluate(session, "(document.getElementById('section-appearance').open = true, true)");
+await new Promise((done) => setTimeout(done, 300));
+await send("Page.reload", {}, session);
+const reloaded = await poll(
+  async () => (await evaluate(session, "document.documentElement.dataset.ready === '1'")) ? true : null,
+  60_000,
+);
+if (reloaded !== true) {
+  failures.push("the page did not come back after a reload");
+} else {
+  const remembered = await evaluate(session, "document.getElementById('section-appearance').open");
+  console.log(`sections after reload: appearance ${remembered}`);
+  if (remembered !== true) failures.push("an opened section is not remembered across a reload");
+}
+
+// 7. A lookup link loads itself, which is what makes a figure shareable.
+await send("Page.navigate", { url: `${baseUrl}?q=aspirin` }, session);
+const linked = await poll(async () => {
+  const text = await evaluate(session, "document.getElementById('export-status').textContent ?? ''");
+  return typeof text === "string" && text.includes("Loaded Aspirin") ? text : null;
+}, 90_000);
+if (linked === null) failures.push("a ?q= link does not load its compound");
+else console.log(`deep link: ${linked.slice(0, 80)}`);
 
 if (consoleErrors.length > 0) {
   console.log(`console errors: ${consoleErrors.length}`);

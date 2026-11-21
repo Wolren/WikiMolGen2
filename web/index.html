@@ -8,6 +8,12 @@
       name="description"
       content="Render 3D molecular structures from PubChem in the browser and get ready-to-paste Wikipedia and Wikimedia Commons markup."
     />
+    <!-- Every lookup is cross-origin; opening the sockets early saves a round trip each. -->
+    <link rel="preconnect" href="https://pubchem.ncbi.nlm.nih.gov" crossorigin />
+    <link rel="preconnect" href="https://files.rcsb.org" crossorigin />
+    <link rel="preconnect" href="https://www.wikidata.org" crossorigin />
+    <link rel="preconnect" href="https://en.wikipedia.org" crossorigin />
+    <link rel="preconnect" href="https://api.fda.gov" crossorigin />
     <script>
       // Set the stored theme before the first paint, so the choice does not flash.
       (() => {
@@ -65,8 +71,8 @@
           <div id="looks" class="looks" role="radiogroup" aria-label="Representation style"></div>
         </section>
 
-        <section class="block">
-          <h2>Colour</h2>
+        <details id="section-colour" class="block section" open>
+          <summary><h2>Colour</h2></summary>
 
           <!-- The 2D drawing is RDKit's own palette, so this group is inert in that mode. -->
           <div id="colour-controls">
@@ -126,10 +132,10 @@
             The 2D drawing is an RDKit SVG, so it keeps RDKit's element colours. These
             controls style the 3D figure.
           </p>
-        </section>
+        </details>
 
-        <section class="block">
-          <h2>Appearance</h2>
+        <details id="section-appearance" class="block section">
+          <summary><h2>Appearance</h2></summary>
 
           <div class="control">
             <label class="field-label" for="stick-radius">Stick radius <output id="stick-radius-value">0.20</output></label>
@@ -202,10 +208,10 @@
             <button id="zoom-in" type="button" class="secondary" aria-label="Zoom in">+</button>
             <button id="frame" type="button" class="secondary">Re-frame view</button>
           </div>
-        </section>
+        </details>
 
-        <section class="block">
-          <h2>Export</h2>
+        <details id="section-export" class="block section">
+          <summary><h2>Export</h2></summary>
           <label class="field-label" for="export-width">Image width</label>
           <div class="field-row">
             <input
@@ -256,7 +262,7 @@
           <label class="checkbox"><input id="export-transparent" type="checkbox" checked /> Transparent background</label>
           <label class="checkbox"><input id="export-labels" type="checkbox" /> Atom labels</label>
           <label class="checkbox"><input id="export-scalebar" type="checkbox" /> Scale bar</label>
-        </section>
+        </details>
 
         <details id="shortcuts" class="shortcuts">
           <summary>Keyboard shortcuts</summary>

@@ -202,6 +202,7 @@ export function isRendererFailed(): boolean {
 export function setBusy(busy: boolean, message?: string): void {
   dom.loadButton.disabled = busy;
   dom.stageMessage.classList.toggle("busy", busy);
+  dom.stageMessage.classList.remove("empty");
   if (busy && message !== undefined && !rendererFailed) {
     dom.stageMessage.hidden = false;
     dom.stageText.textContent = message;
@@ -218,7 +219,7 @@ export function setBusy(busy: boolean, message?: string): void {
  */
 export function showStageError(message: string, detail?: unknown): void {
   rendererFailed = true;
-  dom.stageMessage.classList.remove("busy");
+  dom.stageMessage.classList.remove("busy", "empty");
   dom.stageMessage.hidden = false;
   dom.stageMessage.classList.add("error");
   dom.stageText.textContent =
