@@ -2,6 +2,10 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   server: {
+    // The vendored wasm is a large, locked binary. HMR does not need to watch it.
+    watch: {
+      ignored: ["**/public/vendor/**"],
+    },
     headers: {
       // patinae's wasm is built for a cross-origin-isolated page and its own dev server
       // sets this pair. `credentialless` rather than `require-corp` keeps the PubChem
