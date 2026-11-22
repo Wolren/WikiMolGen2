@@ -9,6 +9,7 @@
 
 import { popularEntries, searchCatalogue, type CatalogueEntry } from "./catalogue.js";
 import { dom } from "./context.js";
+import { requestJson } from "./net.js";
 
 /** How many live names and PDB entries to ask for. */
 const LIVE_COMPOUNDS = 8;
@@ -122,17 +123,11 @@ function fromLocal(entry: CatalogueEntry): Suggestion {
   };
 }
 
-/** Fetch with a deadline; a dead service must not hold the dropdown. */
-function timedFetch(url: string, init?: RequestInit): Promise<Response> {
-  return fetch(url, { ...init, signal: AbortSignal.timeout(6000) });
-}
-
 async function searchPubChem(query: string, token: number): Promise<Suggestion[]> {
-  const response = await timedFetch(
+  const json = await requestJson<{ dictionary_terms?: { compound?: string[] } }>(
     `${PUBCHEM_AUTOCOMPLETE}/${encodeURIComponent(query)}/json?limit=${LIVE_COMPOUNDS}`,
+    { timeoutMs: 6000, retries: 0, cacheMs: 60_000 },
   );
-  if (!response.ok) return [];
-  const json = (await response.json()) as { dictionary_terms?: { compound?: string[] } };
   if (token !== liveToken) return [];
   return (json.dictionary_terms?.compound ?? []).map((name) => ({
     label: name,
@@ -148,16 +143,18 @@ async function searchRcsb(query: string, token: number): Promise<Suggestion[]> {
     return_type: "entry",
     request_options: { paginate: { start: 0, rows: LIVE_PROTEINS } },
   });
-  const response = await timedFetch(RCSB_SEARCH, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-  });
-  if (!response.ok) return [];
-  // The default answer carries objects with an `identifier`; `compact` carries strings.
-  const json = (await response.json()) as {
+  const json = await requestJson<{
     result_set?: (string | { identifier?: string })[];
-  };
+  }>(RCSB_SEARCH, {
+    timeoutMs: 6000,
+    retries: 0,
+    init: {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    },
+  });
+  // The default answer carries objects with an `identifier`; `compact` carries strings.
   const ids = (json.result_set ?? [])
     .map((row) => (typeof row === "string" ? row : (row.identifier ?? "")))
     .filter((id) => id !== "");
@@ -170,9 +167,10 @@ async function searchRcsb(query: string, token: number): Promise<Suggestion[]> {
       const cached = titleCache.get(id);
       if (cached !== undefined) return { id, title: cached };
       try {
-        const entry = await timedFetch(`${RCSB_ENTRY}/${id}`);
-        if (!entry.ok) return { id, title: null };
-        const data = (await entry.json()) as { struct?: { title?: string } };
+        const data = await requestJson<{ struct?: { title?: string } }>(
+          `${RCSB_ENTRY}/${id}`,
+          { timeoutMs: 6000, retries: 0, cacheMs: 600_000 },
+        );
         const title = data.struct?.title;
         if (title !== undefined) {
           titleCache.set(id, title);

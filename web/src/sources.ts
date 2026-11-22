@@ -6,6 +6,7 @@
  * list tells the user which one answered.
  */
 
+import { requestJson } from "./net.js";
 import type { Compound } from "./pubchem.js";
 
 export interface SourceStatus {
@@ -83,9 +84,11 @@ async function fetchWikidata(name: string): Promise<PartialSource | null> {
     origin: "*",
   }).toString();
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(3500) });
-  if (!response.ok) return null;
-  const json = (await response.json()) as WikidataResponse;
+  const json = await requestJson<WikidataResponse>(url.toString(), {
+    timeoutMs: 3500,
+    retries: 0,
+    cacheMs: 120_000,
+  });
   const entities = json.entities ?? {};
   const entity = Object.entries(entities).find(([id]) => id !== "-1")?.[1];
   if (entity === undefined || entity.missing !== undefined) {
@@ -153,9 +156,11 @@ async function fetchWikipedia(name: string): Promise<PartialSource | null> {
     origin: "*",
   }).toString();
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
-  if (!response.ok) return null;
-  const json = (await response.json()) as WikipediaResponse;
+  const json = await requestJson<WikipediaResponse>(url.toString(), {
+    timeoutMs: 4000,
+    retries: 0,
+    cacheMs: 120_000,
+  });
   const text = json.parse?.wikitext?.["*"];
   if (typeof text !== "string" || text.length === 0) {
     return { fields: {}, status: { name: "Wikipedia", status: "miss", detail: "no page" } };
@@ -244,9 +249,11 @@ interface OpenFdaResponse {
 async function tryOpenFda(name: string): Promise<PartialSource | null> {
   const url = `https://api.fda.gov/drug/label.json?search=${encodeURIComponent(`openfda.generic_name:"${name}"`)}&limit=1`;
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
-    if (!response.ok) return null;
-    const json = (await response.json()) as OpenFdaResponse;
+    const json = await requestJson<OpenFdaResponse>(url, {
+      timeoutMs: 4000,
+      retries: 0,
+      cacheMs: 120_000,
+    });
     const label = json.results?.[0];
     if (label === undefined) {
       return {

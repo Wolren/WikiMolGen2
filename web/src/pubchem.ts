@@ -5,6 +5,7 @@
  * compound never touches a server of ours, the page talks to NCBI directly.
  */
 
+import { HttpError, NetworkError, requestBytes as fetchBytes, requestJson } from "./net.js";
 import { fetchMetadata, type SourceStatus } from "./sources.js";
 
 const PUG = "https://pubchem.ncbi.nlm.nih.gov/rest/pug";
@@ -16,15 +17,7 @@ const PUG = "https://pubchem.ncbi.nlm.nih.gov/rest/pug";
  * "Looking up…" with the only way out being a reload.
  */
 const REQUEST_TIMEOUT_MS = 12_000;
-
-/** `fetch` with a deadline, so a stalled request cannot freeze the page. */
-function timedFetch(path: string): Promise<Response> {
-  return fetch(path, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
-}
-
-function isTimeout(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "TimeoutError";
-}
+const RECORD_CACHE_MS = 300_000;
 
 /** PubChem's answer plus the two records the figure needs. */
 export interface PubChemResult {
@@ -274,24 +267,27 @@ async function fetchSynonyms(cid: number): Promise<string[]> {
 }
 
 async function request(path: string): Promise<Record<string, unknown>> {
-  let response: Response;
+  let json: Record<string, unknown>;
   try {
-    response = await timedFetch(path);
+    json = await requestJson<Record<string, unknown>>(path, {
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      retries: 1,
+      cacheMs: RECORD_CACHE_MS,
+    });
   } catch (error) {
-    if (isTimeout(error)) {
+    if (error instanceof NetworkError) {
       throw new LookupError(
-        `PubChem did not answer within ${REQUEST_TIMEOUT_MS / 1000} s. Check the connection and try again.`,
+        error.timeout
+          ? `PubChem did not answer within ${REQUEST_TIMEOUT_MS / 1000} s. Check the connection and try again.`
+          : `Could not reach PubChem (${error.message}).`,
       );
     }
-    throw new LookupError(
-      `Could not reach PubChem (${error instanceof Error ? error.message : String(error)}).`,
-    );
+    if (error instanceof HttpError) {
+      const detail = error.message.replace(/^HTTP \d+: ?/, "");
+      throw new LookupError(`PubChem request failed (${error.status}). ${detail}`);
+    }
+    throw error;
   }
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new LookupError(`PubChem request failed (${response.status}). ${firstLine(detail)}`);
-  }
-  const json = (await response.json()) as Record<string, unknown>;
   const properties = propertiesRow(json);
   if (properties === null) throw new LookupError("PubChem returned an unexpected response.");
   return properties;
@@ -299,9 +295,11 @@ async function request(path: string): Promise<Record<string, unknown>> {
 
 async function requestOrNull(path: string): Promise<Record<string, unknown> | null> {
   try {
-    const response = await timedFetch(path);
-    if (!response.ok) return null;
-    return (await response.json()) as Record<string, unknown>;
+    return await requestJson<Record<string, unknown>>(path, {
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      retries: 0,
+      cacheMs: RECORD_CACHE_MS,
+    });
   } catch {
     // A bonus field that timed out is simply absent, like one PubChem does not know.
     return null;
@@ -310,9 +308,11 @@ async function requestOrNull(path: string): Promise<Record<string, unknown> | nu
 
 async function requestBytes(path: string): Promise<Uint8Array | null> {
   try {
-    const response = await timedFetch(path);
-    if (!response.ok) return null;
-    return new Uint8Array(await response.arrayBuffer());
+    return await fetchBytes(path, {
+      timeoutMs: REQUEST_TIMEOUT_MS,
+      retries: 0,
+      cacheMs: RECORD_CACHE_MS,
+    });
   } catch {
     return null;
   }
@@ -334,8 +334,4 @@ function asNumber(value: unknown): number | undefined {
 /** CAS registry numbers look like `50-78-2`; PubChem only exposes them via synonyms. */
 function isCasNumber(value: string): boolean {
   return /^\d{2,7}-\d{2}-\d$/.test(value.trim());
-}
-
-function firstLine(text: string): string {
-  return text.split("\n").map((line) => line.trim()).find((line) => line.length > 0) ?? "";
 }
