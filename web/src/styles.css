@@ -846,6 +846,37 @@ input[type="range"] {
   margin-top: 0;
 }
 
+.reset-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  color: var(--accent);
+}
+
+.reset-confirm {
+  flex-wrap: wrap;
+}
+
+.reset-confirm p {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
 /* Three angle fields share one row, so the custom preset stays compact. */
 .orientation-angles {
   display: grid;

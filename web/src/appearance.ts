@@ -234,6 +234,42 @@ function confirmPresetName(): void {
   closeNameRow();
 }
 
+/** Open the two-step reset; the first click only reveals the question. */
+function openAppearanceReset(): void {
+  const look = state.look;
+  if (look === null) return;
+  const base = state.looks.find((entry) => entry.id === look.id) ?? look;
+  dom.appearanceResetQuestion.textContent = `Reset the appearance to ${base.label}?`;
+  dom.appearanceResetConfirm.hidden = false;
+}
+
+function cancelAppearanceReset(): void {
+  dom.appearanceResetConfirm.hidden = true;
+}
+
+/** Restore the look's own slider values; the colour choices stay. */
+function confirmAppearanceReset(): void {
+  const look = state.look;
+  if (look === null) return;
+  const base = state.looks.find((entry) => entry.id === look.id) ?? look;
+  look.appearance = {
+    ...base.appearance,
+    scheme: look.appearance.scheme,
+    element_colors: look.appearance.element_colors,
+    solid_color: look.appearance.solid_color,
+    helix_color: look.appearance.helix_color,
+    sheet_color: look.appearance.sheet_color,
+    loop_color: look.appearance.loop_color,
+    stick_color: look.appearance.stick_color,
+  };
+  dom.exportQuality.value = "4";
+  syncAppearance();
+  markSettingsCustom();
+  dom.settingsPresetNote.textContent = `Appearance reset to ${base.label}.`;
+  scheduleApply();
+  cancelAppearanceReset();
+}
+
 /** Remove the selected saved preset; built-ins stay. */
 function deleteCurrentPreset(): void {
   const id = dom.settingsPreset.value;
@@ -462,6 +498,9 @@ export function bindAppearance(): void {
   dom.presetDelete.addEventListener("click", deleteCurrentPreset);
   dom.presetNameSave.addEventListener("click", confirmPresetName);
   dom.presetNameCancel.addEventListener("click", closeNameRow);
+  dom.appearanceResetOpen.addEventListener("click", openAppearanceReset);
+  dom.appearanceResetYes.addEventListener("click", confirmAppearanceReset);
+  dom.appearanceResetCancel.addEventListener("click", cancelAppearanceReset);
   dom.presetName.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();

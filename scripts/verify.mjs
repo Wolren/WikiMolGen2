@@ -562,6 +562,29 @@ if (savedValues.deleted !== true) failures.push("deleting a preset leaves the op
 if (savedValues.state !== "custom") failures.push("deleting a preset does not return to Custom");
 console.log(`saved preset: ${savedPreset}`);
 
+const resetFlow = await evaluate(
+  session,
+  `(() => {
+     const input = document.getElementById('stick-radius');
+     input.value = '0.45';
+     input.dispatchEvent(new Event('input', { bubbles: true }));
+     document.getElementById('appearance-reset-open').click();
+     const asked = document.getElementById('appearance-reset-confirm').hidden === false;
+     document.getElementById('appearance-reset-cancel').click();
+     const cancelled = document.getElementById('appearance-reset-confirm').hidden === true && input.value === '0.45';
+     document.getElementById('appearance-reset-open').click();
+     document.getElementById('appearance-reset-yes').click();
+     return JSON.stringify({ asked, cancelled, value: input.value, label: document.getElementById('stick-radius-value').textContent, note: document.getElementById('settings-preset-note').textContent, preset: document.getElementById('settings-preset').value });
+   })()`,
+);
+const resetValues = JSON.parse(resetFlow);
+if (resetValues.asked !== true) failures.push("the reset does not ask first");
+if (resetValues.cancelled !== true) failures.push("cancelling the reset changes the slider");
+if (Number(resetValues.value) > 0.21) failures.push(`the reset leaves stick radius ${resetValues.value}`);
+if (resetValues.label.trim() !== "0.20") failures.push(`the reset label reads ${resetValues.label}`);
+if (resetValues.preset !== "custom") failures.push("the reset does not mark the preset custom");
+console.log(`reset flow: ${resetFlow}`);
+
 // 3b. The 2D view. The first open loads RDKit (7.39 MB) and draws an inline SVG. A
 //     protein has no flat record, so the mode button is disabled and there is nothing to
 //     check.
@@ -1050,6 +1073,12 @@ if (args.scroll) {
        return true;
      })()`,
   );
+  await new Promise((done) => setTimeout(done, 200));
+}
+// `--reset-confirm true` opens the slider reset question so the screenshot shows it.
+if (args["reset-confirm"]) {
+  await evaluate(session, "document.getElementById('appearance-reset-open').click(), true");
+  await evaluate(session, "document.getElementById('appearance-reset-confirm').scrollIntoView({ block: 'center' }), true");
   await new Promise((done) => setTimeout(done, 200));
 }
 const shot = await send("Page.captureScreenshot", { format: "png" }, session);

@@ -25,7 +25,7 @@ It is a static site: no server, no upload, no install.
 | 3D | Ball-and-stick, space filling, licorice, stick and protein cartoons, with seven element palettes and a colour mode for element, chain, residue, secondary structure, B-factor or one ink |
 | 2D | RDKit's MinimalLib draws the skeletal SVG with stereo and no background. A Rust V2000 parser is the fallback |
 | Looks | Publication, Flat, Dark, Space filling, Licorice and Stick for small molecules, plus cartoon looks for proteins |
-| Appearance | Stick and sphere size, valence, light, transparency, depth cue, ambient occlusion, soft shadows, outline, smooth edges and projection |
+| Appearance | Stick and sphere size, valence, light, transparency, depth cue, ambient occlusion, soft shadows, outline, smooth edges and projection. A two-step reset at the end restores the current look's slider values; the colour scheme stays |
 | Presets | The original Wikipedia render settings, saved and renamed presets, orientation presets (wiki, front, side, top, custom) and the seven colour schemes |
 | Export | PNG from 400 to 8192 px wide, 2x to 6x supersampling, 4 to 9 percent margin, optional labels and scale bar, transparent by default, or one ZIP for a batch of identifiers |
 | Markup | `{{Infobox drug}}`, `{{Chembox}}` and the Commons upload text, with metadata from Wikidata, Wikipedia and openFDA |
