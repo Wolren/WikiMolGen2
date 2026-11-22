@@ -18,11 +18,20 @@ const DEPICTION_MARGIN = 0.06;
 const STORAGE_KEY = "wikimolgen2.depiction";
 const MAX_BOND_WIDTH = 8;
 const MAX_LABEL_SIZE = 36;
+const MAX_LEGEND = 200;
 
 export const DEFAULT_DEPICTION_SETTINGS: DepictionSettings = {
   monochrome: false,
   bondWidth: 0,
   labelSize: 0,
+  stereo: false,
+  radicals: false,
+  chiralFlag: false,
+  atomTags: false,
+  hideLabels: false,
+  explicitMethyl: false,
+  comic: false,
+  legend: "",
 };
 
 export type DepictionEngine = "rdkit" | "rust";
@@ -54,10 +63,19 @@ export function loadDepictionSettings(): DepictionSettings {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as unknown;
     if (typeof raw !== "object" || raw === null) return { ...DEFAULT_DEPICTION_SETTINGS };
     const record = raw as Record<string, unknown>;
+    const on = (key: string): boolean => record[key] === true;
     return {
-      monochrome: record.monochrome === true,
+      monochrome: on("monochrome"),
       bondWidth: clamp(record.bondWidth, 0, MAX_BOND_WIDTH),
       labelSize: clamp(record.labelSize, 0, MAX_LABEL_SIZE),
+      stereo: on("stereo"),
+      radicals: on("radicals"),
+      chiralFlag: on("chiralFlag"),
+      atomTags: on("atomTags"),
+      hideLabels: on("hideLabels"),
+      explicitMethyl: on("explicitMethyl"),
+      comic: on("comic"),
+      legend: typeof record.legend === "string" ? record.legend.slice(0, MAX_LEGEND) : "",
     };
   } catch {
     // A blocked store or bad JSON only means the defaults for this visit.
@@ -78,6 +96,14 @@ function readControls(): DepictionSettings {
     monochrome: dom.depictionMonochrome.checked,
     bondWidth: clamp(dom.depictionBondWidth.value, 0, MAX_BOND_WIDTH),
     labelSize: clamp(dom.depictionLabelSize.value, 0, MAX_LABEL_SIZE),
+    stereo: dom.depictionStereo.checked,
+    radicals: dom.depictionRadicals.checked,
+    chiralFlag: dom.depictionChiral.checked,
+    atomTags: dom.depictionAtomTags.checked,
+    hideLabels: dom.depictionHideLabels.checked,
+    explicitMethyl: dom.depictionExplicitMethyl.checked,
+    comic: dom.depictionComic.checked,
+    legend: dom.depictionLegend.value.slice(0, MAX_LEGEND),
   };
 }
 
@@ -90,9 +116,18 @@ function syncOutputs(): void {
 
 /** Copy the settings into the panel. */
 export function syncDepictionControls(): void {
-  dom.depictionMonochrome.checked = state.depictionSettings.monochrome;
-  dom.depictionBondWidth.value = String(state.depictionSettings.bondWidth);
-  dom.depictionLabelSize.value = String(state.depictionSettings.labelSize);
+  const settings = state.depictionSettings;
+  dom.depictionMonochrome.checked = settings.monochrome;
+  dom.depictionBondWidth.value = String(settings.bondWidth);
+  dom.depictionLabelSize.value = String(settings.labelSize);
+  dom.depictionStereo.checked = settings.stereo;
+  dom.depictionRadicals.checked = settings.radicals;
+  dom.depictionChiral.checked = settings.chiralFlag;
+  dom.depictionAtomTags.checked = settings.atomTags;
+  dom.depictionHideLabels.checked = settings.hideLabels;
+  dom.depictionExplicitMethyl.checked = settings.explicitMethyl;
+  dom.depictionComic.checked = settings.comic;
+  dom.depictionLegend.value = settings.legend;
   syncOutputs();
 }
 
@@ -111,7 +146,18 @@ export function bindDepictionControls(onChange: () => void): void {
     onChange();
   };
   dom.depictionMonochrome.addEventListener("change", apply);
-  for (const input of [dom.depictionBondWidth, dom.depictionLabelSize]) {
+  for (const input of [
+    dom.depictionBondWidth,
+    dom.depictionLabelSize,
+    dom.depictionStereo,
+    dom.depictionRadicals,
+    dom.depictionChiral,
+    dom.depictionAtomTags,
+    dom.depictionHideLabels,
+    dom.depictionExplicitMethyl,
+    dom.depictionComic,
+    dom.depictionLegend,
+  ]) {
     input.addEventListener("input", apply);
   }
 }
@@ -151,6 +197,14 @@ export async function buildDepiction(
         monochrome: settings.monochrome,
         bondWidth: settings.bondWidth,
         labelSize: settings.labelSize,
+        stereo: settings.stereo,
+        radicals: settings.radicals,
+        chiralFlag: settings.chiralFlag,
+        atomTags: settings.atomTags,
+        hideLabels: settings.hideLabels,
+        explicitMethyl: settings.explicitMethyl,
+        comic: settings.comic,
+        legend: settings.legend,
       });
       return { depiction: { svg: withTitle(svg, title), engine: "rdkit" }, error: null };
     } catch (error) {

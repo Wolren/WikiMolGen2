@@ -62,6 +62,22 @@ export interface DepictionSettings {
   bondWidth: number;
   /** Fixed atom label size in drawing units; 0 keeps RDKit's scaling. */
   labelSize: number;
+  /** Show R/S labels beside the stereo centres. */
+  stereo: boolean;
+  /** Show unpaired-electron dots. */
+  radicals: boolean;
+  /** Show the chiral flag. */
+  chiralFlag: boolean;
+  /** Show atom map numbers. */
+  atomTags: boolean;
+  /** Hide every atom label, for a skeleton-only figure. */
+  hideLabels: boolean;
+  /** Draw the methyl carbon and its hydrogens explicitly. */
+  explicitMethyl: boolean;
+  /** RDKit's hand-drawn comic style. */
+  comic: boolean;
+  /** A line of text under the drawing; empty for none. */
+  legend: string;
 }
 
 export const dom = {
@@ -174,6 +190,14 @@ export const dom = {
   depictionBondWidthValue: required<HTMLOutputElement>("depiction-bond-width-value"),
   depictionLabelSize: required<HTMLInputElement>("depiction-label-size"),
   depictionLabelSizeValue: required<HTMLOutputElement>("depiction-label-size-value"),
+  depictionStereo: required<HTMLInputElement>("depiction-stereo"),
+  depictionRadicals: required<HTMLInputElement>("depiction-radicals"),
+  depictionChiral: required<HTMLInputElement>("depiction-chiral"),
+  depictionAtomTags: required<HTMLInputElement>("depiction-atom-tags"),
+  depictionHideLabels: required<HTMLInputElement>("depiction-hide-labels"),
+  depictionExplicitMethyl: required<HTMLInputElement>("depiction-explicit-methyl"),
+  depictionComic: required<HTMLInputElement>("depiction-comic"),
+  depictionLegend: required<HTMLInputElement>("depiction-legend"),
   mode3d: required<HTMLButtonElement>("mode-3d"),
   mode2d: required<HTMLButtonElement>("mode-2d"),
   stageNote: required<HTMLElement>("stage-note"),
@@ -248,7 +272,19 @@ export const state: AppState = {
   typedName: null,
   depictionSource: null,
   depiction: null,
-  depictionSettings: { monochrome: false, bondWidth: 0, labelSize: 0 },
+  depictionSettings: {
+    monochrome: false,
+    bondWidth: 0,
+    labelSize: 0,
+    stereo: false,
+    radicals: false,
+    chiralFlag: false,
+    atomTags: false,
+    hideLabels: false,
+    explicitMethyl: false,
+    comic: false,
+    legend: "",
+  },
   protein: null,
   orientation: { preset: "free", x: 10, y: 20, z: 0 },
 };

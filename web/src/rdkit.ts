@@ -103,6 +103,14 @@ export interface RdkitDrawOptions {
   monochrome?: boolean;
   bondWidth?: number;
   labelSize?: number;
+  stereo?: boolean;
+  radicals?: boolean;
+  chiralFlag?: boolean;
+  atomTags?: boolean;
+  hideLabels?: boolean;
+  explicitMethyl?: boolean;
+  comic?: boolean;
+  legend?: string;
 }
 
 /**
@@ -158,5 +166,14 @@ export async function depictWithRdkit(
   if (Object.keys(palette).length > 0) details.atomColourPalette = palette;
   if ((options.bondWidth ?? 0) > 0) details.bondLineWidth = options.bondWidth;
   if ((options.labelSize ?? 0) > 0) details.fixedFontSize = Math.round(options.labelSize ?? 0);
+  if (options.stereo === true) details.addStereoAnnotation = true;
+  if (options.radicals === true) details.includeRadicals = true;
+  if (options.chiralFlag === true) details.includeChiralFlag = true;
+  if (options.atomTags === true) details.includeAtomTags = true;
+  if (options.hideLabels === true) details.noAtomLabels = true;
+  if (options.explicitMethyl === true) details.explicitMethyl = true;
+  if (options.comic === true) details.comicMode = true;
+  const legend = (options.legend ?? "").trim();
+  if (legend !== "") details.legend = legend;
   return mol.get_svg_with_highlights(JSON.stringify(details));
 }

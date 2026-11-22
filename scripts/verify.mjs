@@ -864,6 +864,79 @@ if (isProtein) {
     "document.getElementById('section-appearance').hidden === true && document.getElementById('section-view').hidden === true",
   );
   if (sectionsHidden !== true) failures.push("the 3D-only sections stay visible in the 2D mode");
+
+  // The drawing switches reach the SVG: a legend, stereo labels, and hidden labels.
+  const baseDrawing = JSON.parse(
+    await evaluate(
+      session,
+      `(() => {
+         const svg = document.querySelector('#depiction svg')?.outerHTML ?? '';
+         return JSON.stringify({ svg, length: svg.length });
+       })()`,
+    ),
+  );
+
+  await evaluate(
+    session,
+    "(() => { const input = document.getElementById('depiction-legend'); input.value = 'Verify legend'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()",
+  );
+  const legendSvg = await poll(async () => {
+    const svg = await evaluate(session, "document.querySelector('#depiction svg')?.outerHTML ?? ''");
+    return /class=.legend./.test(svg) ? svg : null;
+  }, 20_000);
+  if (legendSvg === null) failures.push("the legend does not reach the drawing");
+
+  await evaluate(
+    session,
+    `(() => {
+       const legend = document.getElementById('depiction-legend');
+       legend.value = '';
+       legend.dispatchEvent(new Event('input', { bubbles: true }));
+       const stereo = document.getElementById('depiction-stereo');
+       stereo.checked = true;
+       stereo.dispatchEvent(new Event('input', { bubbles: true }));
+       return true;
+     })()`,
+  );
+  const stereoChanged = await poll(async () => {
+    const svg = await evaluate(session, "document.querySelector('#depiction svg')?.outerHTML ?? ''");
+    return svg !== baseDrawing.svg && svg.length > baseDrawing.length ? svg : null;
+  }, 20_000);
+  if (stereoChanged === null) failures.push("the stereo switch does not change the drawing");
+
+  await evaluate(
+    session,
+    `(() => {
+       const stereo = document.getElementById('depiction-stereo');
+       stereo.checked = false;
+       stereo.dispatchEvent(new Event('input', { bubbles: true }));
+       const hide = document.getElementById('depiction-hide-labels');
+       hide.checked = true;
+       hide.dispatchEvent(new Event('input', { bubbles: true }));
+       return true;
+     })()`,
+  );
+  const hiddenSvg = await poll(async () => {
+    const svg = await evaluate(session, "document.querySelector('#depiction svg')?.outerHTML ?? ''");
+    return svg !== baseDrawing.svg && svg.length < baseDrawing.length ? svg : null;
+  }, 20_000);
+  if (hiddenSvg === null) failures.push("the hide-labels switch leaves the atom labels in place");
+  console.log(
+    `2d annotations: legend ${legendSvg !== null}, stereo ${stereoChanged !== null}, labels ${baseDrawing.length} -> ${hiddenSvg?.length}`,
+  );
+
+  // Leave the drawing as the panel started it, so the rest of the run sees the defaults.
+  await evaluate(
+    session,
+    `(() => {
+       const hide = document.getElementById('depiction-hide-labels');
+       hide.checked = false;
+       hide.dispatchEvent(new Event('input', { bubbles: true }));
+       return true;
+     })()`,
+  );
+  await new Promise((done) => setTimeout(done, 300));
+
   await evaluate(session, "document.getElementById('mode-3d').click(), true");
   await new Promise((done) => setTimeout(done, 300));
   const colourShown = await evaluate(
