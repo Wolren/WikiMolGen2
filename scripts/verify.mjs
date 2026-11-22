@@ -991,6 +991,54 @@ if (isProtein) {
   );
   await new Promise((done) => setTimeout(done, 300));
 
+  // The layout sliders reach the drawing, and each one reads out its value.
+  const rotateLabel = await evaluate(
+    session,
+    `(() => {
+       const rotate = document.getElementById('depiction-rotate');
+       rotate.value = '30';
+       rotate.dispatchEvent(new Event('input', { bubbles: true }));
+       return document.getElementById('depiction-rotate-value').textContent;
+     })()`,
+  );
+  if (rotateLabel.trim() !== "30°") failures.push(`the rotation reads ${rotateLabel}`);
+  const rotated = await poll(async () => {
+    const svg = await evaluate(session, "document.querySelector('#depiction svg')?.outerHTML ?? ''");
+    return svg !== baseDrawing.svg ? svg : null;
+  }, 20_000);
+  if (rotated === null) failures.push("the rotation slider does not reach the drawing");
+
+  const lengthLabel = await evaluate(
+    session,
+    `(() => {
+       const rotate = document.getElementById('depiction-rotate');
+       rotate.value = '0';
+       rotate.dispatchEvent(new Event('input', { bubbles: true }));
+       const length = document.getElementById('depiction-bond-length');
+       length.value = '40';
+       length.dispatchEvent(new Event('input', { bubbles: true }));
+       return document.getElementById('depiction-bond-length-value').textContent;
+     })()`,
+  );
+  if (lengthLabel.trim() !== "40") failures.push(`the bond length reads ${lengthLabel}`);
+  const lengthened = await poll(async () => {
+    const svg = await evaluate(session, "document.querySelector('#depiction svg')?.outerHTML ?? ''");
+    return svg !== baseDrawing.svg ? svg : null;
+  }, 20_000);
+  if (lengthened === null) failures.push("the bond-length slider does not reach the drawing");
+  console.log(`2d layout: rotation ${rotated !== null}, bond length ${lengthened !== null}`);
+
+  await evaluate(
+    session,
+    `(() => {
+       const length = document.getElementById('depiction-bond-length');
+       length.value = '0';
+       length.dispatchEvent(new Event('input', { bubbles: true }));
+       return true;
+     })()`,
+  );
+  await new Promise((done) => setTimeout(done, 300));
+
   await evaluate(session, "document.getElementById('mode-3d').click(), true");
   await new Promise((done) => setTimeout(done, 300));
   const colourShown = await evaluate(

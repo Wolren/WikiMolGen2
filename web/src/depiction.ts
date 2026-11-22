@@ -35,6 +35,11 @@ export const DEFAULT_DEPICTION_SETTINGS: DepictionSettings = {
   highlightAtoms: "",
   highlightBonds: "",
   highlightColor: "#ff8888",
+  rotate: 0,
+  bondLength: 0,
+  padding: 0,
+  labelPadding: 0,
+  bondOffset: 0,
 };
 
 export type DepictionEngine = "rdkit" | "rust";
@@ -82,6 +87,11 @@ export function loadDepictionSettings(): DepictionSettings {
       highlightAtoms: typeof record.highlightAtoms === "string" ? record.highlightAtoms : "",
       highlightBonds: typeof record.highlightBonds === "string" ? record.highlightBonds : "",
       highlightColor: typeof record.highlightColor === "string" ? record.highlightColor : "#ff8888",
+      rotate: clamp(record.rotate, -180, 180),
+      bondLength: clamp(record.bondLength, 0, 80),
+      padding: clamp(record.padding, 0, 0.3),
+      labelPadding: clamp(record.labelPadding, 0, 1),
+      bondOffset: clamp(record.bondOffset, 0, 0.5),
     };
   } catch {
     // A blocked store or bad JSON only means the defaults for this visit.
@@ -113,7 +123,17 @@ function readControls(): DepictionSettings {
     highlightAtoms: dom.depictionHighlightAtoms.value,
     highlightBonds: dom.depictionHighlightBonds.value,
     highlightColor: dom.depictionHighlightColor.value,
+    rotate: clamp(dom.depictionRotate.value, -180, 180),
+    bondLength: clamp(dom.depictionBondLength.value, 0, 80),
+    padding: clamp(dom.depictionPadding.value, 0, 0.3),
+    labelPadding: clamp(dom.depictionLabelPadding.value, 0, 1),
+    bondOffset: clamp(dom.depictionBondOffset.value, 0, 0.5),
   };
+}
+
+/** The value a slider reads out, with `Auto` at its off position. */
+function autoLabel(value: number, digits = 0): string {
+  return value === 0 ? "Auto" : value.toFixed(digits);
 }
 
 function syncOutputs(): void {
@@ -121,6 +141,12 @@ function syncOutputs(): void {
     state.depictionSettings.bondWidth === 0 ? "Auto" : String(state.depictionSettings.bondWidth);
   dom.depictionLabelSizeValue.textContent =
     state.depictionSettings.labelSize === 0 ? "Auto" : String(state.depictionSettings.labelSize);
+  const settings = state.depictionSettings;
+  dom.depictionRotateValue.textContent = settings.rotate === 0 ? "Off" : `${settings.rotate}°`;
+  dom.depictionBondLengthValue.textContent = autoLabel(settings.bondLength);
+  dom.depictionPaddingValue.textContent = autoLabel(settings.padding, 2);
+  dom.depictionLabelPaddingValue.textContent = autoLabel(settings.labelPadding, 2);
+  dom.depictionBondOffsetValue.textContent = autoLabel(settings.bondOffset, 2);
 }
 
 /** Copy the settings into the panel. */
@@ -140,6 +166,11 @@ export function syncDepictionControls(): void {
   dom.depictionHighlightAtoms.value = settings.highlightAtoms;
   dom.depictionHighlightBonds.value = settings.highlightBonds;
   dom.depictionHighlightColor.value = settings.highlightColor;
+  dom.depictionRotate.value = String(settings.rotate);
+  dom.depictionBondLength.value = String(settings.bondLength);
+  dom.depictionPadding.value = String(settings.padding);
+  dom.depictionLabelPadding.value = String(settings.labelPadding);
+  dom.depictionBondOffset.value = String(settings.bondOffset);
   syncOutputs();
 }
 
@@ -172,6 +203,11 @@ export function bindDepictionControls(onChange: () => void): void {
     dom.depictionHighlightAtoms,
     dom.depictionHighlightBonds,
     dom.depictionHighlightColor,
+    dom.depictionRotate,
+    dom.depictionBondLength,
+    dom.depictionPadding,
+    dom.depictionLabelPadding,
+    dom.depictionBondOffset,
   ]) {
     input.addEventListener("input", apply);
   }
@@ -223,6 +259,11 @@ export async function buildDepiction(
         highlightAtoms: settings.highlightAtoms,
         highlightBonds: settings.highlightBonds,
         highlightColor: settings.highlightColor,
+        rotate: settings.rotate,
+        bondLength: settings.bondLength,
+        padding: settings.padding,
+        labelPadding: settings.labelPadding,
+        bondOffset: settings.bondOffset,
       });
       return { depiction: { svg: withTitle(svg, title), engine: "rdkit" }, error: null };
     } catch (error) {

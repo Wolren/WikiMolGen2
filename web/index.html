@@ -317,6 +317,38 @@
             </div>
             <p class="hint">Zero keeps RDKit's automatic size. The Rust fallback honours only the monochrome switch.</p>
 
+            <h3 class="group-label">Layout</h3>
+            <div class="compact-control">
+              <label class="field-label" for="depiction-rotate">
+                Rotation <output id="depiction-rotate-value">Off</output>
+              </label>
+              <input id="depiction-rotate" type="range" min="-180" max="180" step="5" value="0" />
+            </div>
+            <div class="compact-control">
+              <label class="field-label" for="depiction-bond-length">
+                Bond length <output id="depiction-bond-length-value">Auto</output>
+              </label>
+              <input id="depiction-bond-length" type="range" min="0" max="80" step="2" value="0" />
+            </div>
+            <div class="compact-control">
+              <label class="field-label" for="depiction-padding">
+                Padding <output id="depiction-padding-value">Auto</output>
+              </label>
+              <input id="depiction-padding" type="range" min="0" max="0.3" step="0.01" value="0" />
+            </div>
+            <div class="compact-control">
+              <label class="field-label" for="depiction-label-padding">
+                Label padding <output id="depiction-label-padding-value">Auto</output>
+              </label>
+              <input id="depiction-label-padding" type="range" min="0" max="1" step="0.05" value="0" />
+            </div>
+            <div class="compact-control">
+              <label class="field-label" for="depiction-bond-offset">
+                Multi-bond offset <output id="depiction-bond-offset-value">Auto</output>
+              </label>
+              <input id="depiction-bond-offset" type="range" min="0" max="0.5" step="0.05" value="0" />
+            </div>
+
             <h3 class="group-label">Annotations</h3>
             <label class="checkbox compact"><input id="depiction-stereo" type="checkbox" /> Stereo labels (R/S)</label>
             <label class="checkbox compact"><input id="depiction-radicals" type="checkbox" /> Radicals</label>

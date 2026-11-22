@@ -114,6 +114,11 @@ export interface RdkitDrawOptions {
   highlightAtoms?: string;
   highlightBonds?: string;
   highlightColor?: string;
+  rotate?: number;
+  bondLength?: number;
+  padding?: number;
+  labelPadding?: number;
+  bondOffset?: number;
 }
 
 /**
@@ -187,6 +192,12 @@ export async function depictWithRdkit(
     if (atoms.length > 0) details.atoms = atoms;
     if (bonds.length > 0) details.bonds = bonds;
   }
+  // Each layout option at 0 keeps RDKit's own value, so an untouched panel draws as before.
+  if ((options.rotate ?? 0) !== 0) details.rotate = options.rotate;
+  if ((options.bondLength ?? 0) > 0) details.fixedBondLength = options.bondLength;
+  if ((options.padding ?? 0) > 0) details.padding = options.padding;
+  if ((options.labelPadding ?? 0) > 0) details.additionalAtomLabelPadding = options.labelPadding;
+  if ((options.bondOffset ?? 0) > 0) details.multipleBondOffset = options.bondOffset;
   return mol.get_svg_with_highlights(JSON.stringify(details));
 }
 

@@ -84,6 +84,16 @@ export interface DepictionSettings {
   highlightBonds: string;
   /** The highlight ink, `#rrggbb`. */
   highlightColor: string;
+  /** Turn the drawing, in degrees; 0 keeps RDKit's layout. */
+  rotate: number;
+  /** Fixed bond length in drawing units; 0 keeps RDKit's scaling. */
+  bondLength: number;
+  /** Page padding as a fraction; 0 keeps RDKit's default. */
+  padding: number;
+  /** Extra label padding as a fraction; 0 keeps RDKit's default. */
+  labelPadding: number;
+  /** Distance between multiple bond lines; 0 keeps RDKit's default. */
+  bondOffset: number;
 }
 
 export const dom = {
@@ -207,6 +217,16 @@ export const dom = {
   depictionHighlightAtoms: required<HTMLInputElement>("depiction-highlight-atoms"),
   depictionHighlightBonds: required<HTMLInputElement>("depiction-highlight-bonds"),
   depictionHighlightColor: required<HTMLInputElement>("depiction-highlight-color"),
+  depictionRotate: required<HTMLInputElement>("depiction-rotate"),
+  depictionRotateValue: required<HTMLOutputElement>("depiction-rotate-value"),
+  depictionBondLength: required<HTMLInputElement>("depiction-bond-length"),
+  depictionBondLengthValue: required<HTMLOutputElement>("depiction-bond-length-value"),
+  depictionPadding: required<HTMLInputElement>("depiction-padding"),
+  depictionPaddingValue: required<HTMLOutputElement>("depiction-padding-value"),
+  depictionLabelPadding: required<HTMLInputElement>("depiction-label-padding"),
+  depictionLabelPaddingValue: required<HTMLOutputElement>("depiction-label-padding-value"),
+  depictionBondOffset: required<HTMLInputElement>("depiction-bond-offset"),
+  depictionBondOffsetValue: required<HTMLOutputElement>("depiction-bond-offset-value"),
   mode3d: required<HTMLButtonElement>("mode-3d"),
   mode2d: required<HTMLButtonElement>("mode-2d"),
   stageNote: required<HTMLElement>("stage-note"),
@@ -296,6 +316,11 @@ export const state: AppState = {
     highlightAtoms: "",
     highlightBonds: "",
     highlightColor: "#ff8888",
+    rotate: 0,
+    bondLength: 0,
+    padding: 0,
+    labelPadding: 0,
+    bondOffset: 0,
   },
   protein: null,
   orientation: { preset: "free", x: 10, y: 20, z: 0 },
