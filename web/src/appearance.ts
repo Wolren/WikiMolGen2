@@ -21,9 +21,13 @@ import {
   BUILTIN_PRESETS,
   captureSettings,
   loadSavedPresets,
+  parsePresetFile,
+  presetFileText,
   saveSavedPresets,
 } from "./presets.js";
 import type { SavedPreset } from "./presets.js";
+import { downloadText } from "./files.js";
+import { colourFileText, parseColourFile } from "./colour-scheme.js";
 
 /** Apply appearance changes once per frame, not once per input event. */
 let applyScheduled = false;
@@ -177,12 +181,12 @@ function renderSettingsPresets(): void {
   updatePresetButtons();
 }
 
-/** Enable Delete only when a saved preset is selected. */
-/** Enable Rename and Delete only when a saved preset is selected. */
+/** Enable Rename and Delete for a saved preset, and Export once one exists. */
 function updatePresetButtons(): void {
   const saved = savedPresets.some((preset) => preset.id === dom.settingsPreset.value);
   dom.presetDelete.disabled = !saved;
   dom.presetRename.disabled = !saved;
+  dom.presetExport.disabled = savedPresets.length === 0;
 }
 
 /** Open the inline name field for a new preset or a rename. */
@@ -482,6 +486,109 @@ export function setElementColor(element: string, color: string): void {
   scheduleRecolor();
 }
 
+/** Write the saved presets to a file, if there are any. */
+function exportPresets(): void {
+  if (savedPresets.length === 0) {
+    dom.settingsPresetNote.textContent = "There are no saved presets to export.";
+    return;
+  }
+  downloadText("wikimolgen2-presets.json", presetFileText(savedPresets));
+  dom.settingsPresetNote.textContent = `Exported ${savedPresets.length} preset(s).`;
+}
+
+/** Add the presets in a picked file, and select the first one. */
+function importPresets(): void {
+  const file = dom.presetFile.files?.[0];
+  if (file === undefined) return;
+  void file
+    .text()
+    .then((text) => {
+      const result = parsePresetFile(text);
+      if ("error" in result) {
+        dom.settingsPresetNote.textContent = result.error;
+        return;
+      }
+      const stamp = Date.now();
+      const imported: SavedPreset[] = result.presets.map((preset, index) => ({
+        id: `saved-${stamp}-${index}`,
+        name: preset.name,
+        label: preset.name,
+        description: "Imported preset.",
+        appearance: preset.appearance,
+        quality: preset.quality,
+      }));
+      savedPresets = [...savedPresets, ...imported];
+      saveSavedPresets(savedPresets);
+      renderSettingsPresets();
+      updatePresetButtons();
+      const first = imported[0];
+      if (first !== undefined) {
+        dom.settingsPreset.value = first.id;
+        applySettingsPreset(first.id);
+        dom.settingsPresetNote.textContent = `Imported ${imported.length} preset(s): ${first.name}.`;
+      }
+    })
+    .catch(() => {
+      dom.settingsPresetNote.textContent = "The preset file could not be read.";
+    })
+    .finally(() => {
+      dom.presetFile.value = "";
+    });
+}
+
+/** Show a sentence under the colour buttons, or hide it. */
+function showColoursNote(text: string | null): void {
+  dom.coloursNote.hidden = text === null;
+  dom.coloursNote.textContent = text ?? "";
+}
+
+/** Write the palette, stick ink and overrides to a file. */
+function exportColours(): void {
+  const look = state.look;
+  if (look === null) return;
+  downloadText(
+    "wikimolgen2-colours.json",
+    colourFileText({
+      scheme: look.appearance.scheme,
+      stickColor: look.appearance.stick_color,
+      elementColors: look.appearance.element_colors,
+    }),
+  );
+  showColoursNote("Exported the current colours.");
+}
+
+/** Apply the colours in a picked file, replacing the current palette and overrides. */
+function importColours(): void {
+  const file = dom.coloursFile.files?.[0];
+  if (file === undefined) return;
+  void file
+    .text()
+    .then((text) => {
+      const result = parseColourFile(text);
+      if ("error" in result) {
+        showColoursNote(result.error);
+        return;
+      }
+      const look = state.look;
+      if (look === null) return;
+      const chosen = result.colours;
+      const known =
+        chosen.scheme === "" || state.schemes.some((entry) => entry.id === chosen.scheme);
+      if (known && chosen.scheme !== "") look.appearance.scheme = chosen.scheme;
+      look.appearance.stick_color = chosen.stickColor;
+      look.appearance.element_colors = chosen.elementColors;
+      syncAppearance();
+      markSettingsCustom();
+      scheduleRecolor();
+      const unknown = known ? "" : ` The palette ${chosen.scheme} is not known here.`;
+      showColoursNote(`Imported ${chosen.elementColors.length} override(s).${unknown}`);
+    })
+    .catch(() => showColoursNote("The colour file could not be read."))
+    .finally(() => {
+      dom.coloursFile.value = "";
+    });
+}
+
 /** Wire the panels once, after the document exists. */
 export function bindAppearance(): void {
   renderSettingsPresets();
@@ -496,6 +603,12 @@ export function bindAppearance(): void {
   dom.presetSave.addEventListener("click", () => openNameRow("new"));
   dom.presetRename.addEventListener("click", () => openNameRow("rename"));
   dom.presetDelete.addEventListener("click", deleteCurrentPreset);
+  dom.presetExport.addEventListener("click", exportPresets);
+  dom.presetImport.addEventListener("click", () => dom.presetFile.click());
+  dom.presetFile.addEventListener("change", importPresets);
+  dom.coloursExport.addEventListener("click", exportColours);
+  dom.coloursImport.addEventListener("click", () => dom.coloursFile.click());
+  dom.coloursFile.addEventListener("change", importColours);
   dom.presetNameSave.addEventListener("click", confirmPresetName);
   dom.presetNameCancel.addEventListener("click", closeNameRow);
   dom.appearanceResetOpen.addEventListener("click", openAppearanceReset);

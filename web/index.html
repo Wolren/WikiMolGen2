@@ -281,6 +281,12 @@
                 </div>
                 <div id="element-colors" class="element-colors"></div>
                 <p class="hint">Override one element on top of the palette.</p>
+                <div class="button-row">
+                  <button id="colours-export" type="button" class="link-button">Export colours</button>
+                  <button id="colours-import" type="button" class="link-button">Import colours</button>
+                  <input id="colours-file" type="file" accept="application/json,.json" hidden />
+                </div>
+                <p id="colours-note" class="hint" hidden></p>
               </div>
             </div>
 
@@ -411,6 +417,11 @@
             <button id="preset-save" type="button" class="secondary">Save</button>
             <button id="preset-rename" type="button" class="secondary" disabled>Rename</button>
             <button id="preset-delete" type="button" class="secondary" disabled>Delete</button>
+          </div>
+          <div class="button-row">
+            <button id="preset-export" type="button" class="link-button" disabled>Export presets</button>
+            <button id="preset-import" type="button" class="link-button">Import presets</button>
+            <input id="preset-file" type="file" accept="application/json,.json" hidden />
           </div>
           <div id="preset-name-row" class="preset-name-row" hidden>
             <input id="preset-name" type="text" placeholder="Preset name" aria-label="Preset name" autocomplete="off" />

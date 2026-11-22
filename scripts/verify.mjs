@@ -779,6 +779,67 @@ if (savedValues.deleted !== true) failures.push("deleting a preset leaves the op
 if (savedValues.state !== "custom") failures.push("deleting a preset does not return to Custom");
 console.log(`saved preset: ${savedPreset}`);
 
+// 3a2. A preset file adds its presets, drops the unnamed ones, and selects the first.
+await evaluate(
+  session,
+  `(() => {
+     const file = new File(
+       [JSON.stringify({
+         kind: 'wikimolgen2-presets',
+         version: 1,
+         presets: [
+           { name: 'Imported firm', appearance: { stick_radius: 0.2 }, quality: 2 },
+           { name: '', appearance: {}, quality: 2 },
+         ],
+       })],
+       'presets.json',
+       { type: 'application/json' },
+     );
+     const input = document.getElementById('preset-file');
+     const transfer = new DataTransfer();
+     transfer.items.add(file);
+     input.files = transfer.files;
+     input.dispatchEvent(new Event('change', { bubbles: true }));
+     return true;
+   })()`,
+);
+const presetImport = await poll(async () => {
+  const state = await evaluate(
+    session,
+    `(() => {
+       const select = document.getElementById('settings-preset');
+       return JSON.stringify({
+         names: [...select.options].map((option) => option.textContent ?? ''),
+         selected: select.selectedOptions[0]?.textContent ?? '',
+         note: document.getElementById('settings-preset-note').textContent,
+       });
+     })()`,
+  );
+  const parsed = JSON.parse(state);
+  return parsed.names.includes("Imported firm") ? parsed : null;
+}, 10_000);
+if (presetImport === null) failures.push("an imported preset file adds no preset");
+else {
+  if (presetImport.selected !== "Imported firm") {
+    failures.push(`the import selected ${presetImport.selected}`);
+  }
+  if (!presetImport.note.includes("Imported 1")) {
+    failures.push(`the import note reads ${presetImport.note}`);
+  }
+  const importedCount = presetImport.names.filter((name) => name.startsWith("Imported")).length;
+  if (importedCount !== 1) failures.push(`the import added ${importedCount} presets`);
+  console.log(`preset import: ${JSON.stringify(presetImport)}`);
+}
+await evaluate(
+  session,
+  `(() => {
+     const select = document.getElementById('settings-preset');
+     select.value = 'custom';
+     select.dispatchEvent(new Event('change', { bubbles: true }));
+     return true;
+   })()`,
+);
+
 const resetFlow = await evaluate(
   session,
   `(() => {
@@ -1162,6 +1223,67 @@ if (ssInks.hidden) failures.push("the secondary-structure inks stay hidden in th
 if (ssInks.helix !== "#3399ff" || ssInks.sheet !== "#ffcc00" || ssInks.loop !== "#99aabb") {
   failures.push(`the secondary-structure inks are ${ssInks.helix}/${ssInks.sheet}/${ssInks.loop}`);
 }
+
+// A colour file applies its palette, stick ink and overrides, then restores cleanly.
+await evaluate(
+  session,
+  `(() => {
+     const file = new File(
+       [JSON.stringify({
+         kind: 'wikimolgen2-colours',
+         version: 1,
+         scheme: 'jmol',
+         stick_color: '#123456',
+         element_colors: [{ element: 'C', color: '#010203' }],
+       })],
+       'colours.json',
+       { type: 'application/json' },
+     );
+     const input = document.getElementById('colours-file');
+     const transfer = new DataTransfer();
+     transfer.items.add(file);
+     input.files = transfer.files;
+     input.dispatchEvent(new Event('change', { bubbles: true }));
+     return true;
+   })()`,
+);
+const colourImport = await poll(async () => {
+  const state = await evaluate(
+    session,
+    `(() => JSON.stringify({
+       scheme: document.getElementById('color-scheme').value,
+       stick: document.getElementById('stick-color').value,
+       carbon: document.querySelector('#element-colors input[aria-label="C colour"]')?.value ?? '',
+       note: document.getElementById('colours-note').textContent,
+     }))()`,
+  );
+  const parsed = JSON.parse(state);
+  return parsed.scheme === "jmol" ? parsed : null;
+}, 10_000);
+if (colourImport === null) failures.push("a colour file does not apply its palette");
+else {
+  if (colourImport.stick !== "#123456") {
+    failures.push(`the imported stick ink is ${colourImport.stick}`);
+  }
+  if (colourImport.carbon !== "#010203") {
+    failures.push(`the imported carbon ink is ${colourImport.carbon}`);
+  }
+  if (!colourImport.note.includes("Imported 1")) {
+    failures.push(`the colour note reads ${colourImport.note}`);
+  }
+  console.log(`colour import: ${JSON.stringify(colourImport)}`);
+}
+await evaluate(
+  session,
+  `(() => {
+     const scheme = document.getElementById('color-scheme');
+     scheme.value = 'cpk';
+     scheme.dispatchEvent(new Event('change', { bubbles: true }));
+     document.getElementById('reset-colors').click();
+     return true;
+   })()`,
+);
+await new Promise((done) => setTimeout(done, 300));
 const ssEdit = await recolour("helix-color", "#2f6fbf", "input");
 if (/Could not recolour/.test(ssEdit)) failures.push(`a helix ink change failed: ${ssEdit}`);
 
