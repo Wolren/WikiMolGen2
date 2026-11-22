@@ -54,6 +54,16 @@ export interface Orientation {
 }
 export type ViewMode = "3d" | "2d";
 
+/** The 2D drawing options, kept apart from the 3D appearance. */
+export interface DepictionSettings {
+  /** Draw every atom in black, for a print or high-contrast figure. */
+  monochrome: boolean;
+  /** Bond line width in drawing units; 0 keeps RDKit's default. */
+  bondWidth: number;
+  /** Fixed atom label size in drawing units; 0 keeps RDKit's scaling. */
+  labelSize: number;
+}
+
 export const dom = {
   form: required<HTMLFormElement>("lookup"),
   identifier: required<HTMLInputElement>("identifier"),
@@ -158,6 +168,12 @@ export const dom = {
   exportStatus: required<HTMLParagraphElement>("export-status"),
   viewerHost: required<HTMLElement>("viewer"),
   depiction: required<HTMLDivElement>("depiction"),
+  depictionControls: required<HTMLElement>("depiction-controls"),
+  depictionMonochrome: required<HTMLInputElement>("depiction-monochrome"),
+  depictionBondWidth: required<HTMLInputElement>("depiction-bond-width"),
+  depictionBondWidthValue: required<HTMLOutputElement>("depiction-bond-width-value"),
+  depictionLabelSize: required<HTMLInputElement>("depiction-label-size"),
+  depictionLabelSizeValue: required<HTMLOutputElement>("depiction-label-size-value"),
   mode3d: required<HTMLButtonElement>("mode-3d"),
   mode2d: required<HTMLButtonElement>("mode-2d"),
   stageNote: required<HTMLElement>("stage-note"),
@@ -198,6 +214,7 @@ export interface AppState {
   /** The flat record waiting for the 2D engine. `null` for a protein or a missing record. */
   depictionSource: { name: string; bytes: Uint8Array } | null;
   depiction: Depiction | null;
+  depictionSettings: DepictionSettings;
   protein: { id: string; atoms: number; residues: number; chains: number; seconds: number } | null;
   orientation: Orientation;
 }
@@ -212,6 +229,7 @@ export const state: AppState = {
   mode: "3d",
   depictionSource: null,
   depiction: null,
+  depictionSettings: { monochrome: false, bondWidth: 0, labelSize: 0 },
   protein: null,
   orientation: { preset: "free", x: 10, y: 20, z: 0 },
 };

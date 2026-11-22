@@ -41,7 +41,7 @@ import {
   type Look,
     type ViewMode,
 } from "./context.js";
-import { buildDepiction, clearDepiction, showDepiction } from "./depiction.js";
+import { buildDepiction, bindDepictionControls, clearDepiction, loadDepictionSettings, setDepictionAvailable, showDepiction } from "./depiction.js";
 import { bindSuggestions } from "./suggest.js";
 import { bindBatch } from "./batch.js";
 import { applyOrientation, bindOrientation, loadOrientation } from "./orientation.js";
@@ -61,6 +61,8 @@ const AUTHOR = "WikiMolGen 2";
 
 // The stored orientation must be in place before the first load frames the scene.
 state.orientation = loadOrientation();
+// The 2D drawing options are independent of the 3D look and survive a reload.
+state.depictionSettings = loadDepictionSettings();
 
 /** A later lookup cancels the metadata update of an earlier one. */
 /** The newest load owns the page; an older answer must not overwrite it. */
@@ -414,6 +416,42 @@ async function chooseLook(look: Look): Promise<void> {
 /** The 2D engine has been loaded once; later drawings skip the download message. */
 let engineLoaded = false;
 
+/** Rebuild an open 2D view after a drawing control changed, once per quiet spell. */
+let depictionTimer = 0;
+
+function queueDepiction(): void {
+  if (state.depictionSource === null) return;
+  if (state.mode !== "2d") {
+    // The next switch to 2D rebuilds with the new options.
+    state.depiction = null;
+    return;
+  }
+  window.clearTimeout(depictionTimer);
+  depictionTimer = window.setTimeout(() => {
+    void rebuildDepiction();
+  }, 120);
+}
+
+async function rebuildDepiction(): Promise<void> {
+  if (state.depictionSource === null) return;
+  const previous = state.depiction;
+  const inks = appliedLook()?.appearance.element_colors ?? [];
+  const name = state.compound?.name ?? state.depictionSource.name;
+  const built = await buildDepiction(
+    name,
+    state.depictionSource.bytes,
+    inks,
+    state.depictionSettings,
+  );
+  if (built.depiction === null) {
+    setStatus(`The 2D drawing failed: ${built.error}`, true);
+    state.depiction = previous;
+    return;
+  }
+  state.depiction = built.depiction;
+  if (state.mode === "2d") applyMode();
+}
+
 /**
  * Switch the stage. The first 2D open loads RDKit, so this is asynchronous.
  *
@@ -432,7 +470,13 @@ async function showMode(mode: ViewMode): Promise<void> {
       );
       try {
         const inks = appliedLook()?.appearance.element_colors ?? [];
-        const built = await buildDepiction(state.depictionSource.name, state.depictionSource.bytes, inks);
+        const name = state.compound?.name ?? state.depictionSource.name;
+        const built = await buildDepiction(
+          name,
+          state.depictionSource.bytes,
+          inks,
+          state.depictionSettings,
+        );
         if (built.depiction === null) {
           setStatus(`The 2D drawing failed: ${built.error}`, true);
           return;
@@ -467,14 +511,19 @@ function applyMode(): void {
   // The view and appearance controls only act on a running 3D viewer.
   const threeDimensional = !twoDimensional && !isRendererFailed();
   setColourAvailable(threeDimensional);
+  setDepictionAvailable(twoDimensional);
   dom.appearanceSection.hidden = !threeDimensional;
   dom.viewSection.hidden = !threeDimensional;
 
   if (twoDimensional) {
     if (state.depiction !== null) {
-      showDepiction(dom.depiction, state.depiction.svg);
+      const label = `${state.compound?.name ?? "Molecule"} skeletal structure`;
+      showDepiction(dom.depiction, state.depiction.svg, label);
+      const ink = state.depictionSettings.monochrome ? ", black and white" : "";
       dom.stageNote.textContent =
-        state.depiction.engine === "rdkit" ? "RDKit skeletal drawing" : "Vector skeletal drawing";
+        state.depiction.engine === "rdkit"
+          ? `RDKit skeletal drawing${ink}`
+          : `Vector skeletal drawing${ink}`;
     } else {
       clearDepiction(dom.depiction);
       dom.depiction.textContent = "Load a compound to see its 2D drawing.";
@@ -623,6 +672,7 @@ bindTheme();
 bindThemeDialog();
 bindSections();
 bindSuggestions();
+bindDepictionControls(queueDepiction);
 bindOrientation(() => {
   if (state.viewer === null || state.compound === null) return;
   void applyOrientation(state.viewer).catch((error) =>

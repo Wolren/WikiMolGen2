@@ -293,9 +293,28 @@
             </div>
           </div>
 
+          <div id="depiction-controls" hidden>
+            <label class="checkbox compact">
+              <input id="depiction-monochrome" type="checkbox" /> Black and white
+            </label>
+            <div class="compact-control">
+              <label class="field-label" for="depiction-bond-width">
+                Bond width <output id="depiction-bond-width-value">Auto</output>
+              </label>
+              <input id="depiction-bond-width" type="range" min="0" max="8" step="0.5" value="0" />
+            </div>
+            <div class="compact-control">
+              <label class="field-label" for="depiction-label-size">
+                Label size <output id="depiction-label-size-value">Auto</output>
+              </label>
+              <input id="depiction-label-size" type="range" min="0" max="36" step="1" value="0" />
+            </div>
+            <p class="hint">Zero keeps RDKit's automatic size. The Rust fallback honours only the monochrome switch.</p>
+          </div>
+
           <p id="colour-note" class="hint" hidden>
-            The 2D drawing is an RDKit SVG, so it keeps RDKit's element colours. These
-            controls style the 3D figure.
+            The 2D drawing is an RDKit SVG, so the 3D colour controls step aside. The
+            switches above style the drawing.
           </p>
         </details>
 
