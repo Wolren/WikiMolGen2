@@ -20,6 +20,7 @@ const OUT = resolve(args.out ?? "screenshot.png");
 const PORT = Number(args.port ?? 4173);
 const COMPOUND = args.compound ?? "aspirin";
 const verbose = args.verbose === "true";
+const smoke = args.smoke === "true";
 const EXTRA_FLAGS = args.flags ? args.flags.split("|").filter(Boolean) : [];
 const CHROME = args.chrome ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 
@@ -61,6 +62,7 @@ if (args.url === undefined) {
   await new Promise((done) => server.listen(PORT, "127.0.0.1", done));
 }
 console.log(`target: ${baseUrl}`);
+if (smoke) console.log("smoke: export, full screen, batch and deep link skipped");
 
 const profile = join(process.env.TEMP ?? "/tmp", `wikimolgen2-verify-${Date.now()}`);
 // Headless Chrome has no WebGPU adapter, so the WebGPU path needs a real browser process.
@@ -376,6 +378,8 @@ await evaluate(
   session,
   `(() => {
      const input = document.getElementById('identifier');
+     input.value = '';
+     input.dispatchEvent(new Event('input', { bubbles: true }));
      input.focus();
      input.dispatchEvent(new FocusEvent('focus'));
      return true;
@@ -857,8 +861,7 @@ if (!isProtein && firstLook.colour !== "element") {
   failures.push(`the publication look colours by ${firstLook.colour}, not element`);
 }
 
-// 4. Export a PNG through the app's own path. The renderer draws offscreen and the page
-//    composes the figure in Rust, so the downloaded file is the product, not a canvas read.
+// Both the single export and the batch write here, so the directory is set up first.
 const downloadDir = join(process.env.TEMP ?? "/tmp", `wikimolgen2-download-${Date.now()}`);
 await mkdir(downloadDir, { recursive: true });
 await send("Browser.setDownloadBehavior", {
@@ -867,6 +870,10 @@ await send("Browser.setDownloadBehavior", {
   eventsEnabled: true,
 });
 
+exportStep: {
+if (smoke) break exportStep;
+
+// 4. Export a PNG through the app's own path; the downloaded file is the product.
 const completion = new Promise((resolve) => {
   downloadFinished = resolve;
 });
@@ -974,6 +981,7 @@ async function samplePng(bytes) {
   );
   return JSON.parse(result);
 }
+} // exportStep
 
 // `--open appearance` expands a folded section before the screenshot, so the panel's
 // inner groups can be shown without clicking through the page.
@@ -1108,7 +1116,7 @@ if (args.scroll) {
   await new Promise((done) => setTimeout(done, 200));
 }
 // `--hunt true` runs the bug-hunt probes after the functional checks.
-if (args.hunt) {
+if (!smoke && args.hunt) {
   const beforeLook = await evaluate(
     session,
     "(() => { const dark = [...document.querySelectorAll('#looks input')].find((input) => input.value === 'dark'); if (dark !== undefined) dark.click(); return window.__wikimolgen2?.state?.look?.id ?? null; })()",
@@ -1184,6 +1192,9 @@ if (args["2d"]) {
   await evaluate(session, "document.getElementById('mode-3d').click(), true");
   await new Promise((done) => setTimeout(done, 600));
 }
+
+platformStep: {
+if (smoke) break platformStep;
 
 // 6. Full screen: the stage fills the screen, its toolbar stays, and the canvas follows.
 //    A programmatic click does not count as a user gesture, so the press goes through
@@ -1349,6 +1360,11 @@ if (rows === null) {
   );
   failures.push(`the batch did not finish; ${states}`);
 } else console.log(`batch rows: ${JSON.stringify(rows)}`);
+const batchDetail = await evaluate(
+  session,
+  "JSON.stringify([...document.querySelectorAll('#batch-list .batch-row')].map((row) => ({ state: row.dataset.state, text: row.querySelector('.batch-state')?.textContent })))",
+);
+console.log(`batch detail: ${batchDetail}`);
 
 const zipPath = await poll(async () => newestZip(downloadDir), 10_000);
 if (zipPath === null) failures.push("the batch ZIP did not download");
@@ -1362,6 +1378,7 @@ else {
 }
 await evaluate(session, "document.getElementById('batch-close').click(), true");
 await evaluate(session, "document.getElementById('export-quality').value = '4', true");
+} // platformStep
 
 // 7. A folded section is remembered, which is the only state the page keeps besides the
 //    theme. Opening one and reloading must bring it back open. The write happens in the
@@ -1386,6 +1403,9 @@ if (reloaded !== true) {
   console.log(`sections after reload: appearance ${remembered}`);
   if (remembered !== true) failures.push("an opened section is not remembered across a reload");
 }
+
+deepLinkStep: {
+if (smoke) break deepLinkStep;
 
 // 7. A lookup link loads itself, which is what makes a figure shareable.
 await send("Page.navigate", { url: `${baseUrl}?q=aspirin` }, session);
@@ -1413,6 +1433,7 @@ if (linked === null) {
 } else {
   console.log(`deep link: ${linked.slice(0, 80)}`);
 }
+} // deepLinkStep
 
 // 8. The picker lists every built-in; a custom theme survives a reload and a confirmed delete.
 await evaluate(session, "document.getElementById('theme-open').click(), true");

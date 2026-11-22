@@ -15,6 +15,7 @@ import {
   setStatus,
   state,
   structureKind,
+  withTimeout,
 } from "./context.js";
 import { depictionBytes, downloadSvg } from "./depiction.js";
 import type { Renderer } from "./renderer.js";
@@ -191,12 +192,16 @@ export async function renderFigure(
           ];
 
     const background = state.look?.appearance.background ?? dom.background.value;
-    const blob = await viewer.exportPng({
-      width: renderWidth,
-      height: renderHeight,
-      transparent: settings.transparent || gradient !== null,
-      background,
-    });
+    const blob = await withTimeout(
+      viewer.exportPng({
+        width: renderWidth,
+        height: renderHeight,
+        transparent: settings.transparent || gradient !== null,
+        background,
+      }),
+      90_000,
+      "The renderer did not answer within 90 s.",
+    );
     const rendered = new Uint8Array(await blob.arrayBuffer());
     const [red, green, blue] = hexToBytes(background);
 

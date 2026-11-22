@@ -37,6 +37,7 @@ import {
   showStageError,
   state,
   structureKind,
+  withTimeout,
   type ColorSchemeInfo,
   type Look,
     type ViewMode,
@@ -668,14 +669,6 @@ function refreshOutput(): void {
 }
 
 // --- Small helpers -----------------------------------------------------------------
-
-/** Reject if `promise` has not settled within `ms`, so a stuck backend is visible. */
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
-  ]);
-}
 
 bindTheme();
 bindThemeDialog();

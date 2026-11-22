@@ -39,5 +39,7 @@ jobs:
       - run: wasm-bindgen --target web --out-dir web/pkg target/wasm32-unknown-unknown/release/wikimolgen2_wasm.wasm
       - run: npm ci
         working-directory: web
+      - run: npm test
+        working-directory: web
       - run: npm run build
         working-directory: web

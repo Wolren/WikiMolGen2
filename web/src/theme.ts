@@ -87,7 +87,7 @@ export const BUILTIN_THEMES: BuiltinTheme[] = [
   {
     id: "system",
     label: "System",
-    description: "Follows the operating system.",
+    description: "Follows the operating system, including the high-contrast choice.",
     mode: "light",
   },
   {

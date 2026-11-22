@@ -132,8 +132,13 @@ export async function depictWithRdkit(
       throw new Error("RDKit rejected the 2D record.");
     }
     // PubChem records carry explicit hydrogens; a skeletal drawing keeps them implicit.
-    parsed.remove_hs_in_place();
-    parsed.set_new_coords(true);
+    try {
+      parsed.remove_hs_in_place();
+      parsed.set_new_coords(true);
+    } catch (error) {
+      parsed.delete();
+      throw error;
+    }
     cachedMol = { key: text, mol: parsed };
     mol = parsed;
   }
