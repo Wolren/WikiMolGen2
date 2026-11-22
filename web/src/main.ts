@@ -53,6 +53,7 @@ import { enrichCompound, LookupError, loadCompound } from "./pubchem.js";
 import { ProteinError, loadProtein, pdbIdOf } from "./protein.js";
 import { Renderer, RendererUnavailable } from "./renderer.js";
 import { bindTheme, stageTint } from "./theme.js";
+import { bindThemeDialog } from "./theme-dialog.js";
 import "./styles.css";
 import "./stage.css";
 
@@ -619,6 +620,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
 }
 
 bindTheme();
+bindThemeDialog();
 bindSections();
 bindSuggestions();
 bindOrientation(() => {
@@ -643,8 +645,15 @@ bindBatch({
   },
 });
 bindFullscreen();
+/** Coalesce rapid theme previews into one stage message per frame. */
+let stageTintScheduled = false;
 document.addEventListener("themechange", () => {
-  state.viewer?.setStageTint(stageTint());
+  if (stageTintScheduled) return;
+  stageTintScheduled = true;
+  requestAnimationFrame(() => {
+    stageTintScheduled = false;
+    state.viewer?.setStageTint(stageTint());
+  });
 });
 bindAppearance();
 bindExport();

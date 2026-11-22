@@ -1,12 +1,17 @@
 /* The page is two columns: the instruments on the left, and on the right the figure with
    its download and, below it, the markup that figure produces. One rhythm of spacing and
-   one accent colour bind the columns into one surface. Three themes share every rule:
-   Light, Paper and Dark. System follows the OS. */
+   one accent colour bind the columns into one surface.
 
-:root {
+   Seven choices share every rule: System resolves to Light or Dark, and six fixed
+   palettes live below. A custom theme sets the same variables inline from five colours.
+   `[data-theme-preview]` paints a picker card without applying anything. */
+
+:root,
+[data-theme="light"],
+[data-theme-preview="light"] {
   --ink: #15181d;
   --muted: #5c6470;
-  --faint: #858d99;
+  --faint: #66707c;
   --line: #e2e6ec;
   --line-strong: #cdd4de;
   --surface: #ffffff;
@@ -31,8 +36,63 @@
   color-scheme: light;
 }
 
+/* Paper. A warm low-contrast theme for long reading sessions. */
+[data-theme="paper"],
+[data-theme-preview="paper"] {
+  --ink: #2b2620;
+  --muted: #6a5d4d;
+  --faint: #73644f;
+  --line: #e0d6c4;
+  --line-strong: #cbbda6;
+  --surface: #fbf7ef;
+  --surface-2: #f4eddf;
+  --surface-3: #ece2d1;
+  --stage-tint: #f4eddf;
+  --field: #fffdf7;
+  --canvas: #ebe3d4;
+  --code: #f7f1e4;
+  --accent: #8a5a2b;
+  --accent-strong: #6f4720;
+  --accent-ink: #ffffff;
+  --accent-soft: #f1e5d1;
+  --accent-ring: rgb(138 90 43 / 28%);
+  --danger: #9a3b2a;
+  --danger-soft: #f8e9e2;
+  --shadow-1: 0 1px 2px rgb(60 45 30 / 7%);
+  --shadow-2: 0 18px 42px rgb(60 45 30 / 14%);
+  color-scheme: light;
+}
+
+/* Contrast. Black on white for the strongest separation, with a hard blue accent. */
+[data-theme="contrast"],
+[data-theme-preview="contrast"] {
+  --ink: #000000;
+  --muted: #30363c;
+  --faint: #4a5158;
+  --line: #aeb6bf;
+  --line-strong: #7f8994;
+  --surface: #ffffff;
+  --surface-2: #f2f4f6;
+  --surface-3: #e6e9ec;
+  --stage-tint: #ffffff;
+  --field: #ffffff;
+  --canvas: #ffffff;
+  --code: #f5f6f7;
+  --accent: #0047b3;
+  --accent-strong: #003a94;
+  --accent-ink: #ffffff;
+  --accent-soft: #e0e9fb;
+  --accent-ring: rgb(0 71 179 / 35%);
+  --danger: #a30014;
+  --danger-soft: #fbe9eb;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 14%);
+  --shadow-2: 0 18px 42px rgb(0 0 0 / 18%);
+  color-scheme: light;
+}
+
 /* Dark. The figure keeps its own background; this themes the instrument around it. */
-[data-theme="dark"] {
+[data-theme="dark"],
+[data-theme-preview="dark"] {
   --ink: #e8ecf2;
   --muted: #a3adba;
   --faint: #7c8797;
@@ -57,30 +117,58 @@
   color-scheme: dark;
 }
 
-/* Paper. A warm low-contrast theme for long reading sessions. */
-[data-theme="paper"] {
-  --ink: #2b2620;
-  --muted: #6a5d4d;
-  --faint: #93846f;
-  --line: #e0d6c4;
-  --line-strong: #cbbda6;
-  --surface: #fbf7ef;
-  --surface-2: #f4eddf;
-  --surface-3: #ece2d1;
-  --stage-tint: #f4eddf;
-  --field: #fffdf7;
-  --canvas: #ebe3d4;
-  --code: #f7f1e4;
-  --accent: #8a5a2b;
-  --accent-strong: #6f4720;
-  --accent-ink: #ffffff;
-  --accent-soft: #f1e5d1;
-  --accent-ring: rgb(138 90 43 / 28%);
-  --danger: #9a3b2a;
-  --danger-soft: #f8e9e2;
-  --shadow-1: 0 1px 2px rgb(60 45 30 / 7%);
-  --shadow-2: 0 18px 42px rgb(60 45 30 / 14%);
-  color-scheme: light;
+/* Slate. A cool blue-grey for a desk that is not warm. */
+[data-theme="slate"],
+[data-theme-preview="slate"] {
+  --ink: #e4eaf2;
+  --muted: #a1adbb;
+  --faint: #8391a5;
+  --line: #26313d;
+  --line-strong: #38465a;
+  --surface: #151c25;
+  --surface-2: #111721;
+  --surface-3: #1e2731;
+  --stage-tint: #111721;
+  --field: #101620;
+  --canvas: #0b1016;
+  --code: #0e141d;
+  --accent: #6cb6ff;
+  --accent-strong: #8ac6ff;
+  --accent-ink: #04121f;
+  --accent-soft: #142638;
+  --accent-ring: rgb(108 182 255 / 30%);
+  --danger: #ff9d92;
+  --danger-soft: #2b1717;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-2: 0 18px 42px rgb(0 0 0 / 45%);
+  color-scheme: dark;
+}
+
+/* Midnight. Deep indigo with a violet accent, for night reading. */
+[data-theme="midnight"],
+[data-theme-preview="midnight"] {
+  --ink: #e6e8f7;
+  --muted: #a6abcd;
+  --faint: #8890b8;
+  --line: #262b4a;
+  --line-strong: #3a4169;
+  --surface: #12152a;
+  --surface-2: #0e1124;
+  --surface-3: #1b1f3a;
+  --stage-tint: #0e1124;
+  --field: #0d1022;
+  --canvas: #080a16;
+  --code: #0b0e1f;
+  --accent: #b49bff;
+  --accent-strong: #cbb8ff;
+  --accent-ink: #160b33;
+  --accent-soft: #241f45;
+  --accent-ring: rgb(180 155 255 / 32%);
+  --danger: #ff9da8;
+  --danger-soft: #2b1620;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 42%);
+  --shadow-2: 0 18px 42px rgb(0 0 0 / 47%);
+  color-scheme: dark;
 }
 
 * {
@@ -203,15 +291,47 @@ body {
   }
 }
 
-.theme-picker select {
-  width: auto;
-  min-width: 104px;
+.theme-open {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   height: 32px;
-  padding: 3px 9px;
+  padding: 3px 8px 3px 7px;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background-color: var(--surface-2);
+  background: var(--surface-2);
+  color: var(--ink);
   font-size: 12px;
   font-weight: 550;
+  box-shadow: none;
+}
+
+.theme-open:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+}
+
+.theme-dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 16%);
+}
+
+.theme-open-name {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-open-chevron {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--faint);
 }
 
 /* Layout ----------------------------------------------------------------------- */
@@ -895,6 +1015,288 @@ input[type="range"] {
   gap: 6px;
   color: var(--muted);
   font-size: 11px;
+}
+
+/* Theme dialog ------------------------------------------------------------------- */
+
+.theme-dialog {
+  width: min(660px, calc(100vw - 32px));
+  max-height: min(780px, 90vh);
+  padding: 22px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-2);
+}
+
+.theme-dialog::backdrop {
+  background: rgb(10 14 20 / 48%);
+}
+
+.theme-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.theme-head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 680;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.theme-head .hint {
+  margin-top: 3px;
+}
+
+.theme-close {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.theme-close:hover:not(:disabled) {
+  border-color: var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+@media (max-width: 600px) {
+  .theme-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* The card is the radio; the hidden input keeps the group keyboard accessible. */
+.theme-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.theme-card:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+}
+
+.theme-card:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.theme-card:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.theme-card input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-card-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.theme-card-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 9.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+/* The miniature: a panel strip over the figure backdrop, at the card's own scale. */
+.theme-shot {
+  display: grid;
+  grid-template-rows: 56% 44%;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgb(128 140 155 / 28%);
+  border-radius: 8px;
+  background: var(--canvas);
+}
+
+.theme-shot-split {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+.theme-shot-half {
+  display: grid;
+  grid-template-rows: 56% 44%;
+  min-width: 0;
+}
+
+.theme-shot-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 8px;
+  background: var(--surface);
+}
+
+.theme-shot-bar {
+  width: 38%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.theme-shot-row {
+  width: 82%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line-strong);
+}
+
+.theme-shot-row-short {
+  width: 58%;
+}
+
+.theme-shot-stage {
+  position: relative;
+  background: var(--stage-tint);
+}
+
+.theme-shot-molecule {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 20%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+.theme-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.theme-dialog button.secondary {
+  width: auto;
+  margin-top: 0;
+}
+
+.theme-done {
+  margin-left: auto;
+}
+
+.theme-editor {
+  margin-top: 20px;
+}
+
+.theme-editor h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 680;
+}
+
+.theme-form-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  .theme-form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.theme-field,
+.theme-seed {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.theme-field input,
+.theme-field select {
+  width: 100%;
+}
+
+.theme-seeds {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@media (max-width: 600px) {
+  .theme-seeds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.theme-seed input[type="color"] {
+  width: 100%;
+  height: 38px;
+  padding: 3px;
+  border-radius: 7px;
+}
+
+.theme-warning {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.theme-editor > .hint {
+  margin-top: 12px;
 }
 
 /* Batch dialog ------------------------------------------------------------------- */

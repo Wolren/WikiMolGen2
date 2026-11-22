@@ -121,12 +121,13 @@
   background: transparent;
 }
 
-/* RDKit draws black bonds and black atom labels. On a dark tint they become the ink. */
-[data-theme="dark"] .depiction svg path[style*="stroke:#000000"] {
+/* RDKit draws black bonds and black atom labels. On a dark tint they become the ink.
+   `data-scheme` covers the fixed dark palettes and every custom dark theme. */
+[data-scheme="dark"] .depiction svg path[style*="stroke:#000000"] {
   stroke: var(--ink) !important;
 }
 
-[data-theme="dark"] .depiction svg path[fill="#000000"] {
+[data-scheme="dark"] .depiction svg path[fill="#000000"] {
   fill: var(--ink) !important;
 }
 

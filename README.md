@@ -27,6 +27,7 @@ It is a static site: no server, no upload, no install.
 | Looks | Publication, Flat, Dark, Space filling, Licorice and Stick for small molecules, plus cartoon looks for proteins |
 | Appearance | Stick and sphere size, valence, light, transparency, depth cue, ambient occlusion, soft shadows, outline, smooth edges and projection. A two-step reset at the end restores the current look's slider values; the colour scheme stays |
 | Presets | The original Wikipedia render settings, saved and renamed presets, orientation presets (wiki, front, side, top, custom) and the seven colour schemes |
+| Theme | System plus six fixed palettes: Light, Paper, Contrast, Dark, Slate and Midnight. A custom theme starts from five colours, derives the rest with contrast floors, and is saved by name. The choice applies before the first paint |
 | Export | PNG from 400 to 8192 px wide, 2x to 6x supersampling, 4 to 9 percent margin, optional labels and scale bar, transparent by default, or one ZIP for a batch of identifiers |
 | Markup | `{{Infobox drug}}`, `{{Chembox}}` and the Commons upload text, with metadata from Wikidata, Wikipedia and openFDA |
 | Links | A lookup writes `?q=` to the address. The theme and the open sections survive a reload |
@@ -39,6 +40,8 @@ It is a static site: no server, no upload, no install.
 | The markup panel, each box with its own copy action | Colour by element, with per-element overrides |
 | ![The appearance panel](docs/appearance-panel.png) | ![The stage in full screen](docs/fullscreen.png) |
 | The shape, light and surface controls | Full screen gives the figure the whole display |
+| ![The theme picker](docs/theme-picker.png) | ![The custom theme editor](docs/theme-editor.png) |
+| Six fixed palettes plus System, with a saved custom theme | A custom theme previews live while its five colours are edited |
 
 An exported figure, cropped and padded by the app itself:
 

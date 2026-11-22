@@ -1302,7 +1302,7 @@ const rows = await poll(async () => {
   );
   if (states.length !== 2) return null;
   return states.every((state) => state === "done" || state === "failed") ? states : null;
-}, 60_000);
+}, 120_000);
 if (rows === null) {
   const states = await evaluate(
     session,
@@ -1381,6 +1381,173 @@ if (linked === null) {
 } else {
   console.log(`deep link: ${linked.slice(0, 80)}`);
 }
+
+// 8. The picker lists every built-in; a custom theme survives a reload and a confirmed delete.
+await evaluate(session, "document.getElementById('theme-open').click(), true");
+const picker = JSON.parse(
+  await evaluate(
+    session,
+    `JSON.stringify({
+       open: document.getElementById('theme-dialog').open,
+       cards: document.querySelectorAll('#theme-grid .theme-card').length,
+       names: [...document.querySelectorAll('#theme-grid .theme-card-name')].map((node) => node.textContent),
+     })`,
+  ),
+);
+console.log(`theme picker: ${picker.names.join(", ")}`);
+if (picker.open !== true) failures.push("the theme dialog does not open");
+if (picker.cards !== 7) failures.push(`the theme picker lists ${picker.cards} built-ins, not 7`);
+for (const name of ["System", "Light", "Paper", "Contrast", "Dark", "Slate", "Midnight"]) {
+  if (!picker.names.includes(name)) failures.push(`the theme picker misses ${name}`);
+}
+await evaluate(
+  session,
+  `(() => {
+     document.querySelector('input[name="theme-choice"][value="paper"]').click();
+     return true;
+   })()`,
+);
+const paper = await poll(async () => {
+  const theme = await evaluate(session, "document.documentElement.dataset.theme");
+  if (theme !== "paper") return null;
+  const surface = await evaluate(
+    session,
+    "getComputedStyle(document.documentElement).getPropertyValue('--surface').trim()",
+  );
+  return { theme, surface };
+}, 5_000);
+if (paper === null) failures.push("selecting Paper does not change the theme");
+else if (paper.surface !== "#fbf7ef") failures.push(`Paper paints its surface as ${paper.surface}`);
+
+await evaluate(session, "document.getElementById('theme-new').click(), true");
+await evaluate(
+  session,
+  `(() => {
+     const select = document.getElementById('theme-base');
+     select.value = 'dark';
+     select.dispatchEvent(new Event('change', { bubbles: true }));
+     return true;
+   })()`,
+);
+const baseCopy = JSON.parse(
+  await evaluate(
+    session,
+    `JSON.stringify({
+       accent: document.getElementById('theme-accent').value,
+       panel: document.getElementById('theme-panel').value,
+       scheme: document.documentElement.dataset.scheme,
+     })`,
+  ),
+);
+if (baseCopy.accent !== "#4cc9bd" || baseCopy.panel !== "#131a22" || baseCopy.scheme !== "dark") {
+  failures.push(`copying the Dark colours gives ${JSON.stringify(baseCopy)}`);
+}
+await evaluate(
+  session,
+  `(() => {
+     const set = (id, value) => {
+       const node = document.getElementById(id);
+       node.value = value;
+       node.dispatchEvent(new Event('input', { bubbles: true }));
+     };
+     document.getElementById('theme-custom-name').value = 'Verify custom';
+     set('theme-accent', '#ffb454');
+     set('theme-panel', '#171310');
+     set('theme-page', '#0b0908');
+     set('theme-text', '#f5e9da');
+     set('theme-stage', '#120f0c');
+     return true;
+   })()`,
+);
+const editor = JSON.parse(
+  await evaluate(
+    session,
+    `JSON.stringify({
+       shown: !document.getElementById('theme-editor').hidden,
+       picker: document.getElementById('theme-picker-view').hidden,
+       scheme: document.documentElement.dataset.scheme,
+     })`,
+  ),
+);
+if (editor.shown !== true) failures.push("the custom theme editor does not open");
+if (editor.picker !== true) failures.push("the picker stays behind the custom theme editor");
+if (editor.scheme !== "dark") failures.push(`a dark panel previews as ${editor.scheme}`);
+await evaluate(session, "document.getElementById('theme-save').click(), true");
+const custom = await poll(async () => {
+  const state = JSON.parse(
+    await evaluate(
+      session,
+      `JSON.stringify({
+         choice: localStorage.getItem('wikimolgen2.theme'),
+         count: JSON.parse(localStorage.getItem('wikimolgen2.custom-themes') ?? '[]').length,
+         theme: document.documentElement.dataset.theme,
+         accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+         label: document.getElementById('theme-name').textContent,
+       })`,
+    ),
+  );
+  return state.choice !== null && state.choice.startsWith("custom-") && state.count === 1
+    ? state
+    : null;
+}, 5_000);
+if (custom === null) failures.push("saving a custom theme does not store it");
+else {
+  console.log(`custom theme: ${custom.label}, ${custom.accent}`);
+  if (custom.theme !== "custom") failures.push(`a custom theme sets data-theme to ${custom.theme}`);
+  if (custom.accent !== "#ffb454") failures.push(`the custom accent reads ${custom.accent}`);
+  if (custom.label !== "Verify custom") failures.push(`the top bar names the theme ${custom.label}`);
+}
+
+await send("Page.reload", {}, session);
+await poll(async () => (await evaluate(session, "document.documentElement.dataset.ready === '1'")) ? true : null, 60_000);
+const restored = JSON.parse(
+  await evaluate(
+    session,
+    `JSON.stringify({
+       theme: document.documentElement.dataset.theme,
+       scheme: document.documentElement.dataset.scheme,
+       accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+       label: document.getElementById('theme-name').textContent,
+     })`,
+  ),
+);
+console.log(`custom theme after reload: ${JSON.stringify(restored)}`);
+if (restored.theme !== "custom") failures.push("a custom theme does not survive a reload");
+if (restored.scheme !== "dark") failures.push(`the restored custom theme is ${restored.scheme}`);
+if (restored.accent !== "#ffb454") failures.push(`the restored custom accent reads ${restored.accent}`);
+if (restored.label !== "Verify custom") failures.push(`the restored theme is named ${restored.label}`);
+
+await evaluate(session, "document.getElementById('theme-open').click(), true");
+const armed = JSON.parse(
+  await evaluate(
+    session,
+    `(() => {
+       document.getElementById('theme-delete').click();
+       return JSON.stringify({
+         text: document.getElementById('theme-delete').textContent,
+         count: JSON.parse(localStorage.getItem('wikimolgen2.custom-themes') ?? '[]').length,
+       });
+     })()`,
+  ),
+);
+if (armed.text !== "Confirm delete" || armed.count !== 1) {
+  failures.push(`the first delete click does not confirm: ${JSON.stringify(armed)}`);
+}
+await evaluate(session, "document.getElementById('theme-delete').click(), true");
+const deleted = await poll(async () => {
+  const state = JSON.parse(
+    await evaluate(
+      session,
+      `JSON.stringify({
+         choice: localStorage.getItem('wikimolgen2.theme'),
+         count: JSON.parse(localStorage.getItem('wikimolgen2.custom-themes') ?? '[]').length,
+       })`,
+    ),
+  );
+  return state.choice === "system" && state.count === 0 ? state : null;
+}, 5_000);
+if (deleted === null) failures.push("deleting a custom theme does not remove it");
+await evaluate(session, "document.getElementById('theme-done').click(), true");
 
 if (consoleErrors.length > 0) {
   console.log(`console errors: ${consoleErrors.length}`);

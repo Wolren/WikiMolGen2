@@ -15,14 +15,40 @@
     <link rel="preconnect" href="https://en.wikipedia.org" crossorigin />
     <link rel="preconnect" href="https://api.fda.gov" crossorigin />
     <script>
-      // Set the stored theme before the first paint, so the choice does not flash.
+      // Paint the stored theme before the first frame; the module takes over after boot.
       (() => {
+        const root = document.documentElement;
+        const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const scheme = (value) => (value === "dark" ? "dark" : "light");
+        const paint = (mode) => {
+          root.dataset.theme = mode;
+          root.dataset.scheme = mode;
+          root.style.setProperty("color-scheme", mode);
+        };
         try {
-          const stored = localStorage.getItem("wikimolgen2.theme") ?? "system";
-          const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          document.documentElement.dataset.theme = stored === "system" ? (dark ? "dark" : "light") : stored;
+          const choice = localStorage.getItem("wikimolgen2.theme") ?? "system";
+          if (choice.startsWith("custom-")) {
+            // A custom theme is stored as its resolved tokens, so no derivation runs here.
+            const saved = JSON.parse(localStorage.getItem("wikimolgen2.theme-vars") ?? "null");
+            if (saved !== null && saved.id === choice && typeof saved.vars === "object" && saved.vars !== null) {
+              for (const [name, value] of Object.entries(saved.vars)) root.style.setProperty(name, value);
+              const mode = scheme(saved.mode);
+              root.style.setProperty("color-scheme", mode);
+              root.dataset.theme = "custom";
+              root.dataset.scheme = mode;
+              return;
+            }
+          } else if (choice !== "system") {
+            const mode = scheme(localStorage.getItem("wikimolgen2.theme-mode"));
+            root.dataset.theme = choice;
+            root.dataset.scheme = mode;
+            root.style.setProperty("color-scheme", mode);
+            return;
+          }
+          paint(dark ? "dark" : "light");
         } catch {
-          document.documentElement.dataset.theme = "light";
+          // A blocked store or a bad payload leaves the page on the system choice.
+          paint(dark ? "dark" : "light");
         }
       })();
     </script>
@@ -57,15 +83,22 @@
             Original project
           </a>
         </nav>
-        <label class="theme-picker" for="theme">
-          <span class="visually-hidden">Colour theme</span>
-          <select id="theme">
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="paper">Paper</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
+        <div class="theme-picker">
+          <button
+            id="theme-open"
+            type="button"
+            class="theme-open"
+            aria-haspopup="dialog"
+            aria-controls="theme-dialog"
+          >
+            <span class="visually-hidden">Interface theme:</span>
+            <span id="theme-dot" class="theme-dot" aria-hidden="true"></span>
+            <span id="theme-name" class="theme-open-name">System</span>
+            <svg class="theme-open-chevron" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+              <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -461,6 +494,64 @@
         </aside>
       </section>
     </main>
+
+    <dialog id="theme-dialog" class="theme-dialog" aria-labelledby="theme-title">
+      <div class="theme-head">
+        <div>
+          <h2 id="theme-title">Interface theme</h2>
+          <p class="hint">The page around the figure. The figure backdrop follows the theme.</p>
+        </div>
+        <button id="theme-close" type="button" class="theme-close" aria-label="Close the theme picker">×</button>
+      </div>
+
+      <div id="theme-picker-view">
+        <div id="theme-grid" class="theme-grid" role="radiogroup" aria-label="Interface theme"></div>
+        <div class="theme-actions">
+          <button id="theme-new" type="button" class="secondary">New custom theme</button>
+          <button id="theme-edit" type="button" class="secondary" disabled>Edit</button>
+          <button id="theme-delete" type="button" class="secondary" disabled>Delete</button>
+          <button id="theme-done" type="button" class="primary theme-done">Done</button>
+        </div>
+      </div>
+
+      <form id="theme-editor" class="theme-editor" hidden>
+        <h3>Custom theme</h3>
+        <div class="theme-form-row">
+          <label class="theme-field">
+            Name
+            <input id="theme-custom-name" type="text" maxlength="40" autocomplete="off" spellcheck="false" />
+          </label>
+          <label class="theme-field">
+            Copy colours from
+            <select id="theme-base">
+              <option value="current">Current colours</option>
+              <option value="light">Light</option>
+              <option value="paper">Paper</option>
+              <option value="contrast">Contrast</option>
+              <option value="dark">Dark</option>
+              <option value="slate">Slate</option>
+              <option value="midnight">Midnight</option>
+            </select>
+          </label>
+        </div>
+        <div class="theme-seeds">
+          <label class="theme-seed">Accent <input id="theme-accent" type="color" value="#0e6d68" /></label>
+          <label class="theme-seed">Panel <input id="theme-panel" type="color" value="#ffffff" /></label>
+          <label class="theme-seed">Page <input id="theme-page" type="color" value="#f1f4f8" /></label>
+          <label class="theme-seed">Text <input id="theme-text" type="color" value="#15181d" /></label>
+          <label class="theme-seed">Backdrop <input id="theme-stage" type="color" value="#f5f7fa" /></label>
+        </div>
+        <p class="hint">
+          Muted text, lines, fields and shadows are derived from these five, with contrast
+          floors so the result stays readable.
+        </p>
+        <p id="theme-warning" class="theme-warning" hidden></p>
+        <div class="theme-actions">
+          <button id="theme-save" type="submit" class="primary">Save theme</button>
+          <button id="theme-cancel" type="button" class="secondary">Cancel</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog id="batch" class="batch-dialog" aria-labelledby="batch-title">
       <h2 id="batch-title">Batch export</h2>

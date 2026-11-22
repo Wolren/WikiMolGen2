@@ -1,9 +1,10 @@
 # WikiMolGen 2, scope and contracts
 
 What the app does, what it deliberately does not do yet, and the contracts between its
-parts. Architecture rationale lives in [ADR-0001](ADR-0001-architecture.md), and the
-renderer swap is in [ADR-0002](ADR-0002-renderer-patinae.md). The upgrade that added most
-of this surface is recorded in [UPGRADE-REPORT.md](UPGRADE-REPORT.md).
+parts. Architecture rationale lives in [ADR-0001](ADR-0001-architecture.md), the
+renderer swap is in [ADR-0002](ADR-0002-renderer-patinae.md), and the theme token model is
+in [ADR-0003](ADR-0003-theme-tokens.md). The upgrade that added most of this surface is
+recorded in [UPGRADE-REPORT.md](UPGRADE-REPORT.md).
 
 ## Product
 
@@ -59,7 +60,7 @@ reach; a load then scrolls the figure into view.
 | Commons | File name, `{{Information}}` plus licence block, pre-filled upload URL; the licence follows the structure kind |
 | Outputs | The drug infobox, the chembox and the Commons upload text sit stacked in one panel, in that order. Each box has a Copy action in its top-right corner; the Commons block carries the Upload to Commons link under its text; a protein shows the Commons text only |
 | Keyboard | `Ctrl+Enter` load, `2`/`3` view, `E` export, `F` frame, `+`/`-` zoom, `/` focus, `?` help |
-| Theme | Light, Paper and Dark, plus System. The choice persists and applies before the first paint. The stage follows the theme tint |
+| Theme | System, six fixed palettes (Light, Paper, Contrast, Dark, Slate and Midnight) and saved custom themes. The picker previews every palette with a miniature of the page; a custom theme is built from five colours, derives the rest with 4.5:1 contrast floors, and is named. The choice persists and applies before the first paint. The stage follows the theme tint |
 | Links | The top bar carries the repository, the original WikiMolGen project and the docs, then the theme picker. Below 640 px the links fold away |
 | Graphics | WebGPU only. There is no WebGL2 fallback, so a browser without an adapter gets an explanation instead of a lesser image |
 
@@ -116,6 +117,30 @@ would never reset.
 `ColorMode` is `element`, `chain`, `residue`, `index`, `sec_struct`, `b_factor` or
 `uniform`. All but `uniform` are patinae colour schemes under another name; `uniform`
 paints one ink and is the black-and-white figure.
+
+### Theme tokens (TypeScript → CSS)
+
+The interface has one token set: 21 custom properties (`--ink`, `--surface`, `--accent`,
+`--stage-tint`, `--shadow-2` and the rest) that every rule reads. A fixed palette is a
+block in `styles.css` under `[data-theme="light|paper|contrast|dark|slate|midnight"]`. The
+same block carries `[data-theme-preview="..."]`, so a picker card paints the real palette
+instead of a hand-made copy.
+
+A custom theme is data. `ThemeSeed` holds five hex colours: accent, page, panel, text and
+figure backdrop. `deriveTheme` expands them in OKLab, with floors: muted and faint text
+reach 4.5:1 against the panel, and the accent reaches 4.5:1 or is lifted toward black or
+white. The mode follows the panel's luminance. The result is written inline on `<html>`,
+and a copy is stored for the head script:
+
+| Key | Value |
+| --- | --- |
+| `wikimolgen2.theme` | `system`, a fixed id, or `custom-<id>` |
+| `wikimolgen2.theme-mode` | the resolved `light` or `dark` |
+| `wikimolgen2.custom-themes` | `[{ id, name, seed }]` |
+| `wikimolgen2.theme-vars` | `{ id, mode, vars }`, the resolved tokens for a custom first paint |
+
+The head script only applies a stored payload; it never derives a palette. `data-scheme`
+carries the mode for the two rules that need it: the RDKit black inks in `stage.css`.
 
 ### Element palettes (Rust → TypeScript)
 
@@ -178,7 +203,9 @@ web/src/appearance.ts   the colour and appearance panels
 web/src/panel.ts        the foldable control sections
 web/src/figure.ts       export: PNG composition and SVG download
 web/src/keyboard.ts     shortcuts
-web/src/theme.ts        Light, Paper, Dark and System
+web/src/theme.ts        the chosen theme, saved custom themes and token derivation
+web/src/theme-colour.ts OKLab mixing, alpha and contrast maths
+web/src/theme-dialog.ts the preview picker and the custom theme editor
 web/src/depiction.ts    inline SVG and the engine choice
 web/src/rdkit.ts        RDKit MinimalLib loader
 web/src/pubchem.ts      PubChem lookups and the compound type
@@ -205,6 +232,11 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 * Every palette and every colour mode applies without an error, and a fresh load starts
   on the CPK palette with the grey stick ink of the WikiMolGen preset.
 * The long control sections start folded, and an opened one stays open across a reload.
+* The theme picker lists System and the six fixed palettes, and a card's miniature uses
+  the palette it offers.
+* A custom theme saved from five colours survives a reload with its name, its accent and
+  no flash before the module loads.
+* Deleting the active custom theme returns the page to System after a second click.
 * A `?q=aspirin` link loads the compound on its own.
 * Full screen gives the stage the whole display, the toolbar stays, and the button exits.
 * A browser without WebGPU explains itself. The 2D SVG and the markup still work.

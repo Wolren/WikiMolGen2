@@ -225,9 +225,15 @@ function colourCommands(look: LookSpec, structure: Structure): string[] {
   }
 }
 
-/** `#rrggbb` → three 0..255 channels. A malformed value falls back to mid grey. */
+/** `#rgb` or `#rrggbb` → three 0..255 channels. Anything else falls back to mid grey. */
 function rgbOf(hex: string): [number, number, number] {
-  const value = hex.trim().replace(/^#/, "");
+  let value = hex.trim().replace(/^#/, "");
+  if (/^[0-9a-fA-F]{3}$/.test(value)) {
+    value = value
+      .split("")
+      .map((digit) => digit + digit)
+      .join("");
+  }
   if (!/^[0-9a-fA-F]{6}$/.test(value)) return [128, 128, 128];
   const int = Number.parseInt(value, 16);
   return [(int >> 16) & 0xff, (int >> 8) & 0xff, int & 0xff];
