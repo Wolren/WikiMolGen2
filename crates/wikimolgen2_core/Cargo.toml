@@ -3,7 +3,7 @@ name = "wikimolgen2_core"
 description = "Chemistry, styling and export logic for the WikiMolGen 2 browser app"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license-file.workspace = true
 repository.workspace = true
 
 [dependencies]

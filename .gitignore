@@ -17,3 +17,6 @@ node_modules
 *.log
 .DS_Store
 Thumbs.db
+
+# Internal notes: never publish.
+docs/PATINAE-GAPS.md

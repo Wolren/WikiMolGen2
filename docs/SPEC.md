@@ -78,7 +78,7 @@ reach; a load then scrolls the figure into view.
 | Direct DailyMed reads | The DailyMed service sends no CORS header, so the browser cannot read it | A proxy, or an upstream CORS header; openFDA serves the same SPL labels today |
 | Protein 2D or sequence view | A cartoon is the useful figure for an article | A sequence panel and a depiction path |
 | Element labels in 3D by symbol | The renderer's label expression has no element field; atom names are the substitute | A renderer label expression, or browser-side projection |
-| Two-sided lighting, stick and sphere quality | patinae carries them as session fields, and its `set` registry rejects the names. See [PATINAE-GAPS.md](PATINAE-GAPS.md) | A patinae registry fix, or a session-level setter |
+| Two-sided lighting, stick and sphere quality | patinae carries them as session fields, and its `set` registry rejects the names. These stay session fields | A patinae registry fix, or a session-level setter |
 
 ## Contracts
 

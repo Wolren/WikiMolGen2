@@ -1,7 +1,7 @@
 {
   "name": "wikimolgen2-web",
   "private": true,
-  "license": "MIT OR Apache-2.0",
+  "license": "SEE LICENSE IN LICENSE",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
