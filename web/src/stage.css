@@ -297,6 +297,12 @@
   color: var(--muted);
 }
 
+.commons-details .hint {
+  flex: 1 1 100%;
+  margin: 0;
+  color: #a3231b;
+}
+
 /* The copy action floats in the box's top-right corner, over the text it copies. */
 .code-box {
   position: relative;

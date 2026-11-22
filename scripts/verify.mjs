@@ -618,6 +618,69 @@ if (!author.link.includes("Example%20uploader")) {
 }
 if (!author.stored.includes("Example uploader")) failures.push("the author did not persist");
 
+// 3d. The licence follows the picker, including a hand-written template.
+const licenses = JSON.parse(
+  await evaluate(
+    session,
+    `(() => {
+       const select = document.getElementById('commons-license');
+       const custom = document.getElementById('commons-license-custom');
+       const note = document.getElementById('commons-license-note');
+       const text = () => document.getElementById('wikitext-commons').textContent ?? '';
+       const link = () => document.getElementById('upload-commons').href;
+       const pick = (value) => {
+         select.value = value;
+         select.dispatchEvent(new Event('change', { bubbles: true }));
+       };
+       pick('pd-self');
+       const fixed = { text: text(), link: link() };
+       pick('custom');
+       custom.value = 'Self|cc-zero|attribution=Me';
+       custom.dispatchEvent(new Event('input', { bubbles: true }));
+       const customText = text();
+       const customLink = link();
+       custom.value = '{{Self|cc-zero}}';
+       custom.dispatchEvent(new Event('input', { bubbles: true }));
+       const brokenNote = note.hidden ? '' : note.textContent;
+       pick('auto');
+       custom.value = '';
+       custom.dispatchEvent(new Event('input', { bubbles: true }));
+       return JSON.stringify({
+         fixed,
+         customText,
+         customLink,
+         brokenNote,
+         noteHidden: note.hidden,
+         auto: text(),
+         options: [...select.options].map((option) => option.value),
+       });
+     })()`,
+  ),
+);
+console.log(`commons licence: ${JSON.stringify(licenses)}`);
+if (!licenses.fixed.text.includes("{{PD-self}}")) {
+  failures.push("the picked licence does not reach the Commons text");
+}
+if (!licenses.fixed.link.includes("wpLicense=pd-self")) {
+  failures.push("the picked licence does not reach the upload link");
+}
+if (!licenses.customText.includes("{{Self|cc-zero|attribution=Me}}")) {
+  failures.push("a custom licence template does not reach the Commons text");
+}
+if (licenses.customLink.includes("wpLicense=")) {
+  failures.push("a custom licence template still sends a wizard code");
+}
+if (!licenses.brokenNote.includes("template body only")) {
+  failures.push(`an unusable template does not explain itself: ${licenses.brokenNote}`);
+}
+if (licenses.noteHidden !== true) failures.push("the licence note stays visible after a valid pick");
+if (!licenses.auto.includes("{{Self|cc-by-sa-4.0}}")) {
+  failures.push("the automatic licence does not follow the view");
+}
+if (!licenses.options.includes("cc-by-sa-4.0") || !licenses.options.includes("custom")) {
+  failures.push(`the licence picker lists ${licenses.options.join(", ")}`);
+}
+
 // 3a. Orientation: the custom fields appear, and a preset survives in storage.
 const orientation = await evaluate(
   session,

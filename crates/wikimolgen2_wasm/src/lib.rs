@@ -142,13 +142,26 @@ pub fn scheme_color(scheme: String, symbol: String) -> String {
     wikimolgen2_core::palette::color(&scheme, &symbol).to_string()
 }
 
-/// The licence a new upload should offer for a structure kind.
+/// The licence picker's fixed choices, as JSON, in display order.
+#[wasm_bindgen(js_name = licenseOptionsJson)]
+pub fn license_options_json() -> Result<String, JsError> {
+    serde_json::to_string(&wikimolgen2_core::license_options())
+        .map_err(|error| JsError::new(&error.to_string()))
+}
+
+/// The template and upload code a picker choice means, as JSON `{ template, code }`.
 ///
-/// The rule lives in Rust so the Commons block and the upload URL cannot disagree.
-#[wasm_bindgen(js_name = defaultLicense)]
-pub fn default_license(kind: String) -> Result<String, JsError> {
-    let license = wikimolgen2_core::License::default_for(structure_kind(&kind)?);
-    Ok(license.id().to_string())
+/// `choice` is `auto`, an id from [`license_options_json`], or `custom` with the template
+/// body in `custom`. An unusable custom template is an error that names the problem.
+#[wasm_bindgen(js_name = licenseDetails)]
+pub fn license_details_json(
+    kind: String,
+    choice: String,
+    custom: String,
+) -> Result<String, JsError> {
+    let (template, code) = wikimolgen2_core::license_details(structure_kind(&kind)?, &choice, &custom)
+        .map_err(|problem| JsError::new(&problem))?;
+    Ok(serde_json::json!({ "template": template, "code": code }).to_string())
 }
 
 /// Parse a structure kind as the page spells it: `"two_d"`, `"three_d"` or `"protein"`.
@@ -196,32 +209,30 @@ pub fn figure_file_name_json(
     Ok(wikimolgen2_core::figure_file_name(&compound, structure_kind(&kind)?, &typed))
 }
 
-/// The Commons `{{Information}}` block.
+/// The Commons `{{Information}}` block for a template body, e.g. `Self|cc-by-sa-4.0`.
 #[wasm_bindgen(js_name = commonsInformation)]
 pub fn commons_information_json(
     compound_json: String,
     kind: String,
     author: String,
-    license: String,
+    license_template: String,
     iso_date: String,
 ) -> Result<String, JsError> {
     let compound: wikimolgen2_core::Compound =
         serde_json::from_str(&compound_json).map_err(|error| JsError::new(&error.to_string()))?;
-    let license = serde_json::from_str(&format!("\"{license}\""))
-        .map_err(|error| JsError::new(&format!("unknown license {license:?}: {error}")))?;
     Ok(wikimolgen2_core::commons_information(
         &compound,
         structure_kind(&kind)?,
         &author,
-        license,
+        &license_template,
         &iso_date,
     ))
 }
 
-/// The pre-filled Commons upload URL for a file name, description and licence.
+/// The pre-filled Commons upload URL for a file name, description and wizard code.
+///
+/// An empty code omits `wpLicense`, which the wizard needs for a licence it does not know.
 #[wasm_bindgen(js_name = commonsUploadUrl)]
-pub fn commons_upload_url_json(file_name: String, description: String, license: String) -> Result<String, JsError> {
-    let license = serde_json::from_str(&format!("\"{license}\""))
-        .map_err(|error| JsError::new(&format!("unknown license {license:?}: {error}")))?;
-    Ok(wikimolgen2_core::commons_upload_url(&file_name, &description, license))
+pub fn commons_upload_url_json(file_name: String, description: String, upload_code: String) -> Result<String, JsError> {
+    Ok(wikimolgen2_core::commons_upload_url(&file_name, &description, &upload_code))
 }

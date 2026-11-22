@@ -14,7 +14,19 @@ describe("parseCommonsDetails", () => {
   });
 
   it("round-trips through the stored form", () => {
-    const stored = serialiseCommonsDetails({ author: " Example " });
-    expect(parseCommonsDetails(stored).author).toBe("Example");
+    const stored = serialiseCommonsDetails({ author: " Example ", license: "pd-self", custom: "x" });
+    expect(parseCommonsDetails(stored)).toEqual({
+      author: "Example",
+      license: "pd-self",
+      custom: "x",
+    });
+  });
+
+  it("falls back to the automatic licence for a payload without one", () => {
+    expect(parseCommonsDetails('{"author":"Example"}')).toEqual({
+      author: "Example",
+      license: "auto",
+      custom: "",
+    });
   });
 });

@@ -19,5 +19,6 @@ pub use palette::{scheme_infos, Scheme, SchemeInfo};
 pub use style::{Appearance, ColorMode, ElementColor, Look, RepStyle};
 pub use wikitext::{
     chembox, commons_file_name, commons_information, commons_upload_url, drugbox, figure_file_name,
-    Compound, License, StructureKind,
+    license_details, license_options, license_problem, Compound, License, LicenseOption,
+    StructureKind,
 };

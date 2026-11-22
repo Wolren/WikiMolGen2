@@ -541,6 +541,22 @@
                   placeholder="Your Commons username"
                 />
               </label>
+              <label class="compact-field" for="commons-license">
+                Licence
+                <select id="commons-license"></select>
+              </label>
+              <label id="commons-custom-field" class="compact-field" for="commons-license-custom" hidden>
+                Custom template
+                <input
+                  id="commons-license-custom"
+                  type="text"
+                  maxlength="300"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="Self|cc-by-sa-4.0"
+                />
+              </label>
+              <p id="commons-license-note" class="hint" hidden></p>
             </div>
             <div class="code-box">
               <pre id="wikitext-commons" class="wikitext" tabindex="0"></pre>

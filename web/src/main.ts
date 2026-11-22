@@ -13,8 +13,9 @@ import init, {
   colorSchemesJson,
   commonsInformation,
   commonsUploadUrl,
-  defaultLicense,
   drugbox,
+  licenseDetails,
+  licenseOptionsJson,
   looksJson,
   proteinLooksJson,
 } from "../pkg/wikimolgen2_wasm.js";
@@ -43,11 +44,12 @@ import {
   type ColorSchemeInfo,
   type Look,
     type ViewMode,
+  type StructureKindId,
 } from "./context.js";
 import { buildDepiction, bindDepictionControls, clearDepiction, loadDepictionSettings, setDepictionAvailable, showDepiction } from "./depiction.js";
 import { bindSuggestions } from "./suggest.js";
 import { bindBatch } from "./batch.js";
-import { loadCommonsDetails, saveCommonsDetails } from "./commons.js";
+import { AUTO_LICENSE, loadCommonsDetails, saveCommonsDetails } from "./commons.js";
 import { applyOrientation, bindOrientation, loadOrientation } from "./orientation.js";
 import { bindExport, exportFigure } from "./figure.js";
 import { bindFullscreen } from "./fullscreen.js";
@@ -106,6 +108,8 @@ async function boot(): Promise<void> {
   }
 
   state.looks = JSON.parse(looksJson()) as Look[];
+  // The licence list is Rust data, so the picker cannot drift from the block it feeds.
+  renderLicenseOptions();
   // The palettes are Rust data: the page only sends an id back, never an element table.
   state.schemes = JSON.parse(colorSchemesJson()) as ColorSchemeInfo[];
   // Presets and palettes need no GPU, so they are shown even if the renderer cannot start.
@@ -685,6 +689,61 @@ dom.commonsAuthor.addEventListener("input", () => {
   refreshOutput();
 });
 
+/** Show the fields the chosen licence needs, and fill the custom one from storage. */
+function syncCommonsDetails(): void {
+  dom.commonsCustomField.hidden = commonsDetails.license !== "custom";
+  if (document.activeElement !== dom.commonsLicenseCustom) {
+    dom.commonsLicenseCustom.value = commonsDetails.custom;
+  }
+}
+
+/** The picker's choices: Auto, the six licences from Rust, then a custom template. */
+function renderLicenseOptions(): void {
+  const options = JSON.parse(licenseOptionsJson()) as { id: string; label: string }[];
+  const choices = [
+    { value: AUTO_LICENSE, label: "Auto (per view)" },
+    ...options.map((option) => ({ value: option.id, label: option.label })),
+    { value: "custom", label: "Custom template…" },
+  ];
+  dom.commonsLicense.replaceChildren(
+    ...choices.map((choice) => new Option(choice.label, choice.value)),
+  );
+  if (!choices.some((choice) => choice.value === commonsDetails.license)) {
+    commonsDetails = { ...commonsDetails, license: AUTO_LICENSE };
+  }
+  dom.commonsLicense.value = commonsDetails.license;
+  syncCommonsDetails();
+}
+
+/** The template and upload code for the stored choice, with a note when it is unusable. */
+function resolveLicense(kind: StructureKindId): { template: string; code: string } {
+  try {
+    const resolved = JSON.parse(licenseDetails(kind, commonsDetails.license, commonsDetails.custom)) as {
+      template: string;
+      code: string;
+    };
+    dom.commonsLicenseNote.hidden = true;
+    dom.commonsLicenseNote.textContent = "";
+    return resolved;
+  } catch (error) {
+    dom.commonsLicenseNote.hidden = false;
+    dom.commonsLicenseNote.textContent = `${describe(error)} Using the automatic licence.`;
+    return JSON.parse(licenseDetails(kind, AUTO_LICENSE, "")) as { template: string; code: string };
+  }
+}
+
+dom.commonsLicense.addEventListener("change", () => {
+  commonsDetails = { ...commonsDetails, license: dom.commonsLicense.value };
+  syncCommonsDetails();
+  saveCommonsDetails(commonsDetails);
+  refreshOutput();
+});
+dom.commonsLicenseCustom.addEventListener("input", () => {
+  commonsDetails = { ...commonsDetails, custom: dom.commonsLicenseCustom.value };
+  saveCommonsDetails(commonsDetails);
+  refreshOutput();
+});
+
 function refreshOutput(): void {
   // A protein has no drug or chem box; its Commons description is the useful output.
   const protein = state.protein !== null;
@@ -709,18 +768,18 @@ function refreshOutput(): void {
   dom.outputDrugbox.textContent = protein ? "" : drugbox(state.compoundJson, fileName);
   dom.outputChembox.textContent = protein ? "" : chembox(state.compoundJson, fileName);
   const today = new Date().toISOString().slice(0, 10);
-  const license = defaultLicense(kind);
+  const license = resolveLicense(kind);
   const commons = commonsInformation(
     state.compoundJson,
     kind,
     commonsDetails.author,
-    license,
+    license.template,
     today,
   );
   dom.outputCommons.textContent = commons;
 
   // The upload action belongs to the Commons description, under the text it sends.
-  dom.uploadCommons.href = commonsUploadUrl(fileName, commons, license);
+  dom.uploadCommons.href = commonsUploadUrl(fileName, commons, license.code);
   dom.uploadCommons.hidden = false;
 }
 

@@ -141,6 +141,21 @@ pub enum License {
 }
 
 impl License {
+    /// Every licence the picker offers, in the order it lists them.
+    pub const ALL: [License; 6] = [
+        License::CcBySa40,
+        License::CcBy40,
+        License::CcBySa30,
+        License::CcZero,
+        License::PdChem,
+        License::PdSelf,
+    ];
+
+    /// The licence behind an identifier, or `None` for an unknown one.
+    pub fn from_id(id: &str) -> Option<License> {
+        License::ALL.into_iter().find(|license| license.id() == id)
+    }
+
     /// The stable identifier the page and the templates share.
     pub fn id(self) -> &'static str {
         match self {
@@ -153,8 +168,20 @@ impl License {
         }
     }
 
+    /// The name the picker shows.
+    pub fn label(self) -> &'static str {
+        match self {
+            License::CcBySa40 => "CC BY-SA 4.0",
+            License::CcBy40 => "CC BY 4.0",
+            License::CcBySa30 => "CC BY-SA 3.0",
+            License::CcZero => "CC0",
+            License::PdChem => "PD-chem",
+            License::PdSelf => "PD-self",
+        }
+    }
+
     /// The `{{…}}` body written under `== License ==`.
-    fn template(self) -> &'static str {
+    pub fn template(self) -> &'static str {
         match self {
             License::CcBySa40 => "Self|cc-by-sa-4.0",
             License::CcBy40 => "Self|cc-by-4.0",
@@ -166,7 +193,7 @@ impl License {
     }
 
     /// The upload-wizard `wpLicense` value, or `None` when the wizard has no code.
-    fn upload_code(self) -> Option<&'static str> {
+    pub fn upload_code(self) -> Option<&'static str> {
         match self {
             License::CcBySa40 => Some("cc-by-sa-4.0"),
             License::CcBy40 => Some("cc-by-4.0"),
@@ -186,6 +213,78 @@ impl License {
             StructureKind::ThreeD | StructureKind::Protein => License::CcBySa40,
         }
     }
+}
+
+/// One row in the licence picker: the id the page sends back and the text it produces.
+#[derive(Debug, Clone, Serialize)]
+pub struct LicenseOption {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub template: &'static str,
+    pub code: Option<&'static str>,
+}
+
+/// The licence picker's fixed choices, in display order.
+pub fn license_options() -> Vec<LicenseOption> {
+    License::ALL
+        .into_iter()
+        .map(|license| LicenseOption {
+            id: license.id(),
+            label: license.label(),
+            template: license.template(),
+            code: license.upload_code(),
+        })
+        .collect()
+}
+
+/// The longest hand-written template accepted, in characters.
+const MAX_LICENSE_CHARS: usize = 300;
+
+/// Why a hand-written licence template cannot be used, or `None` when it can.
+///
+/// The body is written inside `{{…}}` under `== License ==`, so outer braces are refused
+/// rather than doubled, and a newline would end the template.
+pub fn license_problem(text: &str) -> Option<&'static str> {
+    if text.is_empty() {
+        return Some("Enter a licence template first.");
+    }
+    if text.chars().count() > MAX_LICENSE_CHARS {
+        return Some("A licence template is at most 300 characters.");
+    }
+    if text.contains('\n') || text.contains('\r') {
+        return Some("A licence template must fit on one line.");
+    }
+    if text.starts_with("{{") || text.ends_with("}}") {
+        return Some("Give the template body only, e.g. Self|cc-by-sa-4.0.");
+    }
+    if text.matches("{{").count() != text.matches("}}").count() {
+        return Some("The template has unbalanced braces.");
+    }
+    None
+}
+
+/// The template and upload code a picker choice means.
+///
+/// `choice` is `auto` for the kind's default, a licence id, or `custom` to use `custom`.
+/// An unknown id takes the default, because the page only sends ids from [`license_options`].
+pub fn license_details(
+    kind: StructureKind,
+    choice: &str,
+    custom: &str,
+) -> Result<(String, String), String> {
+    if choice == "custom" {
+        let text = custom.trim();
+        return match license_problem(text) {
+            Some(problem) => Err(problem.to_string()),
+            None => Ok((text.to_string(), String::new())),
+        };
+    }
+    let license = match choice {
+        "auto" | "" => License::default_for(kind),
+        other => License::from_id(other).unwrap_or_else(|| License::default_for(kind)),
+    };
+    let code = license.upload_code().unwrap_or_default().to_string();
+    Ok((license.template().to_string(), code))
 }
 
 impl Compound {
@@ -585,33 +684,49 @@ fn strip_image_extension(stem: &str) -> &str {
 }
 
 /// The Commons `{{Information}}` + licence + category block.
+///
+/// `license_template` is the body of the licence call, e.g. `Self|cc-by-sa-4.0`. An empty
+/// or unusable one takes the kind's default. The author is escaped, so a typed separator
+/// cannot break the template.
 pub fn commons_information(
     compound: &Compound,
     kind: StructureKind,
     author: &str,
-    license: License,
+    license_template: &str,
     iso_date: &str,
 ) -> String {
     let name = compound.primary_name();
-    let author = if author.trim().is_empty() { "WikiMolGen 2" } else { author };
+    let author = sanitize(author.trim());
+    let author = if author.trim().is_empty() {
+        "WikiMolGen 2".to_string()
+    } else {
+        author
+    };
+    let template = license_template.trim();
+    let template = if license_problem(template).is_some() {
+        License::default_for(kind).template().to_string()
+    } else {
+        template.to_string()
+    };
     format!(
-        "{{{{Information\n|description={{{{en|1={} of {name} generated with WikiMolGen 2}}}}\n|date={iso_date}\n|source={{{{Own work}}}}\n|author={author}\n}}}}\n\n== License ==\n{{{{{}}}}}\n\n[[Category:Chemical structures]]",
-        kind.description_word(),
-        license.template()
+        "{{{{Information\n|description={{{{en|1={} of {name} generated with WikiMolGen 2}}}}\n|date={iso_date}\n|source={{{{Own work}}}}\n|author={author}\n}}}}\n\n== License ==\n{{{{{template}}}}}\n\n[[Category:Chemical structures]]",
+        kind.description_word()
     )
 }
 
 /// Pre-filled Commons upload URL.
 ///
 /// This saves the uploader re-typing a long license block: the description and licence
-/// arrive already filled in the wizard.
-pub fn commons_upload_url(file_name: &str, description: &str, license: License) -> String {
+/// arrive already filled in the wizard. An empty `upload_code` omits `wpLicense`, which
+/// the wizard needs for a licence it does not know.
+pub fn commons_upload_url(file_name: &str, description: &str, upload_code: &str) -> String {
     let mut url = format!(
         "https://commons.wikimedia.org/wiki/Special:Upload?wpDestFile={}&wpUploadDescription={}",
         percent_encode(file_name),
         percent_encode(description)
     );
-    if let Some(code) = license.upload_code() {
+    let code = upload_code.trim();
+    if !code.is_empty() {
         url.push_str(&format!("&wpLicense={}", percent_encode(code)));
     }
     url
@@ -885,24 +1000,96 @@ mod tests {
             &aspirin(),
             StructureKind::TwoD,
             "Example Author",
-            License::PdChem,
+            License::PdChem.template(),
             "2026-11-19",
         );
         assert!(text.contains("|description={{en|1=2D structure of aspirin generated with WikiMolGen 2}}"));
         assert!(text.contains("|date=2026-11-19"));
+        assert!(text.contains("|author=Example Author"));
         assert!(text.contains("{{PD-chem}}"));
         assert!(text.ends_with("[[Category:Chemical structures]]"));
     }
 
     #[test]
+    fn license_options_describe_every_licence() {
+        let options = license_options();
+        assert_eq!(options.len(), License::ALL.len());
+        assert_eq!(options[0].id, "cc-by-sa-4.0");
+        assert_eq!(options[0].label, "CC BY-SA 4.0");
+        assert_eq!(options[0].template, "Self|cc-by-sa-4.0");
+        assert_eq!(options[0].code, Some("cc-by-sa-4.0"));
+        let pd_chem = options.iter().find(|option| option.id == "pd-chem").unwrap();
+        assert_eq!(pd_chem.code, None);
+        for option in &options {
+            assert!(!option.template.is_empty(), "{} has no template", option.id);
+            assert!(!option.label.is_empty(), "{} has no label", option.id);
+        }
+    }
+
+    #[test]
+    fn license_details_resolve_auto_ids_and_custom_templates() {
+        assert_eq!(
+            license_details(StructureKind::TwoD, "auto", "").unwrap(),
+            ("PD-chem".to_string(), String::new())
+        );
+        assert_eq!(
+            license_details(StructureKind::ThreeD, "auto", "").unwrap(),
+            ("Self|cc-by-sa-4.0".to_string(), "cc-by-sa-4.0".to_string())
+        );
+        assert_eq!(
+            license_details(StructureKind::ThreeD, "pd-self", "").unwrap(),
+            ("PD-self".to_string(), "pd-self".to_string())
+        );
+        // An unknown id takes the default rather than failing the whole block.
+        assert_eq!(
+            license_details(StructureKind::ThreeD, "nonsense", "").unwrap().1,
+            "cc-by-sa-4.0"
+        );
+        assert_eq!(
+            license_details(StructureKind::ThreeD, "custom", "Self|cc-zero").unwrap(),
+            ("Self|cc-zero".to_string(), String::new())
+        );
+        assert!(license_details(StructureKind::ThreeD, "custom", "{{Self|cc-zero}}").is_err());
+        assert!(license_details(StructureKind::ThreeD, "custom", "  ").is_err());
+    }
+
+    #[test]
+    fn license_template_validation_names_the_problem() {
+        assert!(license_problem("Self|cc-by-sa-4.0").is_none());
+        assert!(license_problem("PD-chem").is_none());
+        assert!(license_problem("").is_some());
+        assert!(license_problem("{{PD-chem}}").is_some());
+        assert!(license_problem("Self\n|cc-zero").is_some());
+        assert!(license_problem("Self|cc-zero{{").is_some());
+        assert!(license_problem(&"a".repeat(301)).is_some());
+    }
+
+    #[test]
+    fn a_typed_template_reaches_the_block_and_the_author_is_escaped() {
+        let text = commons_information(
+            &aspirin(),
+            StructureKind::ThreeD,
+            "A|B",
+            "Self|cc-zero|attribution=Me",
+            "2026-11-19",
+        );
+        assert!(text.contains("{{Self|cc-zero|attribution=Me}}"));
+        assert!(text.contains("|author=A{{!}}B"));
+        // An unusable template falls back to the kind's default.
+        let fallback = commons_information(&aspirin(), StructureKind::ThreeD, "", "", "2026-11-19");
+        assert!(fallback.contains("{{Self|cc-by-sa-4.0}}"));
+        assert!(fallback.contains("|author=WikiMolGen 2"));
+    }
+
+    #[test]
     fn upload_url_encodes_the_description_and_omits_missing_license_codes() {
-        let url = commons_upload_url("Aspirin 2D.png", "{{Information\n|x=1}}", License::PdChem);
+        let url = commons_upload_url("Aspirin 2D.png", "{{Information\n|x=1}}", "");
         assert!(url.starts_with(
             "https://commons.wikimedia.org/wiki/Special:Upload?wpDestFile=Aspirin%202D.png&wpUploadDescription=%7B%7BInformation%0A%7Cx%3D1%7D%7D"
         ));
         assert!(!url.contains("wpLicense"));
 
-        let cc = commons_upload_url("a.png", "b", License::CcBySa40);
+        let cc = commons_upload_url("a.png", "b", "cc-by-sa-4.0");
         assert!(cc.ends_with("&wpLicense=cc-by-sa-4.0"));
     }
 }
