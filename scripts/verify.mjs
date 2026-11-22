@@ -509,6 +509,18 @@ if (isProtein) {
   if (svgLabel.trim() !== "Download SVG") {
     failures.push(`the 2D toolbar offers "${svgLabel.trim()}"`);
   }
+  // The 2D engine bakes the scheme inks in, so the drawing must use the carbon ink.
+  const carbonInk = await evaluate(
+    session,
+    "document.querySelector('#element-colors input[aria-label=\"C colour\"]')?.value ?? ''",
+  );
+  const svgText = await evaluate(
+    session,
+    "document.querySelector('#depiction svg')?.outerHTML ?? ''",
+  );
+  if (carbonInk !== "" && !svgText.toLowerCase().includes(carbonInk.toLowerCase())) {
+    failures.push(`the 2D drawing does not use the carbon ink ${carbonInk}`);
+  }
   // The colour panel styles the 3D figure; in 2D it must step aside with a note.
   const colourHidden = await evaluate(
     session,
@@ -891,6 +903,19 @@ if (args.dialog) {
   await new Promise((done) => setTimeout(done, 300));
 }
 
+// `--2d` switches the stage to the drawing before the screenshot.
+if (args["2d"]) {
+  await evaluate(session, "document.getElementById('mode-2d').click(), true");
+  await poll(
+    async () =>
+      ((await evaluate(session, "document.querySelector('#depiction svg')?.outerHTML.length ?? 0")) ?? 0) > 500
+        ? true
+        : null,
+    60_000,
+  );
+  await new Promise((done) => setTimeout(done, 300));
+}
+
 // `--orientation wiki` applies a preset so the screenshot shows the house tilt.
 if (args.orientation) {
   await evaluate(
@@ -935,6 +960,12 @@ const shot = await send("Page.captureScreenshot", { format: "png" }, session);
 await mkdir(dirname(OUT), { recursive: true });
 await writeFile(OUT, Buffer.from(shot.result.data, "base64"));
 console.log(`screenshot: ${OUT}`);
+
+// A 2D screenshot leaves the canvas hidden; the full-screen check needs the 3D stage.
+if (args["2d"]) {
+  await evaluate(session, "document.getElementById('mode-3d').click(), true");
+  await new Promise((done) => setTimeout(done, 600));
+}
 
 // 6. Full screen: the stage fills the screen, its toolbar stays, and the canvas follows.
 //    A programmatic click does not count as a user gesture, so the press goes through

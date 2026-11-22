@@ -37,11 +37,15 @@ let rdkitUnavailable = false;
  *
  * Returns `null` when neither engine can draw, with a sentence for the status line.
  */
-export async function buildDepiction(name: string, sdf: Uint8Array): Promise<DepictionResult> {
+export async function buildDepiction(
+  name: string,
+  sdf: Uint8Array,
+  inks: { element: string; color: string }[] = [],
+): Promise<DepictionResult> {
   let rdkitError = "RDKit was skipped after an earlier failure";
   if (!rdkitUnavailable) {
     try {
-      const svg = await depictWithRdkit(sdf, DEPICTION_WIDTH, DEPICTION_HEIGHT);
+      const svg = await depictWithRdkit(sdf, DEPICTION_WIDTH, DEPICTION_HEIGHT, inks);
       return { depiction: { svg, engine: "rdkit" }, error: null };
     } catch (error) {
       rdkitUnavailable = true;

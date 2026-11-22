@@ -413,7 +413,8 @@ async function showMode(mode: ViewMode): Promise<void> {
           : "Loading the RDKit 2D engine (7.4 MB)…",
       );
       try {
-        const built = await buildDepiction(state.depictionSource.name, state.depictionSource.bytes);
+        const inks = appliedLook()?.appearance.element_colors ?? [];
+        const built = await buildDepiction(state.depictionSource.name, state.depictionSource.bytes, inks);
         if (built.depiction === null) {
           setStatus(`The 2D drawing failed: ${built.error}`, true);
           return;

@@ -6,6 +6,8 @@
  * browser caches it for later views.
  */
 
+import { atomicNumber, rgbTriple } from "./elements.js";
+
 /** The subset of RDKit's `Mol` this app uses. */
 interface RdkitMol {
   is_valid(): boolean;
@@ -86,6 +88,7 @@ export async function depictWithRdkit(
   sdf: Uint8Array,
   width: number,
   height: number,
+  inks: { element: string; color: string }[] = [],
 ): Promise<string> {
   const rdkit = await loadRdkit();
   const text = new TextDecoder().decode(sdf);
@@ -97,9 +100,15 @@ export async function depictWithRdkit(
     mol.remove_hs_in_place();
     mol.set_new_coords(true);
     // No white rectangle: the page tint shows through the drawing.
-    return mol.get_svg_with_highlights(
-      JSON.stringify({ width, height, clearBackground: false }),
-    );
+    const details: Record<string, unknown> = { width, height, clearBackground: false };
+    const palette: Record<string, [number, number, number]> = {};
+    for (const ink of inks) {
+      const number = atomicNumber(ink.element);
+      const rgb = rgbTriple(ink.color);
+      if (number !== null && rgb !== null) palette[String(number)] = rgb;
+    }
+    if (Object.keys(palette).length > 0) details.atomColourPalette = palette;
+    return mol.get_svg_with_highlights(JSON.stringify(details));
   } finally {
     mol.delete();
   }

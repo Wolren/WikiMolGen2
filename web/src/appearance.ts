@@ -68,6 +68,8 @@ export function scheduleApply(): void {
 
 /** Re-colour the scene on the next frame. */
 export function scheduleRecolor(): void {
+  // The 2D drawing bakes the inks in; rebuild it on the next 3D to 2D switch.
+  if (state.mode !== "2d") state.depiction = null;
   if (recolorScheduled) return;
   recolorScheduled = true;
   requestAnimationFrame(() => {
