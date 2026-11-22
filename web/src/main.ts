@@ -508,6 +508,15 @@ function applyMode(): void {
   dom.mode2d.disabled = state.depictionSource === null || state.protein !== null;
   dom.viewerHost.hidden = twoDimensional;
   dom.depiction.hidden = !twoDimensional;
+  dom.viewerHost.setAttribute("role", "img");
+  dom.viewerHost.setAttribute(
+    "aria-label",
+    state.protein !== null
+      ? `${state.protein.id} protein cartoon`
+      : state.compound !== null
+        ? `${state.compound.name ?? "Compound"} 3D model`
+        : "3D molecular model",
+  );
   // The view and appearance controls only act on a running 3D viewer.
   const threeDimensional = !twoDimensional && !isRendererFailed();
   setColourAvailable(threeDimensional);

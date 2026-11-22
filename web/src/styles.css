@@ -1465,3 +1465,14 @@ input[type="range"] {
   color: #c0392b;
 }
 
+/* A user who asked for less motion keeps the loaded state, not the animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -8,6 +8,7 @@
       name="description"
       content="Render 3D molecular structures from PubChem in the browser and get ready-to-paste Wikipedia and Wikimedia Commons markup."
     />
+    <meta name="theme-color" content="#0e6d68" />
     <!-- Every lookup is cross-origin; opening the sockets early saves a round trip each. -->
     <link rel="preconnect" href="https://pubchem.ncbi.nlm.nih.gov" crossorigin />
     <link rel="preconnect" href="https://files.rcsb.org" crossorigin />
@@ -19,9 +20,12 @@
       (() => {
         const root = document.documentElement;
         const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const contrast = window.matchMedia("(prefers-contrast: more)").matches;
         const scheme = (value) => (value === "dark" ? "dark" : "light");
-        const paint = (mode) => {
-          root.dataset.theme = mode;
+        const paintSystem = () => {
+          const theme = contrast ? "contrast" : dark ? "dark" : "light";
+          const mode = theme === "dark" ? "dark" : "light";
+          root.dataset.theme = theme;
           root.dataset.scheme = mode;
           root.style.setProperty("color-scheme", mode);
         };
@@ -45,10 +49,10 @@
             root.style.setProperty("color-scheme", mode);
             return;
           }
-          paint(dark ? "dark" : "light");
+          paintSystem();
         } catch {
           // A blocked store or a bad payload leaves the page on the system choice.
-          paint(dark ? "dark" : "light");
+          paintSystem();
         }
       })();
     </script>
@@ -215,7 +219,7 @@
             <label class="field-label" for="background">Figure background</label>
             <div class="field-row">
               <input id="background" type="color" value="#ffffff" />
-              <select id="gradient">
+              <select id="gradient" aria-label="Figure background style">
                 <option value="none">Solid</option>
                 <option value="vertical">Gradient</option>
               </select>
@@ -329,7 +333,7 @@
             <button id="preset-delete" type="button" class="secondary" disabled>Delete</button>
           </div>
           <div id="preset-name-row" class="preset-name-row" hidden>
-            <input id="preset-name" type="text" placeholder="Preset name" autocomplete="off" />
+            <input id="preset-name" type="text" placeholder="Preset name" aria-label="Preset name" autocomplete="off" />
             <button id="preset-name-save" type="button" class="secondary">Save</button>
             <button id="preset-name-cancel" type="button" class="secondary">Cancel</button>
           </div>
@@ -514,11 +518,11 @@
       </section>
     </main>
 
-    <dialog id="theme-dialog" class="theme-dialog" aria-labelledby="theme-title">
+    <dialog id="theme-dialog" class="theme-dialog" aria-labelledby="theme-title" aria-describedby="theme-hint">
       <div class="theme-head">
         <div>
           <h2 id="theme-title">Interface theme</h2>
-          <p class="hint">The page around the figure. The figure backdrop follows the theme.</p>
+          <p id="theme-hint" class="hint">The page around the figure. The figure backdrop follows the theme.</p>
         </div>
         <button id="theme-close" type="button" class="theme-close" aria-label="Close the theme picker">×</button>
       </div>

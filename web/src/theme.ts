@@ -270,6 +270,16 @@ function announce(choice: string, mode: ThemeMode, remote = false): void {
   );
 }
 
+/** Point the browser's own chrome at the page colour. */
+function syncThemeColor(): void {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta === null) return;
+  const canvas = getComputedStyle(document.documentElement)
+    .getPropertyValue("--canvas")
+    .trim();
+  if (canvas !== "") meta.setAttribute("content", canvas);
+}
+
 function readName(value: unknown): string {
   if (typeof value !== "string") return "Custom theme";
   return value.trim().slice(0, 40) || "Custom theme";
@@ -554,6 +564,7 @@ export function applyChoice(choice: string, options: ApplyOptions = {}): void {
   store(CHOICE_KEY, effective);
   store(MODE_KEY, mode);
   announce(effective, mode, options.remote === true);
+  syncThemeColor();
 }
 
 /** Show a theme being edited without saving it or changing the stored choice. */
@@ -561,6 +572,7 @@ export function previewSeed(seed: ThemeSeed): void {
   const tokens = deriveTheme(seed);
   paint(tokens);
   announce(activeChoice, tokens.mode);
+  syncThemeColor();
 }
 
 /** The choice in force, which is what the picker checks. */
