@@ -29,7 +29,7 @@ It is a static site: no server, no upload, no install.
 | Presets | The original Wikipedia render settings, saved and renamed presets, orientation presets (wiki, front, side, top, custom) and the seven colour schemes |
 | Theme | System plus six fixed palettes: Light, Paper, Contrast, Dark, Slate and Midnight. A custom theme starts from five colours, derives the rest with contrast floors, and is saved by name. Themes can be duplicated, shared as a link or a JSON file, and open tabs stay in step. The choice applies before the first paint |
 | Export | PNG from 400 to 8192 px wide, 2x to 6x supersampling, 4 to 9 percent margin, optional labels and scale bar, transparent by default, or one ZIP for a batch. A batch can be cancelled between rows, a failed row can be retried on its own, and the run reports its progress |
-| Markup | `{{Infobox drug}}`, `{{Chembox}}` and the Commons upload text, with metadata from Wikidata, Wikipedia and openFDA |
+| Markup | `{{Infobox drug}}`, `{{Chembox}}` and the Commons upload text, with metadata from Wikidata, Wikipedia and openFDA. The file name above the panel is editable: a typed name renames the download, the infoboxes and the upload link, and Reset brings the generated one back |
 | Links | A lookup writes `?q=` to the address, and a `?theme=` link carries a theme. The theme and the open sections survive a reload |
 | Offline | A service worker caches the shell, the app bundle and the 3D viewer after the first visit. A manifest names the site and sets its theme colour; the 2D engine is cached on first use |
 

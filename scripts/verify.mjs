@@ -531,6 +531,68 @@ if (uploads.link.top < uploads.text.bottom - 1) {
   failures.push("the Commons upload link overlaps its text");
 }
 
+// 3b. A typed file name renames the upload and the markup; Reset restores the generated one.
+const names = JSON.parse(
+  await evaluate(
+    session,
+    `(() => {
+       const field = document.getElementById('file-name');
+       const reset = document.getElementById('file-name-reset');
+       const image = (id, key) => {
+         const found = (document.getElementById(id).textContent ?? '').match(
+           new RegExp('^\\\\| ' + key + ' = (.*)$', 'm'),
+         );
+         return found === null ? '' : found[1].trim();
+       };
+       const generated = field.value;
+       field.focus();
+       field.value = 'Aspirin custom name';
+       field.dispatchEvent(new Event('input', { bubbles: true }));
+       field.blur();
+       const typed = field.value;
+       const armed = !reset.disabled;
+       const afterTyping = {
+         drug: image('wikitext-drugbox', 'image'),
+         chem: image('wikitext-chembox', 'ImageFile'),
+         upload: document.getElementById('upload-commons').href,
+       };
+       reset.click();
+       return JSON.stringify({
+         enabled: generated !== '',
+         generated,
+         typed,
+         armed,
+         afterTyping,
+         restored: field.value,
+         afterReset: image('wikitext-drugbox', 'image'),
+         resetDisabled: reset.disabled,
+       });
+     })()`,
+  ),
+);
+console.log(`file name: ${JSON.stringify(names)}`);
+if (names.enabled !== true) failures.push("the file-name field is empty or disabled after a load");
+if (names.typed !== "Aspirin_custom_name.png") {
+  failures.push(`a typed name came out as ${names.typed}`);
+}
+if (isProtein === false && names.afterTyping.drug !== names.typed) {
+  failures.push(`the drug infobox still names ${names.afterTyping.drug}`);
+}
+if (isProtein === false && names.afterTyping.chem !== names.typed) {
+  failures.push(`the chembox still names ${names.afterTyping.chem}`);
+}
+if (!names.afterTyping.upload.includes(names.typed)) {
+  failures.push("the upload link does not carry the typed name");
+}
+if (names.armed !== true) failures.push("Reset was not offered while a typed name was active");
+if (names.restored !== names.generated) {
+  failures.push(`Reset left ${names.restored} instead of the generated ${names.generated}`);
+}
+if (isProtein === false && names.afterReset !== names.generated) {
+  failures.push(`the drug infobox kept ${names.afterReset} after Reset`);
+}
+if (names.resetDisabled !== true) failures.push("Reset stayed enabled at the generated name");
+
 // 3a. Orientation: the custom fields appear, and a preset survives in storage.
 const orientation = await evaluate(
   session,
@@ -658,6 +720,18 @@ console.log(`reset flow: ${resetFlow}`);
 if (isProtein) {
   console.log("2d: skipped (a protein has no flat record)");
 } else {
+  // A typed name belongs to the figure it was typed on, so the 2D switch must drop it.
+  await evaluate(
+    session,
+    `(() => {
+       const field = document.getElementById('file-name');
+       field.focus();
+       field.value = 'Aspirin on the stage';
+       field.dispatchEvent(new Event('input', { bubbles: true }));
+       field.blur();
+       return true;
+     })()`,
+  );
   await evaluate(session, "document.getElementById('mode-2d').click(), true");
   const svgSize = await poll(async () => {
     const size = await evaluate(
@@ -668,6 +742,12 @@ if (isProtein) {
   }, 60_000);
   if (svgSize === null) failures.push("the 2D view did not render an SVG");
   else console.log(`2d: ${svgSize} chars`);
+  // The name follows the stage: a 2D figure is an SVG under the generated name.
+  const svgName = await evaluate(session, "document.getElementById('file-name').value");
+  if (!svgName.endsWith(".svg")) failures.push(`the 2D figure is named ${svgName}`);
+  if (svgName.startsWith("Aspirin_on_the_stage")) {
+    failures.push(`the 3D name survived the 2D switch: ${svgName}`);
+  }
   // The toolbar button follows the stage: a vector drawing downloads as an SVG.
   const svgLabel = await evaluate(session, "document.getElementById('export').textContent");
   if (svgLabel.trim() !== "Download SVG") {

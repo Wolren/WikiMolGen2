@@ -480,7 +480,29 @@
 
         <aside class="panel output" aria-label="Wikitext">
           <div class="output-header">
-            <code id="file-name" class="file-name">—</code>
+            <label class="field-label" for="file-name">File name</label>
+            <div class="file-name-row">
+              <input
+                id="file-name"
+                class="file-name"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                maxlength="200"
+                placeholder="Load a compound first"
+                title="The name the figure is saved as and uploaded to Commons under"
+                disabled
+              />
+              <button
+                id="file-name-reset"
+                type="button"
+                class="link-button"
+                title="Use the generated Commons name"
+                disabled
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
           <section id="block-drugbox" class="output-block">

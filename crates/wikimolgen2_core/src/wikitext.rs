@@ -517,19 +517,71 @@ pub fn chembox(compound: &Compound, image: &str) -> String {
     out
 }
 
-/// The Commons file name, e.g. `Aspirin-3D-balls.png`.
-///
-/// Spaces become underscores and characters that Commons discourages are dropped, so
-/// the name is acceptable without renaming at upload time.
-pub fn commons_file_name(compound: &Compound, kind: StructureKind) -> String {
-    let base: String = compound
-        .primary_name()
-        .chars()
+/// The extension a figure of this kind is saved as: 2D is vector, the rest is raster.
+fn file_extension(kind: StructureKind) -> &'static str {
+    match kind {
+        StructureKind::TwoD => ".svg",
+        StructureKind::ThreeD | StructureKind::Protein => ".png",
+    }
+}
+
+/// A Commons-safe stem: spaces become underscores, characters Commons discourages go.
+fn commons_stem(name: &str) -> String {
+    name.chars()
         .map(|c| if c == ' ' { '_' } else { c })
         .filter(|c| c.is_alphanumeric() || matches!(c, '_' | '-' | '(' | ')' | '.'))
-        .collect();
-    let base = if base.is_empty() { "Compound".to_string() } else { base };
-    format!("{base}-{}.png", kind.token())
+        .collect()
+}
+
+/// The Commons file name, e.g. `Aspirin-3D.png`.
+///
+/// The extension follows the kind, so a 2D drawing is offered as `.svg`. Spaces become
+/// underscores and characters that Commons discourages are dropped, so the name is
+/// acceptable without renaming at upload time.
+pub fn commons_file_name(compound: &Compound, kind: StructureKind) -> String {
+    let stem = commons_stem(&compound.primary_name());
+    let stem = stem.trim_matches(|c| c == '.' || c == '_' || c == '-');
+    let stem = if stem.is_empty() { "Compound" } else { stem };
+    format!("{stem}-{}{}", kind.token(), file_extension(kind))
+}
+
+/// The byte budget for a typed stem: the extension and the 255-byte title limit leave room.
+const MAX_TYPED_STEM: usize = 200;
+
+/// Turn a typed name into the name a figure is saved and uploaded as.
+///
+/// The stem belongs to the user, so nothing is appended to it; only characters Commons
+/// discourages are dropped, and the extension follows the kind, because a 2D figure is an
+/// SVG and a 3D one a PNG. Text that leaves no stem falls back to [`commons_file_name`].
+pub fn figure_file_name(compound: &Compound, kind: StructureKind, typed: &str) -> String {
+    let stem = commons_stem(typed);
+    let stem = strip_image_extension(&stem);
+    let stem = stem.trim_matches(|c| c == '.' || c == '_' || c == '-');
+    let mut capped = String::new();
+    for c in stem.chars() {
+        if capped.len() + c.len_utf8() > MAX_TYPED_STEM {
+            break;
+        }
+        capped.push(c);
+    }
+    let stem = capped.trim_end_matches(|c: char| c == '.' || c == '_' || c == '-');
+    if stem.is_empty() {
+        return commons_file_name(compound, kind);
+    }
+    format!("{stem}{}", file_extension(kind))
+}
+
+/// Drop a trailing image extension, case-insensitively: the kind picks the real one.
+///
+/// The lower case copy has the same byte length, so the slice stays on a char boundary.
+fn strip_image_extension(stem: &str) -> &str {
+    let lower = stem.to_ascii_lowercase();
+    for known in [".png", ".svg", ".jpeg", ".jpg", ".webp", ".tiff", ".tif"] {
+        if lower.ends_with(known) {
+            return &stem[..stem.len() - known.len()];
+        }
+    }
+    stem
 }
 
 /// The Commons `{{Information}}` + licence + category block.
@@ -777,7 +829,54 @@ mod tests {
             cid: Some(1234),
             ..Compound::default()
         };
-        assert_eq!(commons_file_name(&unnamed, StructureKind::TwoD), "Compound_1234-2D.png");
+        assert_eq!(commons_file_name(&unnamed, StructureKind::TwoD), "Compound_1234-2D.svg");
+    }
+
+    #[test]
+    fn typed_name_keeps_the_stem_and_takes_the_kind_extension() {
+        assert_eq!(
+            figure_file_name(&aspirin(), StructureKind::TwoD, "Aspirin ball-and-stick.png"),
+            "Aspirin_ball-and-stick.svg"
+        );
+        assert_eq!(
+            figure_file_name(&aspirin(), StructureKind::ThreeD, "Aspirin-3D"),
+            "Aspirin-3D.png"
+        );
+        assert_eq!(
+            figure_file_name(&aspirin(), StructureKind::Protein, "1CRN cartoon.JPG"),
+            "1CRN_cartoon.png"
+        );
+    }
+
+    #[test]
+    fn typed_name_drops_what_commons_refuses() {
+        // A slash or a pipe would break the title or the parameter it lands in.
+        assert_eq!(
+            figure_file_name(&aspirin(), StructureKind::ThreeD, " ../Aspirin | 3D (ball) "),
+            "Aspirin__3D_(ball).png"
+        );
+    }
+
+    #[test]
+    fn blank_typed_name_falls_back_to_the_generated_one() {
+        for typed in ["", "   ", "///", "|", "..."] {
+            assert_eq!(
+                figure_file_name(&aspirin(), StructureKind::ThreeD, typed),
+                "aspirin-3D.png",
+                "{typed:?} should not beat the generated name"
+            );
+        }
+    }
+
+    #[test]
+    fn typed_name_stays_inside_the_title_budget() {
+        let long = figure_file_name(&aspirin(), StructureKind::ThreeD, &"a".repeat(400));
+        assert_eq!(long, format!("{}.png", "a".repeat(MAX_TYPED_STEM)));
+
+        // Two bytes per character: the cap counts bytes, so no character is split.
+        let wide = figure_file_name(&aspirin(), StructureKind::ThreeD, &"ß".repeat(400));
+        assert!(wide.len() <= 240, "{} bytes is over the title budget", wide.len());
+        assert!(wide.ends_with("ß.png"));
     }
 
     #[test]

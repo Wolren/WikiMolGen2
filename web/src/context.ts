@@ -5,7 +5,7 @@
  * one module can update a figure rendered by another without passing a dozen references.
  */
 
-import { commonsFileName } from "../pkg/wikimolgen2_wasm.js";
+import { commonsFileName, figureFileName } from "../pkg/wikimolgen2_wasm.js";
 import type { Depiction } from "./depiction.js";
 import type { Compound } from "./pubchem.js";
 import type { Appearance, Renderer } from "./renderer.js";
@@ -194,7 +194,8 @@ export const dom = {
   batchProgressBar: required<HTMLProgressElement>("batch-progress-bar"),
   batchList: required<HTMLUListElement>("batch-list"),
 
-  fileName: required<HTMLElement>("file-name"),
+  fileName: required<HTMLInputElement>("file-name"),
+  fileNameReset: required<HTMLButtonElement>("file-name-reset"),
   copyDrugbox: required<HTMLButtonElement>("copy-drugbox"),
   copyChembox: required<HTMLButtonElement>("copy-chembox"),
   copyCommons: required<HTMLButtonElement>("copy-commons"),
@@ -206,6 +207,12 @@ export const dom = {
   uploadCommons: required<HTMLAnchorElement>("upload-commons"),
 };
 
+/** A name typed into the file-name field, with the generated name it replaced. */
+export interface TypedName {
+  generated: string;
+  text: string;
+}
+
 export interface AppState {
   viewer: Renderer | null;
   looks: Look[];
@@ -215,6 +222,8 @@ export interface AppState {
   look: Look | null;
   compoundJson: string;
   mode: ViewMode;
+  /** The typed Commons name, kept only while the figure it was typed for is on stage. */
+  typedName: TypedName | null;
   /** The flat record waiting for the 2D engine. `null` for a protein or a missing record. */
   depictionSource: { name: string; bytes: Uint8Array } | null;
   depiction: Depiction | null;
@@ -231,6 +240,7 @@ export const state: AppState = {
   look: null,
   compoundJson: "{}",
   mode: "3d",
+  typedName: null,
   depictionSource: null,
   depiction: null,
   depictionSettings: { monochrome: false, bondWidth: 0, labelSize: 0 },
@@ -282,10 +292,27 @@ export function structureKind(): StructureKindId {
   return state.mode === "2d" ? "two_d" : "three_d";
 }
 
-/** The Commons file name for a kind. A 2D figure is vector, so it ends in `.svg`. */
+/** The generated Commons file name for a kind. A 2D figure is vector, so it ends in `.svg`. */
 export function figureName(kind: StructureKindId): string {
-  const png = commonsFileName(state.compoundJson, kind);
-  return kind === "two_d" ? png.replace(/\.png$/, ".svg") : png;
+  return commonsFileName(state.compoundJson, kind);
+}
+
+/**
+ * The name the next download and the markup use.
+ *
+ * A typed name wins only while the figure it was typed for is still on the stage, so a new
+ * load or a view switch goes back to the generated name without anyone clearing it.
+ */
+export function exportName(kind: StructureKindId): string {
+  const generated = figureName(kind);
+  const typed = state.typedName;
+  if (typed === null || typed.generated !== generated) return generated;
+  return figureFileName(state.compoundJson, kind, typed.text);
+}
+
+/** Remember what the file-name field holds. Empty text gives the generated name back. */
+export function setTypedName(text: string): void {
+  state.typedName = text.trim() === "" ? null : { generated: figureName(structureKind()), text };
 }
 
 /** The overlay says the renderer is unusable; nothing should overwrite it. */

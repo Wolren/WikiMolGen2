@@ -243,10 +243,17 @@
 }
 
 .output-header {
+  padding: 12px 14px 0;
+}
+
+.output-header .field-label {
+  margin: 0 0 6px;
+}
+
+.file-name-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px 0;
+  gap: 8px;
 }
 
 .output-block {
@@ -296,25 +303,22 @@
   color: var(--ink);
 }
 
-.file-name {
+/* The generic text-field rule sets `font: inherit`, so the mono face needs this scope. */
+.output-header .file-name {
   flex: 1;
   min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--surface-2);
   font-family: var(--mono);
   font-size: 12px;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.output-header button {
+.output-header .file-name:disabled {
+  color: var(--faint);
+}
+
+.output-header .link-button {
   flex: none;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 0;
+  font-size: 11px;
 }
 
 .wikitext {

@@ -18,6 +18,6 @@ pub use figure::{compose_figure, FigureSpec, ScaleBarSpec};
 pub use palette::{scheme_infos, Scheme, SchemeInfo};
 pub use style::{Appearance, ColorMode, ElementColor, Look, RepStyle};
 pub use wikitext::{
-    chembox, commons_file_name, commons_information, commons_upload_url, drugbox, Compound,
-    License, StructureKind,
+    chembox, commons_file_name, commons_information, commons_upload_url, drugbox, figure_file_name,
+    Compound, License, StructureKind,
 };

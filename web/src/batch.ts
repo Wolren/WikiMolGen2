@@ -64,7 +64,12 @@ function useLook(looks: Look[]): void {
   state.look = looks[0] === undefined ? null : cloneLook(looks[0]);
 }
 
-/** Load one identifier into the viewer with its kind's look, and return the file name. */
+/**
+ * Load one identifier into the viewer with its kind's look, and return the archive name.
+ *
+ * The name is the generated one, never the typed one: every row of a batch needs its own
+ * entry, and a single typed name would collide across the archive.
+ */
 async function loadIntoViewer(
   viewer: Renderer,
   identifier: string,

@@ -147,10 +147,14 @@ pub fn scheme_color(scheme: String, symbol: String) -> String {
 /// The rule lives in Rust so the Commons block and the upload URL cannot disagree.
 #[wasm_bindgen(js_name = defaultLicense)]
 pub fn default_license(kind: String) -> Result<String, JsError> {
-    let kind: wikimolgen2_core::StructureKind = serde_json::from_str(&format!("\"{kind}\""))
-        .map_err(|error| JsError::new(&format!("unknown structure kind {kind:?}: {error}")))?;
-    let license = wikimolgen2_core::License::default_for(kind);
+    let license = wikimolgen2_core::License::default_for(structure_kind(&kind)?);
     Ok(license.id().to_string())
+}
+
+/// Parse a structure kind as the page spells it: `"two_d"`, `"three_d"` or `"protein"`.
+fn structure_kind(kind: &str) -> Result<wikimolgen2_core::StructureKind, JsError> {
+    serde_json::from_str(&format!("\"{kind}\""))
+        .map_err(|error| JsError::new(&format!("unknown structure kind {kind:?}: {error}")))
 }
 
 /// `{{Infobox drug}}` for a compound (JSON) and an image file name.
@@ -174,9 +178,22 @@ pub fn chembox_json(compound_json: String, image: String) -> Result<String, JsEr
 pub fn commons_file_name_json(compound_json: String, kind: String) -> Result<String, JsError> {
     let compound: wikimolgen2_core::Compound =
         serde_json::from_str(&compound_json).map_err(|error| JsError::new(&error.to_string()))?;
-    let kind = serde_json::from_str(&format!("\"{kind}\""))
-        .map_err(|error| JsError::new(&format!("unknown structure kind {kind:?}: {error}")))?;
-    Ok(wikimolgen2_core::commons_file_name(&compound, kind))
+    Ok(wikimolgen2_core::commons_file_name(&compound, structure_kind(&kind)?))
+}
+
+/// The name a figure is saved and uploaded as, taking an optional typed name.
+///
+/// `typed` is the file-name field: an empty or unusable string falls back to the generated
+/// name, and the extension always follows the kind, so a 2D figure ends in `.svg`.
+#[wasm_bindgen(js_name = figureFileName)]
+pub fn figure_file_name_json(
+    compound_json: String,
+    kind: String,
+    typed: String,
+) -> Result<String, JsError> {
+    let compound: wikimolgen2_core::Compound =
+        serde_json::from_str(&compound_json).map_err(|error| JsError::new(&error.to_string()))?;
+    Ok(wikimolgen2_core::figure_file_name(&compound, structure_kind(&kind)?, &typed))
 }
 
 /// The Commons `{{Information}}` block.
@@ -190,12 +207,14 @@ pub fn commons_information_json(
 ) -> Result<String, JsError> {
     let compound: wikimolgen2_core::Compound =
         serde_json::from_str(&compound_json).map_err(|error| JsError::new(&error.to_string()))?;
-    let kind = serde_json::from_str(&format!("\"{kind}\""))
-        .map_err(|error| JsError::new(&format!("unknown structure kind {kind:?}: {error}")))?;
     let license = serde_json::from_str(&format!("\"{license}\""))
         .map_err(|error| JsError::new(&format!("unknown license {license:?}: {error}")))?;
     Ok(wikimolgen2_core::commons_information(
-        &compound, kind, &author, license, &iso_date,
+        &compound,
+        structure_kind(&kind)?,
+        &author,
+        license,
+        &iso_date,
     ))
 }
 

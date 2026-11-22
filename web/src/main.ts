@@ -30,10 +30,12 @@ import {
   cloneLook,
   describe,
   dom,
+  exportName,
   figureName,
   isRendererFailed,
   setBusy,
   setStatus,
+  setTypedName,
   showStageError,
   state,
   structureKind,
@@ -635,6 +637,45 @@ dom.copyDrugbox.addEventListener("click", () => copyBlock(dom.outputDrugbox, "dr
 dom.copyChembox.addEventListener("click", () => copyBlock(dom.outputChembox, "chembox"));
 dom.copyCommons.addEventListener("click", () => copyBlock(dom.outputCommons, "Commons description"));
 
+/** Show the current name in the field, except while the user is typing in it. */
+function syncFileNameField(name: string | null): void {
+  dom.fileName.disabled = name === null;
+  dom.fileNameReset.disabled = name === null || name === figureName(structureKind());
+  if (name === null) {
+    dom.fileName.value = "";
+    return;
+  }
+  // The field owns the text while it has focus; rewriting it would move the caret.
+  if (document.activeElement !== dom.fileName) dom.fileName.value = name;
+}
+
+/** Settle the typed name, so the field shows what the markup and the download use. */
+function commitFileName(): void {
+  if (state.compound === null) return;
+  const name = exportName(structureKind());
+  setTypedName(name === figureName(structureKind()) ? "" : name);
+  dom.fileName.value = name;
+  refreshOutput();
+}
+
+dom.fileName.addEventListener("input", () => {
+  setTypedName(dom.fileName.value);
+  refreshOutput();
+});
+dom.fileName.addEventListener("blur", commitFileName);
+dom.fileName.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  dom.fileName.blur();
+});
+dom.fileNameReset.addEventListener("click", () => {
+  setTypedName("");
+  dom.fileName.value = figureName(structureKind());
+  refreshOutput();
+  dom.fileName.focus();
+  dom.fileName.select();
+});
+
 function refreshOutput(): void {
   // A protein has no drug or chem box; its Commons description is the useful output.
   const protein = state.protein !== null;
@@ -645,14 +686,14 @@ function refreshOutput(): void {
     dom.outputDrugbox.textContent = "Load a compound to generate markup.";
     dom.outputChembox.textContent = "";
     dom.outputCommons.textContent = "";
-    dom.fileName.textContent = "—";
+    syncFileNameField(null);
     dom.uploadCommons.hidden = true;
     return;
   }
 
   const kind = structureKind();
-  const fileName = figureName(kind);
-  dom.fileName.textContent = fileName;
+  const fileName = exportName(kind);
+  syncFileNameField(fileName);
 
   // The two infoboxes and the upload description sit together: a figure needs the file
   // description before the article gets the box that cites it.

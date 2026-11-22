@@ -9,7 +9,7 @@ import { composeFigure } from "../pkg/wikimolgen2_wasm.js";
 import {
   describe,
   dom,
-  figureName,
+  exportName,
   hexToBytes,
   setBusy,
   setStatus,
@@ -75,9 +75,8 @@ function exportSvg(): void {
     setStatus("Load a compound before downloading a 2D drawing.", true);
     return;
   }
-  const name = figureName("two_d");
+  const name = exportName("two_d");
   downloadSvg(name, state.depiction.svg);
-  dom.fileName.textContent = name;
   setStatus(`Saved ${name} (${depictionBytes(state.depiction.svg)} bytes).`);
 }
 
@@ -94,7 +93,7 @@ async function exportPng(): Promise<void> {
   if (viewer === null) return;
 
   const settings = readFigureSettings();
-  const name = state.compound === null ? "molecule-3D.png" : figureName(structureKind());
+  const name = state.compound === null ? "molecule-3D.png" : exportName(structureKind());
 
   setBusy(true, "Rendering…");
   dom.exportButton.disabled = true;
@@ -102,7 +101,6 @@ async function exportPng(): Promise<void> {
   try {
     const figure = await renderFigure(viewer, settings, name);
     downloadFigure(figure);
-    dom.fileName.textContent = figure.name;
     setStatus(
       `Saved ${figure.name} at ${figure.width}x${figure.height} px, ${figure.marginPercent}% margin, ` +
         `${figure.factor}x supersample` +

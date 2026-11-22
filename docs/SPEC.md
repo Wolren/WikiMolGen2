@@ -58,8 +58,8 @@ reach; a load then scrolls the figure into view.
 | Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields and an openFDA drug label, merged into the infobox and chembox fields. The page does not display them in a panel |
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects, including ATC, routes and legal status |
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
-| Commons | File name, `{{Information}}` plus licence block, pre-filled upload URL; the licence follows the structure kind |
-| Outputs | The drug infobox, the chembox and the Commons upload text sit stacked in one panel, in that order. Each box has a Copy action in its top-right corner; the Commons block carries the Upload to Commons link under its text; a protein shows the Commons text only |
+| Commons | An editable file name above the panel, then `{{Information}}` plus licence block and a pre-filled upload URL; the licence follows the structure kind. A typed name keeps only the characters Commons accepts and takes the kind's extension (`.svg` for 2D, `.png` otherwise), and Reset returns the generated name |
+| Outputs | The file-name field, then the drug infobox, the chembox and the Commons upload text stacked in one panel, in that order. Each box has a Copy action in its top-right corner; the Commons block carries the Upload to Commons link under its text; a protein shows the Commons text only |
 | Keyboard | `Ctrl+Enter` load, `2`/`3` view, `E` export, `F` frame, `+`/`-` zoom, `/` focus, `?` help |
 | Theme | System, six fixed palettes (Light, Paper, Contrast, Dark, Slate and Midnight) and saved custom themes. The picker previews every palette with a miniature of the page; a custom theme is built from five colours, derives the rest with 4.5:1 contrast floors, and is named. Themes can be duplicated, copied as a link, or exported and imported as JSON; open tabs follow storage changes. The choice persists and applies before the first paint, and System resolves to Contrast when the OS asks for more contrast. The stage follows the theme tint |
 | Accessibility | A reduced-motion rule stops the spinner and the transitions. The 3D host and the 2D SVG carry accessible names, the SVG carries a title, every control has a label, and the dialogs trap focus natively |
@@ -266,12 +266,14 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 
 ## Acceptance
 
-* `cargo test -p wikimolgen2_core` passes natively (57 tests at the time of writing).
+* `cargo test -p wikimolgen2_core` passes natively (62 tests at the time of writing).
 * `cd web; npm test` passes the 22 unit tests for colour maths, theme files and the
   network client.
 * `cargo build --target wasm32-unknown-unknown -p wikimolgen2_wasm` produces the module.
 * The page loads, accepts `aspirin`, shows a molecule, and all three outputs produce markup
   that parses as balanced templates.
+* A typed file name renames the infoboxes, the upload link and the download, and Reset
+  returns the generated name.
 * The field offers the shortlist on focus, finds aspirin and 1CRN by name, and a row click loads the entry.
 * Export at 1600 px writes a 1600 px wide PNG with 6 percent margins and no clipped atoms.
 * The 2D view draws a transparent RDKit SVG under 100 KB and downloads it. The monochrome
