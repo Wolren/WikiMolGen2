@@ -102,6 +102,8 @@ The renderer choice and its cost, including the missing WebGL2 fallback, are in 
 
 ## Licence
 
-WikiMolGen 2 is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE), the same licence as the original [WikiMolGen](https://github.com/Wolren/WikiMolGen).
+The source code is under the [PolyForm Noncommercial License 1.0.0](LICENSE), the same licence as the original [WikiMolGen](https://github.com/Wolren/WikiMolGen).
 
-The renderer, patinae, is BSD-3-Clause; its build is vendored unmodified under `web/public/vendor/patinae` with the licence beside it. RDKit is BSD-3-Clause; its build is vendored under `web/public/vendor/rdkit` with its licence and provenance note.
+That licence covers the software only. Figures, SVGs and wikitext you generate are yours to licence as you see fit. The Commons template defaults to CC BY-SA 4.0 for a 3D figure and PD-chem for a 2D drawing.
+
+The renderer, patinae, is BSD-3-Clause, Copyright (c) 2026, Pavel Yakovlev. RDKit is BSD-3-Clause, Copyright (c) 2006-2015, Rational Discovery LLC, Greg Landrum, and Julie Penzotti and others. The full texts are in [LICENSES](LICENSES/README.md) and beside each vendored build.
