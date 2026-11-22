@@ -493,7 +493,7 @@ const settingsPreset = await evaluate(
   session,
   `(() => {
      const select = document.getElementById('settings-preset');
-     select.value = 'wikipedia-3d';
+     select.value = 'wikipedia';
      select.dispatchEvent(new Event('change', { bubbles: true }));
      const stick = document.getElementById('stick-radius').value;
      const ambient = document.getElementById('ambient').value;
@@ -513,6 +513,27 @@ if (presetValues.ambient !== "0.3") failures.push(`the preset ambient is ${prese
 if (presetValues.quality !== "2") failures.push(`the preset quality is ${presetValues.quality}`);
 if (presetValues.after !== "custom") failures.push("a manual edit keeps the preset selected");
 console.log(`settings preset: ${settingsPreset}`);
+
+// 3a3. Save the current settings, then delete the saved entry.
+const savedPreset = await evaluate(
+  session,
+  `(() => {
+     const select = document.getElementById('settings-preset');
+     window.prompt = () => 'Test preset';
+     document.getElementById('preset-save').click();
+     const savedId = [...select.options].map((option) => option.value).find((value) => value.startsWith('saved-'));
+     const stored = JSON.parse(localStorage.getItem('wikimolgen2.settings-presets') ?? '[]').length;
+     document.getElementById('preset-delete').click();
+     const after = [...select.options].map((option) => option.value);
+     return JSON.stringify({ saved: savedId !== undefined, stored, deleted: !after.some((value) => value.startsWith('saved-')), state: select.value });
+   })()`,
+);
+const savedValues = JSON.parse(savedPreset);
+if (savedValues.saved !== true) failures.push("saving a preset adds no option");
+if (savedValues.stored !== 1) failures.push(`the saved preset store holds ${savedValues.stored}`);
+if (savedValues.deleted !== true) failures.push("deleting a preset leaves the option");
+if (savedValues.state !== "custom") failures.push("deleting a preset does not return to Custom");
+console.log(`saved preset: ${savedPreset}`);
 
 // 3b. The 2D view. The first open loads RDKit (7.39 MB) and draws an inline SVG. A
 //     protein has no flat record, so the mode button is disabled and there is nothing to

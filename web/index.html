@@ -270,8 +270,12 @@
           <summary><h2>Appearance</h2></summary>
 
           <label class="field-label" for="settings-preset">Preset</label>
-          <select id="settings-preset"></select>
-          <p id="settings-preset-note" class="hint">The classic WikiMolGen render presets.</p>
+          <div class="preset-row">
+            <select id="settings-preset"></select>
+            <button id="preset-save" type="button" class="secondary">Save…</button>
+            <button id="preset-delete" type="button" class="secondary" disabled>Delete</button>
+          </div>
+          <p id="settings-preset-note" class="hint">The original Wikipedia settings. Save the current ones as your own preset.</p>
 
           <h3 class="group-label">Shape</h3>
           <div class="control">

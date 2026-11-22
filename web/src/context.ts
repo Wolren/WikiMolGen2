@@ -123,6 +123,8 @@ export const dom = {
   projection: required<HTMLSelectElement>("projection"),
   frame: required<HTMLButtonElement>("frame"),
   settingsPreset: required<HTMLSelectElement>("settings-preset"),
+  presetSave: required<HTMLButtonElement>("preset-save"),
+  presetDelete: required<HTMLButtonElement>("preset-delete"),
   settingsPresetNote: required<HTMLParagraphElement>("settings-preset-note"),
   orientation: required<HTMLSelectElement>("orientation"),
   orientationCustom: required<HTMLElement>("orientation-custom"),

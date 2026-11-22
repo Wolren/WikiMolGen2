@@ -1,28 +1,60 @@
 /**
- * The classic WikiMolGen render presets, as appearance bundles.
+ * Render settings presets: the original Wikipedia settings plus the user's saved ones.
  *
- * Each preset names the fields it owns; the rest come from the look's own baseline, so a
- * preset never inherits a stray slider value from an earlier edit. The colour scheme is
- * not part of these: it is the separate colour preset.
+ * A preset owns the render knobs only. The colour scheme and the element inks belong to
+ * the separate colour presets, so the two groups combine without overwriting each other.
  */
 
 import type { Appearance } from "./renderer.js";
+
+/** The fields a settings preset captures, in the order the panel shows them. */
+export const SETTING_FIELDS = [
+  "stick_radius",
+  "sphere_scale",
+  "stick_transparency",
+  "sphere_transparency",
+  "cartoon_transparency",
+  "valence",
+  "stick_valence_scale",
+  "transparency_mode",
+  "ambient",
+  "direct",
+  "specular",
+  "reflect",
+  "shininess",
+  "shadows",
+  "shadow_intensity",
+  "ambient_occlusion",
+  "ao_strength",
+  "ao_radius",
+  "silhouettes",
+  "silhouette_width",
+  "depth_cue",
+  "fog",
+  "fog_start",
+  "antialias",
+] as const;
 
 export interface SettingsPreset {
   id: string;
   label: string;
   description: string;
-  /** The fields this preset sets; the look's baseline supplies the others. */
   appearance: Partial<Appearance>;
-  /** Export supersample matching the classic antialias level. */
   quality: number;
 }
 
-export const SETTINGS_PRESETS: SettingsPreset[] = [
+export interface SavedPreset extends SettingsPreset {
+  name: string;
+}
+
+const STORAGE_KEY = "wikimolgen2.settings-presets";
+
+/** The original WikiMolGen settings, which is the one built-in preset. */
+export const BUILTIN_PRESETS: SettingsPreset[] = [
   {
-    id: "wikipedia-3d",
-    label: "Wikipedia 3D",
-    description: "The classic Wikipedia render: ball and stick, soft light, 2x.",
+    id: "wikipedia",
+    label: "Wikipedia",
+    description: "The original Wikipedia render settings.",
     appearance: {
       stick_radius: 0.2,
       sphere_scale: 0.3,
@@ -37,34 +69,42 @@ export const SETTINGS_PRESETS: SettingsPreset[] = [
     },
     quality: 2,
   },
-  {
-    id: "high-quality-3d",
-    label: "High quality 3D",
-    description: "Smaller balls, soft shadows and a 4x supersample.",
-    appearance: {
-      stick_radius: 0.18,
-      sphere_scale: 0.28,
-      shadows: true,
-      antialias: true,
-    },
-    quality: 4,
-  },
-  {
-    id: "minimal-clean-3d",
-    label: "Minimal clean 3D",
-    description: "Thin sticks, small balls, flat light and a 2x supersample.",
-    appearance: {
-      stick_radius: 0.15,
-      sphere_scale: 0.2,
-      ambient: 0.4,
-      direct: 0.4,
-      specular: 0.5,
-      reflect: 0.3,
-      shininess: 20,
-      shadows: false,
-      depth_cue: false,
-      antialias: true,
-    },
-    quality: 2,
-  },
 ];
+
+/** A copy of the setting fields, ready to store or apply. */
+export function captureSettings(appearance: Appearance): Partial<Appearance> {
+  const patch: Record<string, unknown> = {};
+  for (const field of SETTING_FIELDS) patch[field] = appearance[field];
+  return patch as Partial<Appearance>;
+}
+
+/** Read the saved presets, ignoring anything that no longer has the right shape. */
+export function loadSavedPresets(): SavedPreset[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw === null) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((entry): entry is SavedPreset => {
+      if (typeof entry !== "object" || entry === null) return false;
+      const record = entry as Record<string, unknown>;
+      return (
+        typeof record.id === "string" &&
+        typeof record.name === "string" &&
+        typeof record.quality === "number" &&
+        typeof record.appearance === "object" &&
+        record.appearance !== null
+      );
+    });
+  } catch {
+    return [];
+  }
+}
+
+export function saveSavedPresets(presets: SavedPreset[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+  } catch {
+    // Storage can be full or blocked; the presets then last for this visit only.
+  }
+}

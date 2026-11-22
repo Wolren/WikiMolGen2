@@ -17,7 +17,13 @@ import {
 } from "./context.js";
 import type { Compound } from "./pubchem.js";
 import type { ElementColor } from "./renderer.js";
-import { SETTINGS_PRESETS } from "./presets.js";
+import {
+  BUILTIN_PRESETS,
+  captureSettings,
+  loadSavedPresets,
+  saveSavedPresets,
+} from "./presets.js";
+import type { SavedPreset } from "./presets.js";
 
 /** Apply appearance changes once per frame, not once per input event. */
 let applyScheduled = false;
@@ -25,6 +31,8 @@ let applyScheduled = false;
 let recolorScheduled = false;
 /** Scheme options already in the select, so a re-sync does not rebuild them. */
 let schemesRendered = 0;
+/** The user's saved presets, loaded once and rewritten on save or delete. */
+let savedPresets = loadSavedPresets();
 
 /**
  * The look with element inks resolved for the current structure.
@@ -150,30 +158,44 @@ export function syncAppearance(): void {
   syncOutputs();
 }
 
+function presetOption(value: string, text: string, title?: string): HTMLOptionElement {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = text;
+  if (title !== undefined) option.title = title;
+  return option;
+}
+
 function renderSettingsPresets(): void {
   dom.settingsPreset.replaceChildren(
-    Object.assign(document.createElement("option"), { value: "custom", textContent: "Custom" }),
-    ...SETTINGS_PRESETS.map((preset) =>
-      Object.assign(document.createElement("option"), {
-        value: preset.id,
-        textContent: preset.label,
-        title: preset.description,
-      }),
-    ),
+    presetOption("custom", "Custom"),
+    ...BUILTIN_PRESETS.map((preset) => presetOption(preset.id, preset.label, preset.description)),
+    ...savedPresets.map((preset) => presetOption(preset.id, preset.name, "Saved preset")),
   );
+  updatePresetButtons();
+}
+
+/** Enable Delete only when a saved preset is selected. */
+function updatePresetButtons(): void {
+  const saved = savedPresets.some((preset) => preset.id === dom.settingsPreset.value);
+  dom.presetDelete.disabled = !saved;
 }
 
 /** A control changed, so the settings preset no longer describes the appearance. */
 export function markSettingsCustom(): void {
   if (dom.settingsPreset.value !== "custom") dom.settingsPreset.value = "custom";
   dom.settingsPresetNote.textContent = "Custom appearance.";
+  updatePresetButtons();
 }
 
-/** Apply one classic render preset; the colour scheme stays the user's choice. */
+/** Apply one preset; the colour scheme stays the user's choice. */
 export function applySettingsPreset(id: string): void {
-  const preset = SETTINGS_PRESETS.find((entry) => entry.id === id);
+  const builtin = BUILTIN_PRESETS.find((entry) => entry.id === id);
+  const saved = savedPresets.find((entry) => entry.id === id);
   const look = state.look;
-  if (preset === undefined || look === null) return;
+  if (look === null) return;
+  const preset = builtin ?? saved;
+  if (preset === undefined) return;
   const base = state.looks.find((entry) => entry.id === look.id) ?? look;
   look.appearance = {
     ...base.appearance,
@@ -185,7 +207,42 @@ export function applySettingsPreset(id: string): void {
   syncAppearance();
   scheduleApply();
   dom.settingsPreset.value = preset.id;
-  dom.settingsPresetNote.textContent = preset.description;
+  dom.settingsPresetNote.textContent =
+    saved === undefined ? preset.description : `Saved preset: ${saved.name}.`;
+  updatePresetButtons();
+}
+
+/** Save the current settings under a name the user picks. */
+function saveCurrentPreset(): void {
+  const look = state.look;
+  if (look === null) return;
+  const name = window.prompt("Preset name", "My preset")?.trim();
+  if (name === undefined || name === "") return;
+  const saved: SavedPreset = {
+    id: `saved-${Date.now()}`,
+    name,
+    label: name,
+    description: "Saved preset.",
+    appearance: captureSettings(look.appearance),
+    quality: Number(dom.exportQuality.value),
+  };
+  savedPresets = [...savedPresets, saved];
+  saveSavedPresets(savedPresets);
+  renderSettingsPresets();
+  dom.settingsPreset.value = saved.id;
+  dom.settingsPresetNote.textContent = `Saved preset: ${name}.`;
+  updatePresetButtons();
+}
+
+/** Remove the selected saved preset; built-ins stay. */
+function deleteCurrentPreset(): void {
+  const id = dom.settingsPreset.value;
+  if (!id.startsWith("saved-")) return;
+  savedPresets = savedPresets.filter((preset) => preset.id !== id);
+  saveSavedPresets(savedPresets);
+  renderSettingsPresets();
+  dom.settingsPreset.value = "custom";
+  markSettingsCustom();
 }
 
 /** Copy the colour controls into the panel, including which ones are active. */
@@ -369,6 +426,8 @@ export function bindAppearance(): void {
     applySettingsPreset(dom.settingsPreset.value);
   });
   dom.exportQuality.addEventListener("change", markSettingsCustom);
+  dom.presetSave.addEventListener("click", saveCurrentPreset);
+  dom.presetDelete.addEventListener("click", deleteCurrentPreset);
 
   for (const input of [
     dom.stickRadius,

@@ -806,6 +806,29 @@ input[type="range"] {
   flex: 1;
 }
 
+/* The preset row is three inline controls, not stacked full-width buttons. */
+.preset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preset-row select {
+  flex: 1;
+  min-width: 0;
+}
+
+.preset-row button {
+  flex: none;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.preset-row button.secondary {
+  width: auto;
+  margin-top: 0;
+}
+
 /* Three angle fields share one row, so the custom preset stays compact. */
 .orientation-angles {
   display: grid;
