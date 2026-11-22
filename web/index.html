@@ -528,9 +528,17 @@
         <div class="theme-actions">
           <button id="theme-new" type="button" class="secondary">New custom theme</button>
           <button id="theme-edit" type="button" class="secondary" disabled>Edit</button>
+          <button id="theme-duplicate" type="button" class="secondary" disabled>Duplicate</button>
           <button id="theme-delete" type="button" class="secondary" disabled>Delete</button>
           <button id="theme-done" type="button" class="primary theme-done">Done</button>
         </div>
+        <div class="theme-tools">
+          <button id="theme-share" type="button" class="link-button" disabled>Copy link</button>
+          <button id="theme-export" type="button" class="link-button" disabled>Export file</button>
+          <button id="theme-import" type="button" class="link-button">Import file</button>
+          <input id="theme-file" type="file" accept="application/json,.json" hidden />
+        </div>
+        <p id="theme-note" class="hint theme-note" role="status" aria-live="polite"></p>
       </div>
 
       <form id="theme-editor" class="theme-editor" hidden>

@@ -16,15 +16,21 @@ import {
   customThemes,
   deleteCustomTheme,
   deriveTheme,
+  duplicateTheme,
   isCustomTheme,
   newCustomId,
   normaliseSeed,
   previewSeed,
   saveCustomTheme,
+  saveSharedTheme,
   seedsFromApplied,
   seedsFromBuiltin,
+  setThemePreviewing,
+  themeFileText,
+  themeFromFile,
   themeLabel,
   themeSeedWarnings,
+  themeShareUrl,
   type ThemeSeed,
   type ThemeTokens,
   type TokenKey,
@@ -39,9 +45,15 @@ const pickerView = required<HTMLElement>("theme-picker-view");
 const editor = required<HTMLFormElement>("theme-editor");
 const newButton = required<HTMLButtonElement>("theme-new");
 const editButton = required<HTMLButtonElement>("theme-edit");
+const duplicateButton = required<HTMLButtonElement>("theme-duplicate");
 const deleteButton = required<HTMLButtonElement>("theme-delete");
 const doneButton = required<HTMLButtonElement>("theme-done");
 const closeButton = required<HTMLButtonElement>("theme-close");
+const shareButton = required<HTMLButtonElement>("theme-share");
+const exportButton = required<HTMLButtonElement>("theme-export");
+const importButton = required<HTMLButtonElement>("theme-import");
+const fileInput = required<HTMLInputElement>("theme-file");
+const note = required<HTMLElement>("theme-note");
 const cancelButton = required<HTMLButtonElement>("theme-cancel");
 const nameInput = required<HTMLInputElement>("theme-custom-name");
 const baseSelect = required<HTMLSelectElement>("theme-base");
@@ -173,7 +185,10 @@ function renderPicker(): void {
 function updateActions(): void {
   const custom = isCustomTheme(currentChoice());
   editButton.disabled = !custom;
+  duplicateButton.disabled = !custom;
   deleteButton.disabled = !custom;
+  shareButton.disabled = !custom;
+  exportButton.disabled = !custom;
   if (!custom) {
     deleteArmed = null;
     deleteButton.textContent = "Delete";
@@ -183,6 +198,7 @@ function updateActions(): void {
 function select(value: string): void {
   deleteArmed = null;
   deleteButton.textContent = "Delete";
+  note.textContent = "";
   applyChoice(value);
   updateActions();
 }
@@ -237,6 +253,8 @@ function openEditor(mode: "new" | "edit"): void {
     nameInput.value = theme.name;
   }
   fillEditor(editing.seed);
+  setThemePreviewing(true);
+  note.textContent = "";
   pickerView.hidden = true;
   editor.hidden = false;
   nameInput.focus();
@@ -246,6 +264,7 @@ function openEditor(mode: "new" | "edit"): void {
 function closeEditor(): void {
   const restore = beforeEdit;
   editing = null;
+  setThemePreviewing(false);
   editor.hidden = true;
   pickerView.hidden = false;
   applyChoice(restore);
@@ -262,10 +281,12 @@ function saveEditor(event: SubmitEvent): void {
   }
   const saved = saveCustomTheme({ id: editing.id, name, seed: readSeed() });
   editing = null;
+  setThemePreviewing(false);
   editor.hidden = true;
   pickerView.hidden = false;
   applyChoice(saved.id);
   renderPicker();
+  note.textContent = `Saved ${saved.name}.`;
   grid.querySelector<HTMLInputElement>(`input[value="${saved.id}"]`)?.focus();
 }
 
@@ -282,15 +303,81 @@ function removeSelected(): void {
   deleteButton.textContent = "Delete";
   renderPicker();
   refreshButton();
+  note.textContent = "Deleted the theme.";
   grid.querySelector<HTMLInputElement>("input:checked")?.focus();
+}
+
+function selectedCustom(): { id: string; name: string; seed: ThemeSeed } | undefined {
+  return customThemes().find((theme) => theme.id === currentChoice());
+}
+
+function slug(value: string): string {
+  const text = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return text === "" ? "theme" : text;
+}
+
+function duplicateSelected(): void {
+  const copy = duplicateTheme(currentChoice());
+  if (copy === null) return;
+  applyChoice(copy.id);
+  renderPicker();
+  note.textContent = `Duplicated as “${copy.name}”.`;
+  grid.querySelector<HTMLInputElement>(`input[value="${copy.id}"]`)?.focus();
+}
+
+async function copySelectedLink(): Promise<void> {
+  const theme = selectedCustom();
+  if (theme === undefined) return;
+  const url = themeShareUrl(theme);
+  try {
+    await navigator.clipboard.writeText(url);
+    note.textContent = "Theme link copied.";
+    note.removeAttribute("title");
+  } catch {
+    note.textContent = url;
+    note.title = "Copy the link from here.";
+  }
+}
+
+function exportSelected(): void {
+  const theme = selectedCustom();
+  if (theme === undefined) return;
+  const blob = new Blob([themeFileText(theme)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${slug(theme.name)}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  note.textContent = `Exported ${theme.name}.`;
+}
+
+async function importFile(file: File): Promise<void> {
+  const text = await file.text().catch(() => "");
+  const shared = themeFromFile(text);
+  if (shared === null) {
+    note.textContent = "That file is not a WikiMolGen 2 theme.";
+    return;
+  }
+  const saved = saveSharedTheme(shared);
+  applyChoice(saved.id);
+  renderPicker();
+  note.textContent = `Added “${saved.name}”.`;
+  grid.querySelector<HTMLInputElement>(`input[value="${saved.id}"]`)?.focus();
 }
 
 function openDialog(): void {
   editing = null;
+  setThemePreviewing(false);
   editor.hidden = true;
   pickerView.hidden = false;
   deleteArmed = null;
   deleteButton.textContent = "Delete";
+  note.textContent = "";
+  note.removeAttribute("title");
   renderPicker();
   refreshButton();
   dialog.showModal();
@@ -304,6 +391,7 @@ function closeDialog(): void {
     editing = null;
     applyChoice(beforeEdit);
   }
+  setThemePreviewing(false);
   dialog.close();
 }
 
@@ -318,7 +406,16 @@ export function bindThemeDialog(): void {
   doneButton.addEventListener("click", closeDialog);
   newButton.addEventListener("click", () => openEditor("new"));
   editButton.addEventListener("click", () => openEditor("edit"));
+  duplicateButton.addEventListener("click", duplicateSelected);
   deleteButton.addEventListener("click", removeSelected);
+  shareButton.addEventListener("click", () => void copySelectedLink());
+  exportButton.addEventListener("click", exportSelected);
+  importButton.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    fileInput.value = "";
+    if (file !== undefined) void importFile(file);
+  });
   cancelButton.addEventListener("click", closeEditor);
   editor.addEventListener("submit", saveEditor);
 
@@ -338,6 +435,7 @@ export function bindThemeDialog(): void {
       editing = null;
       applyChoice(beforeEdit);
     }
+    setThemePreviewing(false);
     editor.hidden = true;
     pickerView.hidden = false;
     deleteArmed = null;
@@ -345,5 +443,13 @@ export function bindThemeDialog(): void {
     renderPicker();
   });
 
-  document.addEventListener("themechange", refreshButton);
+  document.addEventListener("themechange", (event) => {
+    refreshButton();
+    const remote = (event as CustomEvent<{ remote?: boolean }>).detail?.remote === true;
+    if (remote && editing === null && dialog.open) {
+      const hadFocus = grid.contains(document.activeElement);
+      renderPicker();
+      if (hadFocus) grid.querySelector<HTMLInputElement>("input:checked")?.focus();
+    }
+  });
 }

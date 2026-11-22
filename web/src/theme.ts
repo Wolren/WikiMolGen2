@@ -43,6 +43,12 @@ export interface CustomTheme {
   seed: ThemeSeed;
 }
 
+/** A theme carried in a link or a file: the name and the five seed colours. */
+export interface SharedTheme {
+  name: string;
+  seed: ThemeSeed;
+}
+
 /** The CSS custom properties a theme sets, in the token order the panel shows. */
 export const TOKEN_VARIABLES = {
   ink: "--ink",
@@ -126,6 +132,8 @@ const CHOICE_KEY = "wikimolgen2.theme";
 const MODE_KEY = "wikimolgen2.theme-mode";
 const CUSTOM_KEY = "wikimolgen2.custom-themes";
 const VARS_KEY = "wikimolgen2.theme-vars";
+const SHARED_PARAM = "theme";
+const MAX_CUSTOM_THEMES = 40;
 
 const DEFAULT_SEED: ThemeSeed = {
   mode: "light",
@@ -137,9 +145,17 @@ const DEFAULT_SEED: ThemeSeed = {
 };
 
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+const systemContrast = window.matchMedia("(prefers-contrast: more)");
 
 let activeChoice = "system";
 let customCache: CustomTheme[] | null = null;
+let previewing = false;
+let storageTimer = 0;
+
+/** Stop a cross-tab update from replacing an unsaved editor preview. */
+export function setThemePreviewing(value: boolean): void {
+  previewing = value;
+}
 
 function colour(value: string, fallback: string): string {
   const parsed = parseColour(value);
@@ -243,8 +259,15 @@ function paintBuiltin(id: string, mode: ThemeMode): void {
   root.dataset.scheme = mode;
 }
 
-function announce(choice: string, mode: ThemeMode): void {
-  document.dispatchEvent(new CustomEvent("themechange", { detail: { choice, mode } }));
+function systemPalette(): { id: string; mode: ThemeMode } {
+  if (systemContrast.matches) return { id: "contrast", mode: "light" };
+  return systemDark.matches ? { id: "dark", mode: "dark" } : { id: "light", mode: "light" };
+}
+
+function announce(choice: string, mode: ThemeMode, remote = false): void {
+  document.dispatchEvent(
+    new CustomEvent("themechange", { detail: { choice, mode, remote } }),
+  );
 }
 
 function readName(value: unknown): string {
@@ -326,8 +349,17 @@ export function saveCustomTheme(record: CustomTheme): CustomTheme {
     seed: normaliseSeed(record.seed),
   };
   const index = list.findIndex((theme) => theme.id === clean.id);
-  if (index === -1) list.push(clean);
-  else list[index] = clean;
+  if (index === -1) {
+    // The store is small; a linked theme must not push it past the quota.
+    while (list.length >= MAX_CUSTOM_THEMES) {
+      const oldest = list.find((theme) => theme.id !== activeChoice) ?? list[0];
+      if (oldest === undefined) break;
+      list.splice(list.indexOf(oldest), 1);
+    }
+    list.push(clean);
+  } else {
+    list[index] = clean;
+  }
   persistCustoms();
   return clean;
 }
@@ -340,8 +372,162 @@ export function deleteCustomTheme(id: string): void {
   else announce(activeChoice, currentMode());
 }
 
+function sameSeed(left: ThemeSeed, right: ThemeSeed): boolean {
+  const first = normaliseSeed(left);
+  const second = normaliseSeed(right);
+  return (
+    first.accent === second.accent &&
+    first.page === second.page &&
+    first.panel === second.panel &&
+    first.text === second.text &&
+    first.stage === second.stage
+  );
+}
+
+function findShared(shared: SharedTheme): CustomTheme | undefined {
+  return customThemes().find(
+    (theme) => theme.name === shared.name && sameSeed(theme.seed, shared.seed),
+  );
+}
+
+interface ThemePayload {
+  v: 1;
+  name: string;
+  seed: {
+    accent: string;
+    page: string;
+    panel: string;
+    text: string;
+    stage: string;
+  };
+}
+
+function payloadOf(theme: { name: string; seed: ThemeSeed }): ThemePayload {
+  const seed = normaliseSeed(theme.seed);
+  return {
+    v: 1,
+    name: readName(theme.name),
+    seed: {
+      accent: seed.accent,
+      page: seed.page,
+      panel: seed.panel,
+      text: seed.text,
+      stage: seed.stage,
+    },
+  };
+}
+
+function sharedFromValue(value: unknown): SharedTheme | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  const seed = readSeed(record.seed);
+  if (seed === null) return null;
+  return { name: readName(record.name), seed };
+}
+
+/** A URL-safe token for a theme. */
+export function encodeTheme(theme: { name: string; seed: ThemeSeed }): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(payloadOf(theme)));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** Read a token from a link; `null` for a token this version does not know. */
+export function decodeSharedTheme(token: string): SharedTheme | null {
+  try {
+    const base64 = token.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const record = parsed as Record<string, unknown>;
+    return record.v === 1 ? sharedFromValue(record) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The JSON file a user can keep or send. */
+export function themeFileText(theme: { name: string; seed: ThemeSeed }): string {
+  const payload = payloadOf(theme);
+  const file = {
+    kind: "wikimolgen2-theme",
+    version: 1,
+    name: payload.name,
+    seed: payload.seed,
+  };
+  return `${JSON.stringify(file, null, 2)}\n`;
+}
+
+export function themeFromFile(text: string): SharedTheme | null {
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const record = parsed as Record<string, unknown>;
+    if (record.kind !== "wikimolgen2-theme" || record.version !== 1) return null;
+    return sharedFromValue(record);
+  } catch {
+    return null;
+  }
+}
+
+/** Save an imported or linked theme, or return the identical one already saved. */
+export function saveSharedTheme(shared: SharedTheme): CustomTheme {
+  const existing = findShared(shared);
+  if (existing !== undefined) return existing;
+  return saveCustomTheme({ id: newCustomId(), name: shared.name, seed: shared.seed });
+}
+
+/** Copy a saved theme under a new name; the palette is unchanged. */
+export function duplicateTheme(id: string): CustomTheme | null {
+  const source = findCustom(id);
+  if (source === undefined) return null;
+  const name = `${source.name} copy`.slice(0, 40);
+  return saveCustomTheme({ id: newCustomId(), name, seed: source.seed });
+}
+
+/** A link that adds the theme and selects it when opened. */
+export function themeShareUrl(theme: { name: string; seed: ThemeSeed }): string {
+  const url = new URL(location.href);
+  url.searchParams.set(SHARED_PARAM, encodeTheme(theme));
+  return url.toString();
+}
+
+function sharedThemeFromUrl(): SharedTheme | null {
+  try {
+    const token = new URL(location.href).searchParams.get(SHARED_PARAM);
+    return token === null || token === "" ? null : decodeSharedTheme(token);
+  } catch {
+    return null;
+  }
+}
+
+function consumeSharedParam(): void {
+  try {
+    const url = new URL(location.href);
+    if (!url.searchParams.has(SHARED_PARAM)) return;
+    url.searchParams.delete(SHARED_PARAM);
+    history.replaceState(null, "", url);
+  } catch {
+    // A blocked history API only leaves the parameter in the address.
+  }
+}
+
+function syncFromStorage(): void {
+  if (previewing) return;
+  customCache = null;
+  applyChoice(readStoredChoice(), { remote: true });
+}
+
+interface ApplyOptions {
+  /** A cross-tab update; the picker re-renders instead of keeping focus. */
+  remote?: boolean;
+}
+
 /** Apply a choice and persist it, falling back to System for an unknown id. */
-export function applyChoice(choice: string): void {
+export function applyChoice(choice: string, options: ApplyOptions = {}): void {
   const custom = findCustom(choice);
   const builtin = BUILTIN_THEMES.find((theme) => theme.id === choice);
   let effective = choice;
@@ -353,8 +539,9 @@ export function applyChoice(choice: string): void {
     store(VARS_KEY, JSON.stringify({ id: custom.id, mode: tokens.mode, vars }));
     mode = tokens.mode;
   } else if (choice === "system" || builtin === undefined) {
-    mode = systemDark.matches ? "dark" : "light";
-    paintBuiltin(mode, mode);
+    const system = systemPalette();
+    mode = system.mode;
+    paintBuiltin(system.id, mode);
     effective = "system";
     store(VARS_KEY, null);
   } else {
@@ -366,7 +553,7 @@ export function applyChoice(choice: string): void {
   activeChoice = effective;
   store(CHOICE_KEY, effective);
   store(MODE_KEY, mode);
-  announce(effective, mode);
+  announce(effective, mode, options.remote === true);
 }
 
 /** Show a theme being edited without saving it or changing the stored choice. */
@@ -484,7 +671,24 @@ export function stageTint(): string {
 /** Apply the stored choice, then follow the OS while System is chosen. */
 export function bindTheme(): void {
   applyChoice(readStoredChoice());
+
+  const shared = sharedThemeFromUrl();
+  if (shared !== null) {
+    const saved = saveSharedTheme(shared);
+    applyChoice(saved.id);
+    consumeSharedParam();
+  }
+
   systemDark.addEventListener("change", () => {
     if (activeChoice === "system") applyChoice("system");
+  });
+  systemContrast.addEventListener("change", () => {
+    if (activeChoice === "system") applyChoice("system");
+  });
+  // A theme changed in another tab wins here, unless this tab is mid-edit.
+  window.addEventListener("storage", (event) => {
+    if (event.key !== CHOICE_KEY && event.key !== CUSTOM_KEY) return;
+    window.clearTimeout(storageTimer);
+    storageTimer = window.setTimeout(syncFromStorage, 0);
   });
 }
