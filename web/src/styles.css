@@ -168,9 +168,18 @@ body {
 }
 
 .topbar-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--muted);
   font-size: 12px;
   text-decoration: none;
+}
+
+.topbar-icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
 }
 
 .topbar-links a:hover {
