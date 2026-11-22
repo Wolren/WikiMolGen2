@@ -332,6 +332,27 @@ for (const expected of [
   if (!links.some(([, href]) => href === expected)) failures.push(`no ${expected} link in the top bar`);
 }
 
+// A closed dialog must not paint; its flex layout otherwise keeps the buttons on the page.
+const closedDialog = JSON.parse(
+  await evaluate(
+    session,
+    `JSON.stringify((() => {
+       const dialog = document.getElementById('theme-dialog');
+       const rect = dialog.getBoundingClientRect();
+       return {
+         open: dialog.open,
+         display: getComputedStyle(dialog).display,
+         width: Math.round(rect.width),
+         height: Math.round(rect.height),
+       };
+     })())`,
+  ),
+);
+console.log(`theme dialog closed: ${JSON.stringify(closedDialog)}`);
+if (closedDialog.open || closedDialog.display !== "none" || closedDialog.width > 0) {
+  failures.push("the closed theme dialog is still in the page");
+}
+
 // The built page carries a web manifest and installs an offline shell.
 const manifestLink = await evaluate(
   session,

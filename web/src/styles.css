@@ -1020,7 +1020,6 @@ input[type="range"] {
 /* Theme dialog ------------------------------------------------------------------- */
 
 .theme-dialog {
-  display: flex;
   flex-direction: column;
   width: min(660px, calc(100vw - 32px));
   max-height: min(780px, 90vh);
@@ -1031,6 +1030,10 @@ input[type="range"] {
   background: var(--surface);
   color: var(--ink);
   box-shadow: var(--shadow-2);
+}
+
+.theme-dialog[open] {
+  display: flex;
 }
 
 .theme-dialog::backdrop {
