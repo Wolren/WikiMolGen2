@@ -111,6 +111,9 @@ export interface RdkitDrawOptions {
   explicitMethyl?: boolean;
   comic?: boolean;
   legend?: string;
+  highlightAtoms?: string;
+  highlightBonds?: string;
+  highlightColor?: string;
 }
 
 /**
@@ -175,5 +178,24 @@ export async function depictWithRdkit(
   if (options.comic === true) details.comicMode = true;
   const legend = (options.legend ?? "").trim();
   if (legend !== "") details.legend = legend;
+  // MinimalLib takes the indices as arrays and one shared highlight ink, not colour maps.
+  const atoms = parseIndices(options.highlightAtoms);
+  const bonds = parseIndices(options.highlightBonds);
+  const highlight = rgbTriple(options.highlightColor ?? "");
+  if (highlight !== null && (atoms.length > 0 || bonds.length > 0)) {
+    details.highlightColour = highlight;
+    if (atoms.length > 0) details.atoms = atoms;
+    if (bonds.length > 0) details.bonds = bonds;
+  }
   return mol.get_svg_with_highlights(JSON.stringify(details));
+}
+
+/** Indices from a comma or space separated list; anything else is ignored. */
+function parseIndices(text: string | undefined): number[] {
+  if (text === undefined) return [];
+  return text
+    .split(/[\s,;]+/)
+    .filter((part) => part !== "")
+    .map(Number)
+    .filter((value) => Number.isInteger(value) && value >= 0);
 }

@@ -78,6 +78,12 @@ export interface DepictionSettings {
   comic: boolean;
   /** A line of text under the drawing; empty for none. */
   legend: string;
+  /** Atom indices to highlight, as typed; empty for none. */
+  highlightAtoms: string;
+  /** Bond indices to highlight, as typed; empty for none. */
+  highlightBonds: string;
+  /** The highlight ink, `#rrggbb`. */
+  highlightColor: string;
 }
 
 export const dom = {
@@ -198,6 +204,9 @@ export const dom = {
   depictionExplicitMethyl: required<HTMLInputElement>("depiction-explicit-methyl"),
   depictionComic: required<HTMLInputElement>("depiction-comic"),
   depictionLegend: required<HTMLInputElement>("depiction-legend"),
+  depictionHighlightAtoms: required<HTMLInputElement>("depiction-highlight-atoms"),
+  depictionHighlightBonds: required<HTMLInputElement>("depiction-highlight-bonds"),
+  depictionHighlightColor: required<HTMLInputElement>("depiction-highlight-color"),
   mode3d: required<HTMLButtonElement>("mode-3d"),
   mode2d: required<HTMLButtonElement>("mode-2d"),
   stageNote: required<HTMLElement>("stage-note"),
@@ -284,6 +293,9 @@ export const state: AppState = {
     explicitMethyl: false,
     comic: false,
     legend: "",
+    highlightAtoms: "",
+    highlightBonds: "",
+    highlightColor: "#ff8888",
   },
   protein: null,
   orientation: { preset: "free", x: 10, y: 20, z: 0 },

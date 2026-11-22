@@ -32,6 +32,9 @@ export const DEFAULT_DEPICTION_SETTINGS: DepictionSettings = {
   explicitMethyl: false,
   comic: false,
   legend: "",
+  highlightAtoms: "",
+  highlightBonds: "",
+  highlightColor: "#ff8888",
 };
 
 export type DepictionEngine = "rdkit" | "rust";
@@ -76,6 +79,9 @@ export function loadDepictionSettings(): DepictionSettings {
       explicitMethyl: on("explicitMethyl"),
       comic: on("comic"),
       legend: typeof record.legend === "string" ? record.legend.slice(0, MAX_LEGEND) : "",
+      highlightAtoms: typeof record.highlightAtoms === "string" ? record.highlightAtoms : "",
+      highlightBonds: typeof record.highlightBonds === "string" ? record.highlightBonds : "",
+      highlightColor: typeof record.highlightColor === "string" ? record.highlightColor : "#ff8888",
     };
   } catch {
     // A blocked store or bad JSON only means the defaults for this visit.
@@ -104,6 +110,9 @@ function readControls(): DepictionSettings {
     explicitMethyl: dom.depictionExplicitMethyl.checked,
     comic: dom.depictionComic.checked,
     legend: dom.depictionLegend.value.slice(0, MAX_LEGEND),
+    highlightAtoms: dom.depictionHighlightAtoms.value,
+    highlightBonds: dom.depictionHighlightBonds.value,
+    highlightColor: dom.depictionHighlightColor.value,
   };
 }
 
@@ -128,6 +137,9 @@ export function syncDepictionControls(): void {
   dom.depictionExplicitMethyl.checked = settings.explicitMethyl;
   dom.depictionComic.checked = settings.comic;
   dom.depictionLegend.value = settings.legend;
+  dom.depictionHighlightAtoms.value = settings.highlightAtoms;
+  dom.depictionHighlightBonds.value = settings.highlightBonds;
+  dom.depictionHighlightColor.value = settings.highlightColor;
   syncOutputs();
 }
 
@@ -157,6 +169,9 @@ export function bindDepictionControls(onChange: () => void): void {
     dom.depictionExplicitMethyl,
     dom.depictionComic,
     dom.depictionLegend,
+    dom.depictionHighlightAtoms,
+    dom.depictionHighlightBonds,
+    dom.depictionHighlightColor,
   ]) {
     input.addEventListener("input", apply);
   }
@@ -205,6 +220,9 @@ export async function buildDepiction(
         explicitMethyl: settings.explicitMethyl,
         comic: settings.comic,
         legend: settings.legend,
+        highlightAtoms: settings.highlightAtoms,
+        highlightBonds: settings.highlightBonds,
+        highlightColor: settings.highlightColor,
       });
       return { depiction: { svg: withTitle(svg, title), engine: "rdkit" }, error: null };
     } catch (error) {

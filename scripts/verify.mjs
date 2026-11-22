@@ -937,6 +937,60 @@ if (isProtein) {
   );
   await new Promise((done) => setTimeout(done, 300));
 
+  // A highlight reaches the drawing: atom indices first, then bond indices.
+  await evaluate(
+    session,
+    `(() => {
+       const atoms = document.getElementById('depiction-highlight-atoms');
+       atoms.value = '0,1';
+       atoms.dispatchEvent(new Event('input', { bubbles: true }));
+       const colour = document.getElementById('depiction-highlight-color');
+       colour.value = '#00ff00';
+       colour.dispatchEvent(new Event('input', { bubbles: true }));
+       return true;
+     })()`,
+  );
+  const atomHighlight = await poll(async () => {
+    const svg = await evaluate(session, "document.querySelector('#depiction svg')?.outerHTML ?? ''");
+    return svg !== baseDrawing.svg && /#00ff00/i.test(svg) ? svg : null;
+  }, 20_000);
+  if (atomHighlight === null) failures.push("an atom highlight does not reach the drawing");
+
+  await evaluate(
+    session,
+    `(() => {
+       const atoms = document.getElementById('depiction-highlight-atoms');
+       atoms.value = '';
+       atoms.dispatchEvent(new Event('input', { bubbles: true }));
+       const bonds = document.getElementById('depiction-highlight-bonds');
+       bonds.value = '0,1,2';
+       bonds.dispatchEvent(new Event('input', { bubbles: true }));
+       const colour = document.getElementById('depiction-highlight-color');
+       colour.value = '#0000ff';
+       colour.dispatchEvent(new Event('input', { bubbles: true }));
+       return true;
+     })()`,
+  );
+  const bondHighlight = await poll(async () => {
+    const svg = await evaluate(session, "document.querySelector('#depiction svg')?.outerHTML ?? ''");
+    return /#0000ff/i.test(svg) ? svg : null;
+  }, 20_000);
+  if (bondHighlight === null) failures.push("a bond highlight does not reach the drawing");
+  console.log(
+    `2d highlights: atoms ${atomHighlight !== null}, bonds ${bondHighlight !== null}`,
+  );
+
+  await evaluate(
+    session,
+    `(() => {
+       const bonds = document.getElementById('depiction-highlight-bonds');
+       bonds.value = '';
+       bonds.dispatchEvent(new Event('input', { bubbles: true }));
+       return true;
+     })()`,
+  );
+  await new Promise((done) => setTimeout(done, 300));
+
   await evaluate(session, "document.getElementById('mode-3d').click(), true");
   await new Promise((done) => setTimeout(done, 300));
   const colourShown = await evaluate(
