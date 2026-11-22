@@ -323,7 +323,7 @@ const links = JSON.parse(
 );
 console.log(`topbar links: ${links.map(([label, href]) => `${label} -> ${href}`).join(", ")}`);
 for (const expected of [
-  "https://github.com/Wolren/wikimolgen2",
+  "https://github.com/Wolren/WikiMolGen2",
   "https://github.com/Wolren/WikiMolGen",
 ]) {
   if (!links.some(([, href]) => href === expected)) failures.push(`no ${expected} link in the top bar`);

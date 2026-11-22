@@ -64,7 +64,7 @@ The tests that need no browser:
 cargo test -p wikimolgen2_core
 ```
 
-CI runs those tests, builds the wasm bundle and runs the Vite build on every push and pull request: [.github/workflows/ci.yml](.github/workflows/ci.yml).
+CI runs those tests, builds the wasm bundle and runs the Vite build on every push and pull request: [.github/workflows/ci.yml](.github/workflows/ci.yml). A push to `patinae-rewrite` also deploys the site to GitHub Pages at <https://wolren.github.io/WikiMolGen2/>.
 
 The browser check serves `web/dist`, drives the page's own controls, asserts the markup and exports a PNG:
 

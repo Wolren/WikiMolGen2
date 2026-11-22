@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  // Relative assets work at the site root and under the GitHub Pages project path.
+  base: "./",
   server: {
     // The vendored wasm is a large, locked binary. HMR does not need to watch it.
     watch: {
