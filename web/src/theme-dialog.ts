@@ -52,6 +52,7 @@ const closeButton = required<HTMLButtonElement>("theme-close");
 const shareButton = required<HTMLButtonElement>("theme-share");
 const exportButton = required<HTMLButtonElement>("theme-export");
 const importButton = required<HTMLButtonElement>("theme-import");
+const shareTools = required<HTMLElement>("theme-share-tools");
 const fileInput = required<HTMLInputElement>("theme-file");
 const note = required<HTMLElement>("theme-note");
 const cancelButton = required<HTMLButtonElement>("theme-cancel");
@@ -189,6 +190,8 @@ function updateActions(): void {
   deleteButton.disabled = !custom;
   shareButton.disabled = !custom;
   exportButton.disabled = !custom;
+  // Sharing belongs to a saved theme; a built-in has no seed to share.
+  shareTools.hidden = !custom;
   if (!custom) {
     deleteArmed = null;
     deleteButton.textContent = "Delete";
