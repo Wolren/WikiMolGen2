@@ -34,7 +34,7 @@ What it offers:
   figure toolbar. PNG at any width from 400 to 8192 px, with presets at 1200, 1600, 2000,
   3000, 4096, 6000 and 8192. A batch export takes one identifier per line and returns one
   ZIP with a figure per item, using the same look and settings. Orientation presets
-  normalise the view: wiki (10°, 20°), front, side and top, plus custom angles. The default is 3x supersampling, with 2x and 4x selectable. The background
+  normalise the view: wiki (10°, 20°), front, side and top, plus custom angles. The default is 4x supersampling, with 2x, 3x and 6x selectable. The background
   is transparent by default, and an optional colour or gradient is one click away. Atom
   labels and a scale bar are available.
 * **Metadata for the markup.** Wikidata identifiers and ATC codes, Wikipedia clinical

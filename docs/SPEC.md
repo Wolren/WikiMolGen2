@@ -51,7 +51,7 @@ reach; a load then scrolls the figure into view.
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, full screen, and keyboard shortcuts |
 | Links | A lookup is written to `?q=` and read back on boot, so a figure can be shared or reloaded |
 | Batch export | A dialog takes one identifier per line, renders each item with the current look and export settings, and packs the figures into one store-only ZIP. A failed row is recorded and the run continues | The batch export dialog, its ZIP and its progress rows |
-| Export | The download button sits in the figure toolbar. PNG at any width from 400 to 8192 px; a 4 to 9 percent margin; 3x supersampling by default, lowered automatically when the render budget needs it; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
+| Export | The download button sits in the figure toolbar. PNG at any width from 400 to 8192 px; a 4 to 9 percent margin; 4x supersampling by default, lowered automatically when the render budget needs it; optional atom labels and scale bar; transparent by default, with an optional background and export gradient |
 | Lookup | A combobox on the identifier field. A local index of 58 compounds and 13 proteins answers at once; PubChem autocomplete and RCSB full-text search add live results. A row fills the field and loads it; arrows, Enter and Escape work |
 | Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields and an openFDA drug label, merged into the infobox and chembox fields. The page does not display them in a panel |
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects, including ATC, routes and legal status |
@@ -74,7 +74,7 @@ reach; a load then scrolls the figure into view.
 | Live background gradient | The canvas surface is opaque, so a CSS gradient cannot show through | Renderer support for a gradient clear, or an accept of the export-only option |
 | True alpha in the live view | The patinae surface is opaque. The stage paints the theme tint instead | Renderer support for an alpha surface, or an accept of the tint |
 | Export edges above 8192 px | The renderer exports one view at a time; 8000x6963 completes at 1x, while 8000x10884 exceeded the 60 MP budget. The GPU reports 16384 | A tiled export, or an export offset in patinae |
-| Supersampling above 4x | The quality select stops at 4x; the 8192 edge cap limits it further at large widths | A tiled export, or a lower-level renderer option |
+| Supersampling above 6x | The quality select stops at 6x; the 8192 edge cap limits it further at large widths | A tiled export, or a lower-level renderer option |
 | Direct DailyMed reads | The DailyMed service sends no CORS header, so the browser cannot read it | A proxy, or an upstream CORS header; openFDA serves the same SPL labels today |
 | Protein 2D or sequence view | A cartoon is the useful figure for an article | A sequence panel and a depiction path |
 | Element labels in 3D by symbol | The renderer's label expression has no element field; atom names are the substitute | A renderer label expression, or browser-side projection |
@@ -148,7 +148,7 @@ inks at all, because the mode command has already painted the atoms.
 The app passes `[0, 0, 0, 0]` by default, so the PNG margin is transparent. The background
 or gradient applies when Transparent is off.
 
-The page renders at 2x, 3x or 4x the output width, then composes at the exact width. A
+The page renders at 2x, 3x, 4x or 6x the output width, then composes at the exact width. A
 large width lowers the factor so no render edge exceeds 8192 px, the export limit on this
 build.
 
