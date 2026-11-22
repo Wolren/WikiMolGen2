@@ -423,6 +423,16 @@ if (popular < 5) {
   );
   failures.push(`the empty field offers ${popular} suggestions; ${diag}`);
 }
+const aspirinHint = await evaluate(
+  session,
+  `(() => {
+     const row = [...document.querySelectorAll('#suggestions button.suggestion')]
+       .find((node) => node.querySelector('.suggestion-label')?.textContent === 'Aspirin');
+     return row?.querySelector('.suggestion-hint')?.textContent ?? '';
+   })()`,
+);
+console.log(`aspirin hint: ${aspirinHint}`);
+if (aspirinHint !== "CID 2244") failures.push(`the aspirin hint is "${aspirinHint}", not "CID 2244"`);
 await evaluate(
   session,
   `(() => {

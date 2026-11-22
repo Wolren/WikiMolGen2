@@ -23,7 +23,7 @@ interface Suggestion {
   label: string;
   /** What the field receives when the row is chosen. */
   value: string;
-  /** The right-hand hint: a code, a formula, or the service that answered. */
+  /** The right-hand hint: a code or the service that answered. */
   hint: string;
   /** The entry's kind, for the ARIA label. */
   kind: "compound" | "protein";
@@ -114,7 +114,7 @@ function render(): void {
 /** A local entry as a suggestion: compounds load by name, proteins by PDB ID. */
 function fromLocal(entry: CatalogueEntry): Suggestion {
   const code = entry.kind === "compound" ? `CID ${entry.id}` : `PDB ${entry.id}`;
-  const detail = entry.kind === "compound" ? entry.formula : entry.note;
+  const detail = entry.kind === "compound" ? undefined : entry.note;
   return {
     label: entry.label,
     value: entry.kind === "compound" ? entry.label : entry.id,
