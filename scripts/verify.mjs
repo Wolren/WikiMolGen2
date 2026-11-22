@@ -1120,7 +1120,9 @@ if (rows === null) {
   const states = await evaluate(
     session,
     `JSON.stringify({
-       rows: [...document.querySelectorAll('#batch-list .batch-row')].map((row) => row.dataset.state),
+       rows: [...document.querySelectorAll('#batch-list .batch-row')].map((row) => {
+         return { state: row.dataset.state, text: row.querySelector('.batch-state')?.textContent };
+       }),
        status: document.getElementById('export-status')?.textContent,
        input: document.getElementById('batch-input')?.value,
        open: document.getElementById('batch')?.open,

@@ -158,6 +158,7 @@ async function runBatch(callbacks: BatchCallbacks): Promise<void> {
     setRow(rows[index], "rendering", "rendering…");
     try {
       const name = await loadIntoViewer(viewer, identifier);
+      setRow(rows[index], "rendering", "drawing…");
       const figure = await renderFigure(viewer, settings, uniqueName(name, used));
       zip.add(figure.name, figure.bytes);
       setRow(rows[index], "done", `${figure.width}x${figure.height} px`);
@@ -165,6 +166,8 @@ async function runBatch(callbacks: BatchCallbacks): Promise<void> {
     } catch (error) {
       setRow(rows[index], "failed", describe(error));
     }
+    // A short pause lets the offscreen readback settle before the next load.
+    await new Promise((done) => setTimeout(done, 200));
   }
 
   if (zip.size > 0) {
