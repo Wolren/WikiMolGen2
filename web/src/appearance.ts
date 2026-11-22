@@ -17,6 +17,7 @@ import {
 } from "./context.js";
 import type { Compound } from "./pubchem.js";
 import type { ElementColor } from "./renderer.js";
+import { SETTINGS_PRESETS } from "./presets.js";
 
 /** Apply appearance changes once per frame, not once per input event. */
 let applyScheduled = false;
@@ -149,6 +150,44 @@ export function syncAppearance(): void {
   syncOutputs();
 }
 
+function renderSettingsPresets(): void {
+  dom.settingsPreset.replaceChildren(
+    Object.assign(document.createElement("option"), { value: "custom", textContent: "Custom" }),
+    ...SETTINGS_PRESETS.map((preset) =>
+      Object.assign(document.createElement("option"), {
+        value: preset.id,
+        textContent: preset.label,
+        title: preset.description,
+      }),
+    ),
+  );
+}
+
+/** A control changed, so the settings preset no longer describes the appearance. */
+export function markSettingsCustom(): void {
+  if (dom.settingsPreset.value !== "custom") dom.settingsPreset.value = "custom";
+  dom.settingsPresetNote.textContent = "Custom appearance.";
+}
+
+/** Apply one classic render preset; the colour scheme stays the user's choice. */
+export function applySettingsPreset(id: string): void {
+  const preset = SETTINGS_PRESETS.find((entry) => entry.id === id);
+  const look = state.look;
+  if (preset === undefined || look === null) return;
+  const base = state.looks.find((entry) => entry.id === look.id) ?? look;
+  look.appearance = {
+    ...base.appearance,
+    ...preset.appearance,
+    scheme: look.appearance.scheme,
+    element_colors: look.appearance.element_colors,
+  };
+  dom.exportQuality.value = String(preset.quality);
+  syncAppearance();
+  scheduleApply();
+  dom.settingsPreset.value = preset.id;
+  dom.settingsPresetNote.textContent = preset.description;
+}
+
 /** Copy the colour controls into the panel, including which ones are active. */
 function syncColour(): void {
   const look = state.look;
@@ -204,6 +243,7 @@ function syncOutputs(): void {
 function readAppearance(): void {
   const look = state.look;
   if (look === null) return;
+  markSettingsCustom();
   const appearance = look.appearance;
   appearance.background = dom.background.value;
   appearance.gradient =
@@ -320,6 +360,16 @@ export function setElementColor(element: string, color: string): void {
 
 /** Wire the panels once, after the document exists. */
 export function bindAppearance(): void {
+  renderSettingsPresets();
+  dom.settingsPreset.addEventListener("change", () => {
+    if (dom.settingsPreset.value === "custom") {
+      markSettingsCustom();
+      return;
+    }
+    applySettingsPreset(dom.settingsPreset.value);
+  });
+  dom.exportQuality.addEventListener("change", markSettingsCustom);
+
   for (const input of [
     dom.stickRadius,
     dom.sphereScale,

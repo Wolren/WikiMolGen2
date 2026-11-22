@@ -488,6 +488,32 @@ if (orientationState.shown !== true) failures.push("the custom orientation field
 if (orientationState.preset !== "wiki") failures.push("the orientation preset did not save");
 console.log(`orientation: ${orientation}`);
 
+// 3a2. A settings preset sets its values; a manual edit flips it to Custom.
+const settingsPreset = await evaluate(
+  session,
+  `(() => {
+     const select = document.getElementById('settings-preset');
+     select.value = 'wikipedia-3d';
+     select.dispatchEvent(new Event('change', { bubbles: true }));
+     const stick = document.getElementById('stick-radius').value;
+     const ambient = document.getElementById('ambient').value;
+     const quality = document.getElementById('export-quality').value;
+     const radius = document.getElementById('stick-radius');
+     radius.value = '0.25';
+     radius.dispatchEvent(new Event('input', { bubbles: true }));
+     const after = select.value;
+     document.getElementById('export-quality').value = '4';
+     document.querySelector('#looks input:checked')?.dispatchEvent(new Event('change', { bubbles: true }));
+     return JSON.stringify({ stick, ambient, quality, after });
+   })()`,
+);
+const presetValues = JSON.parse(settingsPreset);
+if (presetValues.stick !== "0.2") failures.push(`the preset stick radius is ${presetValues.stick}`);
+if (presetValues.ambient !== "0.3") failures.push(`the preset ambient is ${presetValues.ambient}`);
+if (presetValues.quality !== "2") failures.push(`the preset quality is ${presetValues.quality}`);
+if (presetValues.after !== "custom") failures.push("a manual edit keeps the preset selected");
+console.log(`settings preset: ${settingsPreset}`);
+
 // 3b. The 2D view. The first open loads RDKit (7.39 MB) and draws an inline SVG. A
 //     protein has no flat record, so the mode button is disabled and there is nothing to
 //     check.
@@ -1098,6 +1124,7 @@ if (fullscreenButton !== true) {
 
 // 6b. Batch export: two identifiers, two rows, one ZIP with two figures.
 const batchItems = isProtein ? "1CRN\n1UBQ" : "aspirin\nibuprofen";
+await evaluate(session, "document.getElementById('export-quality').value = '2', true");
 await evaluate(session, "document.getElementById('batch-open').click(), true");
 if ((await evaluate(session, "document.getElementById('batch').open")) !== true) {
   failures.push("the batch dialog did not open");
@@ -1148,6 +1175,7 @@ else {
   if (!names.every((name) => name.endsWith(".png"))) failures.push("a batch entry is not a PNG");
 }
 await evaluate(session, "document.getElementById('batch-close').click(), true");
+await evaluate(session, "document.getElementById('export-quality').value = '4', true");
 
 // 7. A folded section is remembered, which is the only state the page keeps besides the
 //    theme. Opening one and reloading must bring it back open. The write happens in the

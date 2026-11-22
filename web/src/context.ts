@@ -122,6 +122,8 @@ export const dom = {
   resetColors: required<HTMLButtonElement>("reset-colors"),
   projection: required<HTMLSelectElement>("projection"),
   frame: required<HTMLButtonElement>("frame"),
+  settingsPreset: required<HTMLSelectElement>("settings-preset"),
+  settingsPresetNote: required<HTMLParagraphElement>("settings-preset-note"),
   orientation: required<HTMLSelectElement>("orientation"),
   orientationCustom: required<HTMLElement>("orientation-custom"),
   rotationX: required<HTMLInputElement>("rotation-x"),

@@ -21,6 +21,7 @@ import init, {
 import {
   appliedLook,
   bindAppearance,
+  markSettingsCustom,
   renderSchemeOptions,
   setColourAvailable,
   syncAppearance,
@@ -380,6 +381,7 @@ async function chooseLook(look: Look): Promise<void> {
   state.look = cloneLook(look);
   renderLooks();
   syncAppearance();
+  markSettingsCustom();
   // Nothing to re-style before a structure is loaded, and patinae treats a command
   // against an empty scene as an error rather than a no-op.
   if (state.viewer === null || state.compound === null) return;
