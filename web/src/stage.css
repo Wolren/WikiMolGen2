@@ -138,6 +138,11 @@
   touch-action: none;
 }
 
+/* A click focuses the canvas; the browser ring reads as a border around the figure. */
+.stage canvas:focus {
+  outline: none;
+}
+
 .stage-message {
   position: absolute;
   inset: 0;

@@ -888,6 +888,12 @@ if (args.suggest) {
   await new Promise((done) => setTimeout(done, 1500));
 }
 
+// `--click-canvas true` clicks the figure, which is what focuses the canvas.
+if (args["click-canvas"]) {
+  await clickAt("#viewer canvas");
+  await new Promise((done) => setTimeout(done, 300));
+}
+
 // `--dialog` opens the batch dialog so the screenshot shows its layout.
 if (args.dialog) {
   await evaluate(
