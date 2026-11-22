@@ -52,14 +52,26 @@ export function loadRdkit(): Promise<RdkitModule> {
 function loadScript(): Promise<RdkitModule> {
   return new Promise((resolve, reject) => {
     const url = new URL(SCRIPT_URL, document.baseURI).href;
+    // A stalled download must end in the Rust fallback, not a permanent overlay.
+    const timer = window.setTimeout(() => {
+      reject(new Error("The RDKit module did not load within 30 s."));
+    }, 30_000);
+    const done = (module: RdkitModule): void => {
+      window.clearTimeout(timer);
+      resolve(module);
+    };
+    const fail = (error: unknown): void => {
+      window.clearTimeout(timer);
+      reject(error);
+    };
     const start = (): void => {
       const factory = window.initRDKitModule;
       if (typeof factory !== "function") {
-        reject(new Error("The RDKit module did not define its loader."));
+        fail(new Error("The RDKit module did not define its loader."));
         return;
       }
       // `locateFile` keeps the wasm beside the script in dev and in a built site.
-      factory({ locateFile: (file) => new URL(file, url).href }).then(resolve, reject);
+      factory({ locateFile: (file) => new URL(file, url).href }).then(done, fail);
     };
 
     if (typeof window.initRDKitModule === "function") {
@@ -72,7 +84,7 @@ function loadScript(): Promise<RdkitModule> {
     script.async = true;
     script.addEventListener("load", start);
     script.addEventListener("error", () => {
-      reject(new Error("The RDKit module failed to load."));
+      fail(new Error("The RDKit module failed to load."));
     });
     document.head.append(script);
   });

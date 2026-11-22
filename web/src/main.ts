@@ -62,7 +62,8 @@ const AUTHOR = "WikiMolGen 2";
 state.orientation = loadOrientation();
 
 /** A later lookup cancels the metadata update of an earlier one. */
-let enrichmentToken = 0;
+/** The newest load owns the page; an older answer must not overwrite it. */
+let loadToken = 0;
 
 /** Put the lookup in the URL, so a figure can be linked and reopened. */
 function rememberQuery(identifier: string): void {
@@ -185,24 +186,29 @@ async function loadFromInput(): Promise<void> {
     return;
   }
 
+  const token = ++loadToken;
   const pdb = pdbIdOf(identifier);
   if (pdb !== null) {
-    enrichmentToken += 1;
-    await loadProteinInput(pdb);
+    await loadProteinInput(pdb, token);
     return;
   }
 
-  const token = ++enrichmentToken;
   setBusy(true, "Looking up…");
   const started = performance.now();
   try {
     const result = await loadCompound(identifier);
+    if (token !== loadToken) return;
+
+    const wasProtein = state.protein !== null;
     state.compound = result.compound;
     state.compoundJson = JSON.stringify(result.compound);
-    // A compound load leaves the protein mode: restore the small-molecule looks and tabs.
-    if (state.protein !== null) {
+    // A compound load leaves the protein mode; a compound look the user chose stays.
+    if (wasProtein) {
       state.protein = null;
       state.looks = JSON.parse(looksJson()) as Look[];
+    }
+    if (wasProtein || state.look === null || !state.looks.some((look) => look.id === state.look?.id)) {
+      state.look = state.looks[0] === undefined ? null : cloneLook(state.looks[0]);
     }
 
     // The markup does not need a renderer: looking a compound up and generating wikitext
@@ -211,11 +217,13 @@ async function loadFromInput(): Promise<void> {
     if (state.viewer !== null) {
       setBusy(true, "Drawing…");
       await state.viewer.loadStructure(result.structure.name, result.structure.bytes);
-      state.look = state.looks[0] === undefined ? null : cloneLook(state.looks[0]);
+      if (token !== loadToken) return;
       setBusy(true, "Colouring…");
       if (state.look !== null) await state.viewer.applyLook(appliedLook() ?? state.look);
+      if (token !== loadToken) return;
       setBusy(true, "Framing…");
       await applyOrientation(state.viewer);
+      if (token !== loadToken) return;
       dom.exportButton.disabled = false;
     }
 
@@ -245,7 +253,7 @@ async function loadFromInput(): Promise<void> {
     // The figure is on the stage; the other sources only add markup fields after it.
     void enrichCompound(result.compound)
       .then(({ compound }) => {
-        if (token !== enrichmentToken || state.protein !== null) return;
+        if (token !== loadToken) return;
         state.compound = compound;
         state.compoundJson = JSON.stringify(compound);
         refreshOutput();
@@ -263,13 +271,14 @@ async function loadFromInput(): Promise<void> {
     }
     revealFigure();
   } catch (error) {
+    if (token !== loadToken) return;
     if (error instanceof LookupError) {
       setStatus(error.message, true);
     } else {
       setStatus(`Could not load the compound: ${describe(error)}`, true);
     }
   } finally {
-    setBusy(false);
+    if (token === loadToken) setBusy(false);
   }
 }
 
@@ -292,7 +301,7 @@ function nextFrames(count: number): Promise<void> {
  * The timer covers the fetch, the parse, the first styled frame and one more frame. That
  * is the interval a user waits for an image, not just for a parse.
  */
-async function loadProteinInput(id: string): Promise<void> {
+async function loadProteinInput(id: string, token: number): Promise<void> {
   const viewer = state.viewer;
   if (viewer === null) {
     setStatus("The 3D viewer is not available, so a protein cartoon cannot be drawn.", true);
@@ -303,9 +312,11 @@ async function loadProteinInput(id: string): Promise<void> {
   const started = performance.now();
   try {
     const record = await loadProtein(id);
+    if (token !== loadToken) return;
     const fetched = performance.now();
     setBusy(true, `Building ${id}…`);
     const atoms = await viewer.loadStructure(record.name, record.bytes);
+    if (token !== loadToken) return;
     const parsed = performance.now();
     state.looks = JSON.parse(proteinLooksJson()) as Look[];
     state.look = state.looks[0] === undefined ? null : cloneLook(state.looks[0]);
@@ -313,6 +324,7 @@ async function loadProteinInput(id: string): Promise<void> {
     const styled = performance.now();
     await applyOrientation(viewer);
     await nextFrames(2);
+    if (token !== loadToken) return;
     const drawn = performance.now();
     const seconds = (drawn - started) / 1000;
     const sequence = viewer.sequenceSummary();
@@ -323,7 +335,7 @@ async function loadProteinInput(id: string): Promise<void> {
     state.depictionSource = null;
     state.depiction = null;
     state.mode = "3d";
-      dom.mode2d.disabled = true;
+    dom.mode2d.disabled = true;
 
     renderLooks();
     syncAppearance();
@@ -338,10 +350,11 @@ async function loadProteinInput(id: string): Promise<void> {
     );
     rememberQuery(id);
   } catch (error) {
+    if (token !== loadToken) return;
     if (error instanceof ProteinError) setStatus(error.message, true);
     else setStatus(`Could not load ${id}: ${describe(error)}`, true);
   } finally {
-    setBusy(false);
+    if (token === loadToken) setBusy(false);
   }
 }
 

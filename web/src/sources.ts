@@ -1,9 +1,9 @@
 /**
  * Metadata beside PubChem: Wikidata, the Wikipedia infobox and a drug label.
  *
- * All three answer with CORS headers except the DailyMed service. DailyMed is tried
- * first, and the browser blocks it; openFDA serves the same SPL label data and does
- * allow the fetch. The source list tells the user which one answered.
+ * All three answer with CORS headers except the DailyMed service. The browser cannot read
+ * DailyMed, so openFDA serves the same SPL label data and allows the fetch. The source
+ * list tells the user which one answered.
  */
 
 import type { Compound } from "./pubchem.js";
@@ -92,10 +92,11 @@ async function fetchWikidata(name: string): Promise<PartialSource | null> {
     return { fields: {}, status: { name: "Wikidata", status: "miss", detail: "no item" } };
   }
 
-  const qid = Object.keys(entities)[0] ?? undefined;
+  const qid = Object.entries(entities).find(([id]) => id !== "-1")?.[0];
   const atc = claimStrings(entity, "P267");
   const firstAtc = atc[0];
-  const fields: Partial<Compound> = { wikidata_qid: qid };
+  const fields: Partial<Compound> = {};
+  if (qid !== undefined) fields.wikidata_qid = qid;
   const cas = claimString(entity, "P231");
   if (cas !== undefined) fields.cas_number = cas;
   const drugbank = claimString(entity, "P715");
@@ -225,32 +226,11 @@ export function cleanWiki(value: string): string {
 }
 
 /**
- * Read a drug label. DailyMed has no CORS header, so the browser cannot read it.
- *
- * The fallback is openFDA, which serves the same SPL label data and allows the fetch.
+ * Read a drug label. DailyMed has no CORS header, so the browser cannot read it; openFDA
+ * serves the same SPL label data and allows the fetch.
  */
 async function fetchLabel(name: string): Promise<PartialSource | null> {
-  const blocked = await tryDailymed(name);
-  if (blocked !== null) return blocked;
   return tryOpenFda(name);
-}
-
-async function tryDailymed(name: string): Promise<PartialSource | null> {
-  try {
-    const url = `https://dailymed.nlm.nih.gov/dailymed/services/v2/spls.json?drug_name=${encodeURIComponent(name)}`;
-    const response = await fetch(url, { signal: AbortSignal.timeout(2500) });
-    if (!response.ok) return null;
-    const json = (await response.json()) as { data?: { setid?: string; title?: string }[] };
-    const setid = json.data?.[0]?.setid;
-    if (setid === undefined) return null;
-    return {
-      fields: { dailymed_setid: setid },
-      status: { name: "DailyMed", status: "ok", detail: `SPL ${setid}` },
-    };
-  } catch {
-    // The browser blocks a cross-origin read; try openFDA instead.
-    return null;
-  }
 }
 
 interface OpenFdaResponse {

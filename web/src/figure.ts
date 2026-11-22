@@ -218,7 +218,11 @@ export async function renderFigure(
       marginPercent: Math.round(settings.margin * 100),
     };
   } finally {
-    if (settings.labels) await viewer.setLabelSize(14).catch(() => undefined);
+    if (settings.labels) {
+      // Export labels are not a stage control; leave the live view as it was found.
+      await viewer.setLabels(false).catch(() => undefined);
+      await viewer.setLabelSize(14).catch(() => undefined);
+    }
   }
 }
 

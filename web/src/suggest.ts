@@ -174,7 +174,14 @@ async function searchRcsb(query: string, token: number): Promise<Suggestion[]> {
         if (!entry.ok) return { id, title: null };
         const data = (await entry.json()) as { struct?: { title?: string } };
         const title = data.struct?.title;
-        if (title !== undefined) titleCache.set(id, title);
+        if (title !== undefined) {
+          titleCache.set(id, title);
+          // A long session should not keep every PDB title it has ever seen.
+          if (titleCache.size > 200) {
+            const oldest = titleCache.keys().next().value;
+            if (oldest !== undefined) titleCache.delete(oldest);
+          }
+        }
         return { id, title: title ?? null };
       } catch {
         return { id, title: null };
@@ -242,6 +249,9 @@ function scheduleLive(query: string): void {
 
 /** Show the popular shortlist when the field is empty. */
 function showPopular(): void {
+  // Clearing the field also cancels any live answer still on the way.
+  liveToken += 1;
+  window.clearTimeout(debounce);
   rows = popularEntries().map(fromLocal);
   active = -1;
   render();

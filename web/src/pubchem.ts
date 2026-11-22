@@ -246,11 +246,19 @@ function propertiesRow(json: Record<string, unknown>): Record<string, unknown> |
   return table?.Properties?.[0] ?? null;
 }
 
+/** A compact token with bonds, ring digits or element symbols is worth a SMILES call. */
+function looksLikeSmiles(value: string): boolean {
+  if (/\s/.test(value)) return false;
+  if (/[=#@()[\]\/\\]/.test(value)) return true;
+  if (/^[A-Z][a-z]?[A-Z0-9]*$/.test(value)) return true;
+  return /^[a-z][a-z0-9]*$/.test(value) && /\d/.test(value);
+}
+
 /** Resolve a SMILES string to a CID, or `null` if PubChem does not know it. */
 async function tryCids(smiles: string): Promise<string | null> {
   // A structure search is only worth trying for something that looks like a SMILES;
   // otherwise every misspelled name costs a slow round trip.
-  if (!/[=#@()[\]]/.test(smiles) && !/^[A-Z][a-z]?\d*/.test(smiles)) return null;
+  if (!looksLikeSmiles(smiles)) return null;
   const json = await requestOrNull(`${PUG}/compound/smiles/${encodeURIComponent(smiles)}/cids/JSON`);
   const cids = (json?.IdentifierList as { CID?: number[] } | undefined)?.CID;
   return cids && cids.length > 0 ? String(cids[0]) : null;

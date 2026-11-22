@@ -17,12 +17,18 @@ export interface KeyboardActions {
 
 export function bindKeyboard(actions: KeyboardActions): void {
   window.addEventListener("keydown", (event) => {
+    // A modal owns its keys: Ctrl+Enter must not load behind the batch dialog.
+    if (document.querySelector("dialog[open]") !== null) return;
+
     const target = event.target as HTMLElement | null;
+    const tag = target?.tagName;
+    const inputType = target instanceof HTMLInputElement ? target.type : "";
     const editing =
       target !== null &&
-      (target.tagName === "INPUT" ||
-        target.tagName === "SELECT" ||
-        target.tagName === "TEXTAREA" ||
+      ((tag === "INPUT" &&
+        !["range", "checkbox", "radio", "color", "button", "submit", "reset"].includes(inputType)) ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
         target.isContentEditable);
 
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {

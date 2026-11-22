@@ -6,8 +6,9 @@
  * skipped, because Wikidata, Wikipedia and openFDA only affect the markup.
  */
 
+import { looksJson, proteinLooksJson } from "../pkg/wikimolgen2_wasm.js";
 import { appliedLook } from "./appearance.js";
-import { describe, dom, figureName, setStatus, state } from "./context.js";
+import { cloneLook, describe, dom, figureName, setStatus, state, type Look } from "./context.js";
 import { readFigureSettings, renderFigure } from "./figure.js";
 import { loadProtein, pdbIdOf } from "./protein.js";
 import { applyOrientation } from "./orientation.js";
@@ -31,15 +32,31 @@ export function parseIdentifiers(text: string): string[] {
   const identifiers: string[] = [];
   for (const line of text.split(/\r?\n/)) {
     const identifier = line.trim();
-    if (identifier === "" || seen.has(identifier.toLowerCase())) continue;
-    seen.add(identifier.toLowerCase());
+    if (identifier === "" || seen.has(identifier)) continue;
+    seen.add(identifier);
     identifiers.push(identifier);
   }
   return identifiers;
 }
 
-/** Load one identifier into the viewer with the current look, and return the file name. */
-async function loadIntoViewer(viewer: Renderer, identifier: string): Promise<string> {
+/** The look lists for the two kinds of structure, so a mixed batch stays styled. */
+interface BatchLooks {
+  compound: Look[];
+  protein: Look[];
+}
+
+/** Keep the page's look when its kind matches, otherwise take that kind's first look. */
+function useLook(looks: Look[]): void {
+  if (state.look !== null && looks.some((look) => look.id === state.look?.id)) return;
+  state.look = looks[0] === undefined ? null : cloneLook(looks[0]);
+}
+
+/** Load one identifier into the viewer with its kind's look, and return the file name. */
+async function loadIntoViewer(
+  viewer: Renderer,
+  identifier: string,
+  looks: BatchLooks,
+): Promise<string> {
   const pdb = pdbIdOf(identifier);
   if (pdb !== null) {
     const record = await loadProtein(pdb);
@@ -56,6 +73,8 @@ async function loadIntoViewer(viewer: Renderer, identifier: string): Promise<str
     state.compoundJson = JSON.stringify(state.compound);
     state.depictionSource = null;
     state.depiction = null;
+    state.looks = looks.protein;
+    useLook(looks.protein);
     const proteinLook = appliedLook();
     if (proteinLook !== null) await viewer.applyLook(proteinLook);
     await applyOrientation(viewer);
@@ -69,6 +88,8 @@ async function loadIntoViewer(viewer: Renderer, identifier: string): Promise<str
   state.compoundJson = JSON.stringify(result.compound);
   state.depictionSource = result.depiction;
   state.depiction = null;
+  state.looks = looks.compound;
+  useLook(looks.compound);
   const compoundLook = appliedLook();
   if (compoundLook !== null) await viewer.applyLook(compoundLook);
   await applyOrientation(viewer);
@@ -141,45 +162,52 @@ async function runBatch(callbacks: BatchCallbacks): Promise<void> {
     return;
   }
 
-  if (state.look === null) state.look = state.looks[0] ?? null;
+  const looks: BatchLooks = {
+    compound: JSON.parse(looksJson()) as Look[],
+    protein: JSON.parse(proteinLooksJson()) as Look[],
+  };
   running = true;
   dom.batchRun.disabled = true;
   dom.batchClose.disabled = true;
-  callbacks.beforeRun?.();
-  const settings = readFigureSettings();
-  const zip = new ZipWriter();
-  const rows = renderRows(identifiers);
-  // A paint before the first render; rAF can pause in an occluded window.
-  await new Promise((done) => setTimeout(done, 0));
-  const used = new Set<string>();
-  let rendered = 0;
+  try {
+    callbacks.beforeRun?.();
+    const settings = readFigureSettings();
+    const zip = new ZipWriter();
+    const rows = renderRows(identifiers);
+    // A paint before the first render; rAF can pause in an occluded window.
+    await new Promise((done) => setTimeout(done, 0));
+    const used = new Set<string>();
+    let rendered = 0;
 
-  for (const [index, identifier] of identifiers.entries()) {
-    setRow(rows[index], "rendering", "rendering…");
-    try {
-      const name = await loadIntoViewer(viewer, identifier);
-      setRow(rows[index], "rendering", "drawing…");
-      const figure = await renderFigure(viewer, settings, uniqueName(name, used));
-      zip.add(figure.name, figure.bytes);
-      setRow(rows[index], "done", `${figure.width}x${figure.height} px`);
-      rendered += 1;
-    } catch (error) {
-      setRow(rows[index], "failed", describe(error));
+    for (const [index, identifier] of identifiers.entries()) {
+      setRow(rows[index], "rendering", "rendering…");
+      try {
+        const name = await loadIntoViewer(viewer, identifier, looks);
+        setRow(rows[index], "rendering", "drawing…");
+        const figure = await renderFigure(viewer, settings, uniqueName(name, used));
+        zip.add(figure.name, figure.bytes);
+        setRow(rows[index], "done", `${figure.width}x${figure.height} px`);
+        rendered += 1;
+      } catch (error) {
+        setRow(rows[index], "failed", describe(error));
+      }
+      // A short pause lets the offscreen readback settle before the next load.
+      await new Promise((done) => setTimeout(done, 200));
     }
-    // A short pause lets the offscreen readback settle before the next load.
-    await new Promise((done) => setTimeout(done, 200));
-  }
 
-  if (zip.size > 0) {
-    downloadZip(zip.finish());
-    setStatus(`Batch finished: ${rendered} of ${identifiers.length} figures in wikimolgen2-figures.zip.`);
-  } else {
-    setStatus("Batch failed: no figures were produced.", true);
+    if (zip.size > 0) {
+      downloadZip(zip.finish());
+      setStatus(`Batch finished: ${rendered} of ${identifiers.length} figures in wikimolgen2-figures.zip.`);
+    } else {
+      setStatus("Batch failed: no figures were produced.", true);
+    }
+  } catch (error) {
+    setStatus(`Batch failed: ${describe(error)}`, true);
+  } finally {
+    running = false;
+    dom.batchRun.disabled = false;
+    dom.batchClose.disabled = false;
   }
-
-  running = false;
-  dom.batchRun.disabled = false;
-  dom.batchClose.disabled = false;
   callbacks.onFinished();
 }
 
@@ -191,5 +219,9 @@ export function bindBatch(callbacks: BatchCallbacks): void {
     dom.batchInput.focus();
   });
   dom.batchClose.addEventListener("click", () => dom.batchDialog.close());
+  // Escape must not hide the progress while the run owns the viewer.
+  dom.batchDialog.addEventListener("cancel", (event) => {
+    if (running) event.preventDefault();
+  });
   dom.batchRun.addEventListener("click", () => void runBatch(callbacks));
 }

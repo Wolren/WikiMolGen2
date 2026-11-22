@@ -1075,6 +1075,67 @@ if (args.scroll) {
   );
   await new Promise((done) => setTimeout(done, 200));
 }
+// `--hunt true` runs the bug-hunt probes after the functional checks.
+if (args.hunt) {
+  const beforeLook = await evaluate(
+    session,
+    "(() => { const dark = [...document.querySelectorAll('#looks input')].find((input) => input.value === 'dark'); if (dark !== undefined) dark.click(); return window.__wikimolgen2?.state?.look?.id ?? null; })()",
+  );
+  await evaluate(
+    session,
+    "(() => { const field = document.getElementById('identifier'); field.value = 'Ibuprofen'; document.getElementById('lookup').requestSubmit(); return true; })()",
+  );
+  const loaded = await poll(
+    async () => {
+      const status = await evaluate(session, "document.getElementById('export-status').textContent");
+      return status.includes("Loaded Ibuprofen") ? status : null;
+    },
+    60_000,
+  );
+  const after = await evaluate(
+    session,
+    "JSON.stringify({ look: window.__wikimolgen2?.state?.look?.id ?? null, name: window.__wikimolgen2?.state?.compound?.name ?? null, status: document.getElementById('export-status').textContent })",
+  );
+  const pug = await evaluate(
+    session,
+    "JSON.stringify(performance.getEntriesByType('resource').filter((entry) => entry.name.includes('/rest/pug/')).map((entry) => [entry.name.replace(/^.*\\/rest\\/pug\\//, ''), Math.round(entry.duration)]))",
+  );
+  console.log(`hunt: look before ${beforeLook}, load ${loaded}, after ${after}`);
+  console.log(`hunt: pubchem ${pug}`);
+
+  // A slow Aspirin lookup must not overwrite a newer Ibuprofen load.
+  await evaluate(
+    session,
+    `(() => {
+       const original = window.fetch;
+       window.fetch = (input, init) => {
+         const url = String(input);
+         if (url.includes('compound/smiles/Aspirin') || url.includes('compound/name/Aspirin')) {
+           return new Promise((resolve, reject) => {
+             setTimeout(() => original(input, init).then(resolve, reject), 4000);
+           });
+         }
+         return original(input, init);
+       };
+       return true;
+     })()`,
+  );
+  await evaluate(
+    session,
+    "(() => { const field = document.getElementById('identifier'); field.value = 'Aspirin'; document.getElementById('lookup').requestSubmit(); return true; })()",
+  );
+  await new Promise((done) => setTimeout(done, 150));
+  await evaluate(
+    session,
+    "(() => { const field = document.getElementById('identifier'); field.value = 'Ibuprofen'; document.getElementById('lookup').requestSubmit(); return true; })()",
+  );
+  await new Promise((done) => setTimeout(done, 9000));
+  const race = await evaluate(
+    session,
+    "JSON.stringify({ name: window.__wikimolgen2?.state?.compound?.name ?? null, status: document.getElementById('export-status').textContent })",
+  );
+  console.log(`hunt race: ${race}`);
+}
 // `--reset-confirm true` opens the slider reset question so the screenshot shows it.
 if (args["reset-confirm"]) {
   await evaluate(session, "document.getElementById('appearance-reset-open').click(), true");
