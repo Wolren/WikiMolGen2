@@ -280,6 +280,23 @@
   text-transform: uppercase;
 }
 
+/* The upload details sit above the text they change, in one compact row. */
+.commons-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.compact-field {
+  display: flex;
+  flex: 1 1 160px;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 /* The copy action floats in the box's top-right corner, over the text it copies. */
 .code-box {
   position: relative;

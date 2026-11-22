@@ -47,6 +47,7 @@ import {
 import { buildDepiction, bindDepictionControls, clearDepiction, loadDepictionSettings, setDepictionAvailable, showDepiction } from "./depiction.js";
 import { bindSuggestions } from "./suggest.js";
 import { bindBatch } from "./batch.js";
+import { loadCommonsDetails, saveCommonsDetails } from "./commons.js";
 import { applyOrientation, bindOrientation, loadOrientation } from "./orientation.js";
 import { bindExport, exportFigure } from "./figure.js";
 import { bindFullscreen } from "./fullscreen.js";
@@ -60,7 +61,8 @@ import { bindThemeDialog } from "./theme-dialog.js";
 import "./styles.css";
 import "./stage.css";
 
-const AUTHOR = "WikiMolGen 2";
+/** The upload details the Commons block uses; the author starts from storage. */
+let commonsDetails = loadCommonsDetails();
 
 // The stored orientation must be in place before the first load frames the scene.
 state.orientation = loadOrientation();
@@ -676,6 +678,13 @@ dom.fileNameReset.addEventListener("click", () => {
   dom.fileName.select();
 });
 
+dom.commonsAuthor.value = commonsDetails.author;
+dom.commonsAuthor.addEventListener("input", () => {
+  commonsDetails = { ...commonsDetails, author: dom.commonsAuthor.value };
+  saveCommonsDetails(commonsDetails);
+  refreshOutput();
+});
+
 function refreshOutput(): void {
   // A protein has no drug or chem box; its Commons description is the useful output.
   const protein = state.protein !== null;
@@ -701,7 +710,13 @@ function refreshOutput(): void {
   dom.outputChembox.textContent = protein ? "" : chembox(state.compoundJson, fileName);
   const today = new Date().toISOString().slice(0, 10);
   const license = defaultLicense(kind);
-  const commons = commonsInformation(state.compoundJson, kind, AUTHOR, license, today);
+  const commons = commonsInformation(
+    state.compoundJson,
+    kind,
+    commonsDetails.author,
+    license,
+    today,
+  );
   dom.outputCommons.textContent = commons;
 
   // The upload action belongs to the Commons description, under the text it sends.

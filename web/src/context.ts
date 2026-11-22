@@ -196,6 +196,7 @@ export const dom = {
 
   fileName: required<HTMLInputElement>("file-name"),
   fileNameReset: required<HTMLButtonElement>("file-name-reset"),
+  commonsAuthor: required<HTMLInputElement>("commons-author"),
   copyDrugbox: required<HTMLButtonElement>("copy-drugbox"),
   copyChembox: required<HTMLButtonElement>("copy-chembox"),
   copyCommons: required<HTMLButtonElement>("copy-commons"),

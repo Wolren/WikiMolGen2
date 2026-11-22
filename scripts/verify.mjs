@@ -593,6 +593,31 @@ if (isProtein === false && names.afterReset !== names.generated) {
 }
 if (names.resetDisabled !== true) failures.push("Reset stayed enabled at the generated name");
 
+// 3c. The author the uploader types reaches the Commons text and the upload link.
+const author = JSON.parse(
+  await evaluate(
+    session,
+    `(() => {
+       const field = document.getElementById('commons-author');
+       field.value = 'Example uploader';
+       field.dispatchEvent(new Event('input', { bubbles: true }));
+       const text = document.getElementById('wikitext-commons').textContent ?? '';
+       const found = text.match(/^\\|author=(.*)$/m);
+       return JSON.stringify({
+         line: found === null ? '' : found[1].trim(),
+         link: document.getElementById('upload-commons').href,
+         stored: localStorage.getItem('wikimolgen2.commons') ?? '',
+       });
+     })()`,
+  ),
+);
+console.log(`commons author: ${JSON.stringify(author)}`);
+if (author.line !== "Example uploader") failures.push(`the Commons author reads ${author.line}`);
+if (!author.link.includes("Example%20uploader")) {
+  failures.push("the upload link does not carry the author");
+}
+if (!author.stored.includes("Example uploader")) failures.push("the author did not persist");
+
 // 3a. Orientation: the custom fields appear, and a preset survives in storage.
 const orientation = await evaluate(
   session,
