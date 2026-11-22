@@ -726,4 +726,16 @@ bindKeyboard({
   zoom: zoomScene,
 });
 
+/** Register the offline shell in the built site only. */
+function registerServiceWorker(): void {
+  if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
+  const start = (): void => {
+    const url = new URL("sw.js", document.baseURI).href;
+    void navigator.serviceWorker.register(url).catch(() => undefined);
+  };
+  if (document.readyState === "complete") start();
+  else window.addEventListener("load", start, { once: true });
+}
+
+registerServiceWorker();
 void boot();

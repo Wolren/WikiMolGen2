@@ -30,6 +30,7 @@ const MIME = {
   ".css": "text/css; charset=utf-8",
   ".wasm": "application/wasm",
   ".json": "application/json",
+  ".webmanifest": "application/manifest+json",
   ".svg": "image/svg+xml",
   ".png": "image/png",
 };
@@ -328,6 +329,37 @@ for (const expected of [
 ]) {
   if (!links.some(([, href]) => href === expected)) failures.push(`no ${expected} link in the top bar`);
 }
+
+// The built page carries a web manifest and installs an offline shell.
+const manifestLink = await evaluate(
+  session,
+  "document.querySelector('link[rel=\"manifest\"]')?.getAttribute('href') ?? ''",
+);
+const manifestJson = await poll(
+  async () =>
+    await evaluate(
+      session,
+      "fetch('manifest.webmanifest').then((response) => response.ok ? response.json() : null).then((json) => json !== null && json.name === 'WikiMolGen 2' ? json : null).catch(() => null)",
+    ),
+  10_000,
+);
+if (manifestLink === "") failures.push("the page has no web manifest link");
+if (manifestJson === null) failures.push("the web manifest is missing or invalid");
+const swState = await poll(
+  async () =>
+    await evaluate(
+      session,
+      `("serviceWorker" in navigator
+        ? navigator.serviceWorker.getRegistration().then((registration) =>
+            registration === undefined ? "none" : registration.active !== null ? "active" : "pending")
+        : Promise.resolve("unsupported"))`,
+    ),
+  20_000,
+);
+if (swState !== "active") failures.push(`the service worker is ${swState ?? "not active"}`);
+console.log(
+  `offline: manifest ${manifestJson?.name ?? "missing"}, service worker ${swState ?? "inactive"}`,
+);
 if (finish.valence !== true) failures.push("valence bonds start off");
 if (finish.valenceScale !== "1") failures.push(`valence size starts at ${finish.valenceScale}`);
 if (finish.stick !== "0" || finish.sphere !== "0" || finish.cartoon !== "0") {
