@@ -63,7 +63,7 @@ reach; a load then scrolls the figure into view.
 | Keyboard | `Ctrl+Enter` load, `2`/`3` view, `E` export, `F` frame, `+`/`-` zoom, `/` focus, `?` help |
 | Theme | System, six fixed palettes (Light, Paper, Contrast, Dark, Slate and Midnight) and saved custom themes. The picker previews every palette with a miniature of the page; a custom theme is built from five colours, derives the rest with 4.5:1 contrast floors, and is named. Themes can be duplicated, copied as a link, or exported and imported as JSON; open tabs follow storage changes. The choice persists and applies before the first paint, and System resolves to Contrast when the OS asks for more contrast. The stage follows the theme tint |
 | Accessibility | A reduced-motion rule stops the spinner and the transitions. The 3D host and the 2D SVG carry accessible names, the SVG carries a title, every control has a label, and the dialogs trap focus natively |
-| Offline | The built site registers a service worker: network-first HTML, cache-first hashed assets. The shell, the app wasm and the patinae viewer are precached from a build-generated list; the RDKit engine is cached on first 2D use. A manifest and icons make the site installable |
+| Offline | The built site registers a service worker: network-first HTML, cache-first hashed assets. The shell, the app wasm and the patinae viewer are precached from a build-generated list; the RDKit engine is cached on first 2D use. A manifest names the site and sets its theme colour |
 | Links | The top bar carries the repository, the original WikiMolGen project and the docs, then the theme picker. Below 640 px the links fold away |
 | Graphics | WebGPU only. There is no WebGL2 fallback, so a browser without an adapter gets an explanation instead of a lesser image |
 
@@ -184,7 +184,7 @@ with the status.
 
 `web/public/sw.js` registers only in the production build. Install caches the shell and
 fetches `precache-manifest.json`, which the Vite plugin writes with the hashed bundle, the
-app wasm, the patinae viewer and its wasm, and the icons. The RDKit bundle is not
+app wasm, the patinae viewer and its wasm. The RDKit bundle is not
 precached; the first 2D use caches it at runtime. Navigation is network-first, so a deploy
 is seen on the next load. Every other same-origin GET is cache-first with a runtime fill.
 The cached HTML is the offline fallback. `CACHE` in `sw.js` is the version knob.
@@ -254,7 +254,7 @@ web/src/protein.ts      RCSB PDB
 web/src/renderer.ts     the only file that knows patinae's API
 web/src/*.test.ts       unit tests for colour maths, theme files and the network client
 web/public/sw.js        the offline shell
-web/public/manifest.webmanifest, icon.svg, icon-192.png, icon-512.png   install assets
+web/public/manifest.webmanifest   the app name and theme colour
 web/vite.config.ts      base, dev headers and the precache list
 web/vitest.config.ts    unit test config
 web/public/vendor/      the vendored patinae and RDKit builds (see their PROVENANCE.md)

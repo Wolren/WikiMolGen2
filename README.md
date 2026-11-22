@@ -31,7 +31,7 @@ It is a static site: no server, no upload, no install.
 | Export | PNG from 400 to 8192 px wide, 2x to 6x supersampling, 4 to 9 percent margin, optional labels and scale bar, transparent by default, or one ZIP for a batch. A batch can be cancelled between rows, a failed row can be retried on its own, and the run reports its progress |
 | Markup | `{{Infobox drug}}`, `{{Chembox}}` and the Commons upload text, with metadata from Wikidata, Wikipedia and openFDA |
 | Links | A lookup writes `?q=` to the address, and a `?theme=` link carries a theme. The theme and the open sections survive a reload |
-| Offline | A service worker caches the shell, the app bundle and the 3D viewer after the first visit. A manifest makes the site installable; the 2D engine is cached on first use |
+| Offline | A service worker caches the shell, the app bundle and the 3D viewer after the first visit. A manifest names the site and sets its theme colour; the 2D engine is cached on first use |
 
 ## See it
 

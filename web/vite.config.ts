@@ -46,9 +46,6 @@ export default defineConfig({
             ...bundled,
             ...patinaeAssets(),
             "./manifest.webmanifest",
-            "./icon.svg",
-            "./icon-192.png",
-            "./icon-512.png",
           ]),
         ];
         this.emitFile({

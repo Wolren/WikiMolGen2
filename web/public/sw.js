@@ -4,8 +4,8 @@
  * The HTML is network-first, so a deploy is seen at once. Hashed assets and the large
  * vendor wasm are cache-first. Bump CACHE when this file or the shell changes.
  */
-const CACHE = "wikimolgen2-v1";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
+const CACHE = "wikimolgen2-v2";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest"];
 
 async function precache() {
   const cache = await caches.open(CACHE);

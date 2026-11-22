@@ -35,7 +35,7 @@ metadata services need the network and their answers are not the app's assets.
 
 The worker cannot know Vite's hashed filenames at install time. A Vite plugin emits
 `precache-manifest.json` with the bundle, the app wasm, the patinae viewer and its wasm,
-the icons and the manifest. The worker fetches that list at install and caches it. The RDKit
+and the manifest. The worker fetches that list at install and caches it. The RDKit
 bundle is deliberately absent: it stays lazy and joins the cache on the first 2D view.
 
 ### 4. The cache name is the version knob
