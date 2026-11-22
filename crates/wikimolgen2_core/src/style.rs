@@ -40,6 +40,8 @@ pub enum ColorMode {
     Residue,
     /// Residue number, as a spectrum.
     Index,
+    /// N-terminus to C-terminus rainbow, patinae's `spectrum` scheme.
+    Rainbow,
     SecStruct,
     BFactor,
     /// One colour for every atom, from [`Appearance::solid_color`].
@@ -258,9 +260,45 @@ impl Look {
         Look::new("publication", "Publication", RepStyle::BallStick)
     }
 
-    /// The looks offered for a protein. Cartoons colour by secondary structure.
+    /// The looks offered for a protein. The Wikipedia rainbow comes first.
     pub fn protein_looks() -> Vec<Look> {
         vec![
+            Look {
+                color_mode: ColorMode::Rainbow,
+                ..Look::new("rainbow", "Rainbow", RepStyle::Cartoon)
+            }
+            .with_appearance(Appearance {
+                ambient: 0.35,
+                direct: 0.55,
+                reflect: 0.25,
+                specular: 0.30,
+                shininess: 40.0,
+                // The renderer's depth cue stays on with no fog; the first frame skips a reload.
+                depth_cue: true,
+                fog: 0.0,
+                ..Appearance::default()
+            }),
+            Look {
+                color_mode: ColorMode::SecStruct,
+                ..Look::new("trans", "Trans", RepStyle::Cartoon)
+            }
+            .with_appearance(Appearance {
+                // The trans flag inks; the outline keeps the white loops visible on white.
+                helix_color: "#5BCEFA".to_string(),
+                sheet_color: "#F5A9B8".to_string(),
+                loop_color: "#FFFFFF".to_string(),
+                silhouettes: true,
+                silhouette_width: 1.4,
+                // A bright, flat light keeps the flag inks close to their true colours.
+                ambient: 0.65,
+                direct: 0.35,
+                reflect: 0.20,
+                specular: 0.15,
+                shininess: 20.0,
+                depth_cue: true,
+                fog: 0.0,
+                ..Appearance::default()
+            }),
             Look {
                 color_mode: ColorMode::SecStruct,
                 ..Look::new("cartoon", "Cartoon", RepStyle::Cartoon)
@@ -271,8 +309,7 @@ impl Look {
                 reflect: 0.25,
                 specular: 0.30,
                 shininess: 40.0,
-                // Keep the renderer's default depth cue on with no fog. The image is the
-                // same, and the first frame avoids a shader reload.
+                // The renderer's depth cue stays on with no fog; the first frame skips a reload.
                 depth_cue: true,
                 fog: 0.0,
                 ..Appearance::default()
@@ -419,11 +456,19 @@ mod tests {
     }
 
     #[test]
-    fn protein_looks_colour_by_secondary_structure() {
+    fn protein_looks_start_with_the_wikipedia_rainbow() {
         let looks = Look::protein_looks();
+        assert_eq!(looks[0].id, "rainbow");
         assert_eq!(looks[0].style, RepStyle::Cartoon);
-        assert_eq!(looks[0].color_mode, ColorMode::SecStruct);
+        assert_eq!(looks[0].color_mode, ColorMode::Rainbow);
         assert_eq!(looks[0].appearance.background, "#ffffff");
+        assert!(looks.iter().any(|look| look.color_mode == ColorMode::SecStruct));
+        assert!(looks.iter().any(|look| look.color_mode == ColorMode::Chain));
+        let trans = looks.iter().find(|look| look.id == "trans").expect("trans look");
+        assert_eq!(trans.appearance.helix_color, "#5BCEFA");
+        assert_eq!(trans.appearance.sheet_color, "#F5A9B8");
+        assert_eq!(trans.appearance.loop_color, "#FFFFFF");
+        assert!(trans.appearance.silhouettes, "the white loops need an outline");
     }
 
     #[test]

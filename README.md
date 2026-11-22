@@ -22,9 +22,9 @@ It is a static site: no server, no upload, no install.
 | Area | What it gives you |
 | --- | --- |
 | Lookup | 58 compounds and 13 proteins answer from the built-in catalogue. Live PubChem autocomplete and RCSB full-text search cover the rest. A CID, a SMILES or a PDB ID still works |
-| 3D | Ball-and-stick, space filling, licorice, stick and protein cartoons, with seven element palettes and a colour mode for element, chain, residue, secondary structure, B-factor or one ink |
+| 3D | Ball-and-stick, space filling, licorice, stick and protein cartoons, with seven element palettes and a colour mode for element, chain, residue, rainbow, secondary structure, B-factor or one ink |
 | 2D | RDKit's MinimalLib draws the skeletal SVG with stereo and no background. Monochrome, bond width and label size apply to the drawing; a Rust V2000 parser is the fallback |
-| Looks | Publication, Flat, Dark, Space filling, Licorice and Stick for small molecules, plus cartoon looks for proteins |
+| Looks | Publication, Flat, Dark, Space filling, Licorice and Stick for small molecules, plus Rainbow, Trans, secondary-structure and chain cartoon looks for proteins |
 | Appearance | Stick and sphere size, valence, light, transparency, depth cue, ambient occlusion, soft shadows, outline, smooth edges and projection. A two-step reset at the end restores the current look's slider values; the colour scheme stays |
 | Presets | The original Wikipedia render settings, saved and renamed presets, orientation presets (wiki, front, side, top, custom) and the seven colour schemes |
 | Theme | System plus six fixed palettes: Light, Paper, Contrast, Dark, Slate and Midnight. A custom theme starts from five colours, derives the rest with contrast floors, and is saved by name. Themes can be duplicated, shared as a link or a JSON file, and open tabs stay in step. The choice applies before the first paint |

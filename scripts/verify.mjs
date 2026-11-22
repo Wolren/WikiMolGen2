@@ -1207,6 +1207,48 @@ if (!smoke && args.hunt) {
   );
   console.log(`hunt race: ${race}`);
 }
+// `--protein true` loads 1CRN and checks the Wikipedia rainbow is the default look.
+if (args.protein) {
+  await evaluate(
+    session,
+    "(() => { const field = document.getElementById('identifier'); field.value = '1CRN'; document.getElementById('lookup').requestSubmit(); return true; })()",
+  );
+  const proteinLoaded = await poll(
+    async () => {
+      const status = await evaluate(session, "document.getElementById('export-status').textContent");
+      return status.includes("Loaded 1CRN") ? status : null;
+    },
+    120_000,
+  );
+  if (proteinLoaded === null) failures.push("the protein did not load");
+  const proteinState = await evaluate(
+    session,
+    "JSON.stringify({ look: document.querySelector('#looks input:checked')?.value ?? null, mode: document.getElementById('color-mode').value, status: document.getElementById('export-status').textContent })",
+  );
+  const proteinValues = JSON.parse(proteinState);
+  if (proteinValues.look !== "rainbow") failures.push(`the protein starts on ${proteinValues.look}, not the rainbow look`);
+  if (proteinValues.mode !== "rainbow") failures.push(`the colour select reads ${proteinValues.mode}`);
+  console.log(`protein: ${proteinState}`);
+  if (args.trans) {
+    const transLook = await evaluate(
+      session,
+      "(() => { const radio = [...document.querySelectorAll('#looks input')].find((input) => input.value === 'trans'); if (radio === undefined) return null; radio.click(); return true; })()",
+    );
+    await new Promise((done) => setTimeout(done, 800));
+    const transState = await evaluate(
+      session,
+      "JSON.stringify({ look: document.querySelector('#looks input:checked')?.value ?? null, helix: document.getElementById('helix-color').value.toLowerCase(), sheet: document.getElementById('sheet-color').value.toLowerCase(), loop: document.getElementById('loop-color').value.toLowerCase(), outlines: document.getElementById('silhouettes').checked, status: document.getElementById('export-status').textContent })",
+    );
+    console.log(`trans: ${transState}`);
+    const transValues = JSON.parse(transState);
+    if (transLook !== true) failures.push("the trans look radio is missing");
+    if (transValues.look !== "trans") failures.push("the trans look did not select");
+    if (transValues.helix !== "#5bcefa") failures.push(`the trans helix reads ${transValues.helix}`);
+    if (transValues.sheet !== "#f5a9b8") failures.push(`the trans sheet reads ${transValues.sheet}`);
+    if (transValues.loop !== "#ffffff") failures.push(`the trans loop reads ${transValues.loop}`);
+    if (transValues.outlines !== true) failures.push("the trans look has no outline");
+  }
+}
 // `--reset-confirm true` opens the slider reset question so the screenshot shows it.
 if (args["reset-confirm"]) {
   await evaluate(session, "document.getElementById('appearance-reset-open').click(), true");

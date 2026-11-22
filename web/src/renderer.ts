@@ -203,7 +203,8 @@ function colourCommands(look: LookSpec, structure: Structure): string[] {
       return ["color residue"];
     case "index":
     case "residue_index":
-      return ["color index"];
+    case "rainbow":
+      return ["color spectrum"];
     case "secstruct":
     case "sec_struct":
     case "ss":
