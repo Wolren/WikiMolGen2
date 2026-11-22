@@ -272,8 +272,14 @@
           <label class="field-label" for="settings-preset">Preset</label>
           <div class="preset-row">
             <select id="settings-preset"></select>
-            <button id="preset-save" type="button" class="secondary">Save…</button>
+            <button id="preset-save" type="button" class="secondary">Save</button>
+            <button id="preset-rename" type="button" class="secondary" disabled>Rename</button>
             <button id="preset-delete" type="button" class="secondary" disabled>Delete</button>
+          </div>
+          <div id="preset-name-row" class="preset-name-row" hidden>
+            <input id="preset-name" type="text" placeholder="Preset name" autocomplete="off" />
+            <button id="preset-name-save" type="button" class="secondary">Save</button>
+            <button id="preset-name-cancel" type="button" class="secondary">Cancel</button>
           </div>
           <p id="settings-preset-note" class="hint">The original Wikipedia settings. Save the current ones as your own preset.</p>
 

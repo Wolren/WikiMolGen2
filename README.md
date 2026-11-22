@@ -53,7 +53,7 @@ Each box has a Copy action in its top-right corner; the Commons block carries th
 ![The stacked output panel](docs/output-panel.png)
 
 View comes first, then Export, and every category starts folded. Appearance opens with a Preset
-row: the original Wikipedia settings, plus Save and Delete for your own presets, then groups its
+row: the original Wikipedia settings, plus Save, Rename and Delete for your own presets, then groups its
 controls as shape, light, effects and surface:
 
 ![The appearance panel](docs/appearance-panel.png)

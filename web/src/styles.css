@@ -806,15 +806,16 @@ input[type="range"] {
   flex: 1;
 }
 
-/* The preset row is three inline controls, not stacked full-width buttons. */
+/* The select takes its own line; the three actions share the next one. */
 .preset-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
 
 .preset-row select {
-  flex: 1;
+  flex: 1 1 100%;
   min-width: 0;
 }
 
@@ -825,6 +826,22 @@ input[type="range"] {
 }
 
 .preset-row button.secondary {
+  width: auto;
+  margin-top: 0;
+}
+
+.preset-name-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.preset-name-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.preset-name-row button.secondary {
   width: auto;
   margin-top: 0;
 }

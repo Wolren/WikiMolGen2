@@ -519,18 +519,26 @@ const savedPreset = await evaluate(
   session,
   `(() => {
      const select = document.getElementById('settings-preset');
-     window.prompt = () => 'Test preset';
      document.getElementById('preset-save').click();
+     const rowShown = !document.getElementById('preset-name-row').hidden;
+     document.getElementById('preset-name').value = 'Test preset';
+     document.getElementById('preset-name-save').click();
      const savedId = [...select.options].map((option) => option.value).find((value) => value.startsWith('saved-'));
      const stored = JSON.parse(localStorage.getItem('wikimolgen2.settings-presets') ?? '[]').length;
+     document.getElementById('preset-rename').click();
+     document.getElementById('preset-name').value = 'Renamed';
+     document.getElementById('preset-name-save').click();
+     const renamed = [...select.options].some((option) => option.textContent === 'Renamed');
      document.getElementById('preset-delete').click();
      const after = [...select.options].map((option) => option.value);
-     return JSON.stringify({ saved: savedId !== undefined, stored, deleted: !after.some((value) => value.startsWith('saved-')), state: select.value });
+     return JSON.stringify({ rowShown, saved: savedId !== undefined, stored, renamed, deleted: !after.some((value) => value.startsWith('saved-')), state: select.value });
    })()`,
 );
 const savedValues = JSON.parse(savedPreset);
+if (savedValues.rowShown !== true) failures.push("the preset name row does not open");
 if (savedValues.saved !== true) failures.push("saving a preset adds no option");
 if (savedValues.stored !== 1) failures.push(`the saved preset store holds ${savedValues.stored}`);
+if (savedValues.renamed !== true) failures.push("renaming a preset does not update the option");
 if (savedValues.deleted !== true) failures.push("deleting a preset leaves the option");
 if (savedValues.state !== "custom") failures.push("deleting a preset does not return to Custom");
 console.log(`saved preset: ${savedPreset}`);
@@ -939,6 +947,12 @@ if (args.suggest) {
 if (args["click-canvas"]) {
   await clickAt("#viewer canvas");
   await new Promise((done) => setTimeout(done, 300));
+}
+
+// `--preset-name true` opens the preset name field so the screenshot shows it.
+if (args["preset-name"]) {
+  await evaluate(session, "document.getElementById('preset-save').click(), true");
+  await new Promise((done) => setTimeout(done, 200));
 }
 
 // `--dialog` opens the batch dialog so the screenshot shows its layout.

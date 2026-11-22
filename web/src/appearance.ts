@@ -33,6 +33,8 @@ let recolorScheduled = false;
 let schemesRendered = 0;
 /** The user's saved presets, loaded once and rewritten on save or delete. */
 let savedPresets = loadSavedPresets();
+/** Whether the inline name field creates a preset or renames one. */
+let naming: "new" | "rename" | null = null;
 
 /**
  * The look with element inks resolved for the current structure.
@@ -176,9 +178,71 @@ function renderSettingsPresets(): void {
 }
 
 /** Enable Delete only when a saved preset is selected. */
+/** Enable Rename and Delete only when a saved preset is selected. */
 function updatePresetButtons(): void {
   const saved = savedPresets.some((preset) => preset.id === dom.settingsPreset.value);
   dom.presetDelete.disabled = !saved;
+  dom.presetRename.disabled = !saved;
+}
+
+/** Open the inline name field for a new preset or a rename. */
+function openNameRow(mode: "new" | "rename"): void {
+  const current = savedPresets.find((preset) => preset.id === dom.settingsPreset.value);
+  naming = mode;
+  dom.presetNameRow.hidden = false;
+  dom.presetName.value = mode === "rename" ? (current?.name ?? "") : "";
+  dom.presetName.focus();
+  dom.presetName.select();
+}
+
+function closeNameRow(): void {
+  naming = null;
+  dom.presetNameRow.hidden = true;
+}
+
+/** Save the name: create a new preset or rename the selected one. */
+function confirmPresetName(): void {
+  const name = dom.presetName.value.trim();
+  const look = state.look;
+  if (name === "" || look === null || naming === null) return;
+
+  if (naming === "new") {
+    const saved: SavedPreset = {
+      id: `saved-${Date.now()}`,
+      name,
+      label: name,
+      description: "Saved preset.",
+      appearance: captureSettings(look.appearance),
+      quality: Number(dom.exportQuality.value),
+    };
+    savedPresets = [...savedPresets, saved];
+    saveSavedPresets(savedPresets);
+    renderSettingsPresets();
+    dom.settingsPreset.value = saved.id;
+  } else {
+    const current = savedPresets.find((preset) => preset.id === dom.settingsPreset.value);
+    if (current === undefined) return;
+    current.name = name;
+    current.label = name;
+    saveSavedPresets(savedPresets);
+    renderSettingsPresets();
+    dom.settingsPreset.value = current.id;
+  }
+
+  dom.settingsPresetNote.textContent = `Saved preset: ${name}.`;
+  updatePresetButtons();
+  closeNameRow();
+}
+
+/** Remove the selected saved preset; built-ins stay. */
+function deleteCurrentPreset(): void {
+  const id = dom.settingsPreset.value;
+  if (!id.startsWith("saved-")) return;
+  savedPresets = savedPresets.filter((preset) => preset.id !== id);
+  saveSavedPresets(savedPresets);
+  renderSettingsPresets();
+  dom.settingsPreset.value = "custom";
+  markSettingsCustom();
 }
 
 /** A control changed, so the settings preset no longer describes the appearance. */
@@ -210,39 +274,6 @@ export function applySettingsPreset(id: string): void {
   dom.settingsPresetNote.textContent =
     saved === undefined ? preset.description : `Saved preset: ${saved.name}.`;
   updatePresetButtons();
-}
-
-/** Save the current settings under a name the user picks. */
-function saveCurrentPreset(): void {
-  const look = state.look;
-  if (look === null) return;
-  const name = window.prompt("Preset name", "My preset")?.trim();
-  if (name === undefined || name === "") return;
-  const saved: SavedPreset = {
-    id: `saved-${Date.now()}`,
-    name,
-    label: name,
-    description: "Saved preset.",
-    appearance: captureSettings(look.appearance),
-    quality: Number(dom.exportQuality.value),
-  };
-  savedPresets = [...savedPresets, saved];
-  saveSavedPresets(savedPresets);
-  renderSettingsPresets();
-  dom.settingsPreset.value = saved.id;
-  dom.settingsPresetNote.textContent = `Saved preset: ${name}.`;
-  updatePresetButtons();
-}
-
-/** Remove the selected saved preset; built-ins stay. */
-function deleteCurrentPreset(): void {
-  const id = dom.settingsPreset.value;
-  if (!id.startsWith("saved-")) return;
-  savedPresets = savedPresets.filter((preset) => preset.id !== id);
-  saveSavedPresets(savedPresets);
-  renderSettingsPresets();
-  dom.settingsPreset.value = "custom";
-  markSettingsCustom();
 }
 
 /** Copy the colour controls into the panel, including which ones are active. */
@@ -426,8 +457,21 @@ export function bindAppearance(): void {
     applySettingsPreset(dom.settingsPreset.value);
   });
   dom.exportQuality.addEventListener("change", markSettingsCustom);
-  dom.presetSave.addEventListener("click", saveCurrentPreset);
+  dom.presetSave.addEventListener("click", () => openNameRow("new"));
+  dom.presetRename.addEventListener("click", () => openNameRow("rename"));
   dom.presetDelete.addEventListener("click", deleteCurrentPreset);
+  dom.presetNameSave.addEventListener("click", confirmPresetName);
+  dom.presetNameCancel.addEventListener("click", closeNameRow);
+  dom.presetName.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      confirmPresetName();
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeNameRow();
+    }
+  });
 
   for (const input of [
     dom.stickRadius,
