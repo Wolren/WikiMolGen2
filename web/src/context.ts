@@ -122,6 +122,8 @@ export const dom = {
   resetColors: required<HTMLButtonElement>("reset-colors"),
   projection: required<HTMLSelectElement>("projection"),
   frame: required<HTMLButtonElement>("frame"),
+  appearanceSection: required<HTMLElement>("section-appearance"),
+  viewSection: required<HTMLElement>("section-view"),
   settingsPreset: required<HTMLSelectElement>("settings-preset"),
   presetSave: required<HTMLButtonElement>("preset-save"),
   presetRename: required<HTMLButtonElement>("preset-rename"),

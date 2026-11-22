@@ -488,6 +488,25 @@ if (orientationState.shown !== true) failures.push("the custom orientation field
 if (orientationState.preset !== "wiki") failures.push("the orientation preset did not save");
 console.log(`orientation: ${orientation}`);
 
+if (args["appearance-probe"]) {
+  const before = await evaluate(
+    session,
+    "JSON.stringify({ radius: document.getElementById('stick-radius').value, stateRadius: window.__wikimolgen2?.state?.look?.appearance?.stick_radius, mode: window.__wikimolgen2?.state?.mode, viewer: Boolean(window.__wikimolgen2?.state?.viewer), compound: Boolean(window.__wikimolgen2?.state?.compound) })",
+  );
+  await evaluate(
+    session,
+    "(() => { const input = document.getElementById('stick-radius'); input.value = '0.4'; input.dispatchEvent(new Event('input', { bubbles: true })); return true; })()",
+  );
+  await new Promise((done) => setTimeout(done, 600));
+  const after = await evaluate(
+    session,
+    "JSON.stringify({ radius: document.getElementById('stick-radius').value, stateRadius: window.__wikimolgen2?.state?.look?.appearance?.stick_radius, label: document.getElementById('stick-radius-value').textContent, status: document.getElementById('export-status').textContent })",
+  );
+  console.log(`appearance probe: before ${before} after ${after}`);
+  const probeShot = await send("Page.captureScreenshot", { format: "png" }, session);
+  await writeFile(join(dirname(OUT), "appearance-probe.png"), Buffer.from(probeShot.result.data, "base64"));
+}
+
 // 3a2. A settings preset sets its values; a manual edit flips it to Custom.
 const settingsPreset = await evaluate(
   session,
@@ -582,6 +601,11 @@ if (isProtein) {
     "document.getElementById('colour-controls').hidden === true && document.getElementById('colour-note').hidden === false",
   );
   if (colourHidden !== true) failures.push("the 3D colour controls stay visible in the 2D mode");
+  const sectionsHidden = await evaluate(
+    session,
+    "document.getElementById('section-appearance').hidden === true && document.getElementById('section-view').hidden === true",
+  );
+  if (sectionsHidden !== true) failures.push("the 3D-only sections stay visible in the 2D mode");
   await evaluate(session, "document.getElementById('mode-3d').click(), true");
   await new Promise((done) => setTimeout(done, 300));
   const colourShown = await evaluate(
@@ -589,6 +613,11 @@ if (isProtein) {
     "document.getElementById('colour-controls').hidden === false",
   );
   if (colourShown !== true) failures.push("the colour controls do not return in the 3D mode");
+  const sectionsShown = await evaluate(
+    session,
+    "document.getElementById('section-appearance').hidden === false && document.getElementById('section-view').hidden === false",
+  );
+  if (sectionsShown !== true) failures.push("the 3D-only sections do not return in 3D");
   const pngLabel = await evaluate(session, "document.getElementById('export').textContent");
   if (pngLabel.trim() !== "Download PNG") {
     failures.push(`the 3D toolbar offers "${pngLabel.trim()}"`);

@@ -92,6 +92,7 @@ async function boot(): Promise<void> {
     await init();
   } catch (error) {
     showStageError("The WebAssembly module failed to load.", error);
+    applyMode();
     return;
   }
 
@@ -119,6 +120,7 @@ async function boot(): Promise<void> {
     } else {
       showStageError("This app renders with WebGPU, and the renderer did not start.", error);
     }
+    applyMode();
     if (requested.trim() !== "") {
       dom.identifier.value = requested;
       await loadFromInput();
@@ -448,7 +450,11 @@ function applyMode(): void {
   dom.mode2d.disabled = state.depictionSource === null || state.protein !== null;
   dom.viewerHost.hidden = twoDimensional;
   dom.depiction.hidden = !twoDimensional;
-  setColourAvailable(!twoDimensional);
+  // The view and appearance controls only act on a running 3D viewer.
+  const threeDimensional = !twoDimensional && !isRendererFailed();
+  setColourAvailable(threeDimensional);
+  dom.appearanceSection.hidden = !threeDimensional;
+  dom.viewSection.hidden = !threeDimensional;
 
   if (twoDimensional) {
     if (state.depiction !== null) {
