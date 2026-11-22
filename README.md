@@ -100,6 +100,10 @@ Tests for everything that can be tested without a browser:
 cargo test -p wikimolgen2_core
 ```
 
+CI runs the same tests, builds the wasm bundle and runs the Vite build on every push to
+`patinae-rewrite` and on every pull request: [.github/workflows/ci.yml](.github/workflows/ci.yml).
+The browser check stays local because it needs a GPU.
+
 End-to-end check in a real browser: it serves `web/dist`, loads a compound through the
 page's own controls, asserts the markup and exports a PNG, then writes a screenshot.
 
