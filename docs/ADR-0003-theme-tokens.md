@@ -50,7 +50,16 @@ a copy of the derivation.
 
 Most rules do not care whether a palette is light or dark. The two that do, the RDKit
 black-ink overrides in `stage.css`, match `[data-scheme="dark"]`. Every dark theme, fixed
-or custom, takes that path.
+or custom, takes that path. System resolves through `prefers-color-scheme`, and
+`prefers-contrast: more` sends it to Contrast instead.
+
+### 5. A theme can leave the browser
+
+Two carriers use the same five seeds. A `?theme=` link holds a base64url JSON payload; the
+JSON file holds the same data with a kind and a version. On boot the link applies, saves
+and selects the theme, then removes the parameter. Imports resolve by name and seed, so a
+repeated link or file selects the existing theme instead of adding another. The store caps
+at 40 themes.
 
 ## Alternatives considered
 
@@ -72,5 +81,7 @@ or custom, takes that path.
   floor. The editor says so while the theme is open.
 * A custom theme's first paint depends on the stored payload. Clearing site data returns
   the page to System, which is the documented fallback.
-* The theme store is session-local until applied. Two tabs do not sync a new custom theme
-  until a reload; the app has no cross-tab channel, and a theme is not shared state.
+* A theme changed in one tab reaches the others through a storage event. An open editor
+  defers the update until it saves or cancels, so a preview is not overwritten.
+* A shared link adds a theme to the recipient's store. That is the point of the link, and
+  the cap keeps it bounded.

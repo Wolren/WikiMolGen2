@@ -23,14 +23,15 @@ It is a static site: no server, no upload, no install.
 | --- | --- |
 | Lookup | 58 compounds and 13 proteins answer from the built-in catalogue. Live PubChem autocomplete and RCSB full-text search cover the rest. A CID, a SMILES or a PDB ID still works |
 | 3D | Ball-and-stick, space filling, licorice, stick and protein cartoons, with seven element palettes and a colour mode for element, chain, residue, secondary structure, B-factor or one ink |
-| 2D | RDKit's MinimalLib draws the skeletal SVG with stereo and no background. A Rust V2000 parser is the fallback |
+| 2D | RDKit's MinimalLib draws the skeletal SVG with stereo and no background. Monochrome, bond width and label size apply to the drawing; a Rust V2000 parser is the fallback |
 | Looks | Publication, Flat, Dark, Space filling, Licorice and Stick for small molecules, plus cartoon looks for proteins |
 | Appearance | Stick and sphere size, valence, light, transparency, depth cue, ambient occlusion, soft shadows, outline, smooth edges and projection. A two-step reset at the end restores the current look's slider values; the colour scheme stays |
 | Presets | The original Wikipedia render settings, saved and renamed presets, orientation presets (wiki, front, side, top, custom) and the seven colour schemes |
-| Theme | System plus six fixed palettes: Light, Paper, Contrast, Dark, Slate and Midnight. A custom theme starts from five colours, derives the rest with contrast floors, and is saved by name. The choice applies before the first paint |
-| Export | PNG from 400 to 8192 px wide, 2x to 6x supersampling, 4 to 9 percent margin, optional labels and scale bar, transparent by default, or one ZIP for a batch of identifiers |
+| Theme | System plus six fixed palettes: Light, Paper, Contrast, Dark, Slate and Midnight. A custom theme starts from five colours, derives the rest with contrast floors, and is saved by name. Themes can be duplicated, shared as a link or a JSON file, and open tabs stay in step. The choice applies before the first paint |
+| Export | PNG from 400 to 8192 px wide, 2x to 6x supersampling, 4 to 9 percent margin, optional labels and scale bar, transparent by default, or one ZIP for a batch. A batch can be cancelled between rows, a failed row can be retried on its own, and the run reports its progress |
 | Markup | `{{Infobox drug}}`, `{{Chembox}}` and the Commons upload text, with metadata from Wikidata, Wikipedia and openFDA |
-| Links | A lookup writes `?q=` to the address. The theme and the open sections survive a reload |
+| Links | A lookup writes `?q=` to the address, and a `?theme=` link carries a theme. The theme and the open sections survive a reload |
+| Offline | A service worker caches the shell, the app bundle and the 3D viewer after the first visit. A manifest makes the site installable; the 2D engine is cached on first use |
 
 ## See it
 
@@ -41,7 +42,7 @@ It is a static site: no server, no upload, no install.
 | ![The appearance panel](docs/appearance-panel.png) | ![The stage in full screen](docs/fullscreen.png) |
 | The shape, light and surface controls | Full screen gives the figure the whole display |
 | ![The theme picker](docs/theme-picker.png) | ![The custom theme editor](docs/theme-editor.png) |
-| Six fixed palettes plus System, with a saved custom theme | A custom theme previews live while its five colours are edited |
+| Six fixed palettes, saved custom themes and the sharing tools | A custom theme previews live while its five colours are edited |
 
 An exported figure, cropped and padded by the app itself:
 
@@ -65,15 +66,21 @@ The tests that need no browser:
 
 ```powershell
 cargo test -p wikimolgen2_core
+cd web
+npm test
 ```
 
-CI runs those tests, builds the wasm bundle and runs the Vite build on every push and pull request: [.github/workflows/ci.yml](.github/workflows/ci.yml). A push to `patinae-rewrite` also deploys the site to GitHub Pages at <https://wolren.github.io/WikiMolGen2/>.
+CI runs the Rust tests, the unit tests, builds the wasm bundle and runs the Vite build on every push and pull request: [.github/workflows/ci.yml](.github/workflows/ci.yml). A push to `patinae-rewrite` also deploys the site to GitHub Pages at <https://wolren.github.io/WikiMolGen2/>.
 
 The browser check serves `web/dist`, drives the page's own controls, asserts the markup and exports a PNG:
 
 ```powershell
 node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware
+node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardware --smoke true
 ```
+
+The smoke run skips the export, full screen, batch and deep-link checks. It is the fast
+loop while a page change is in progress.
 
 ## How it works
 
@@ -90,8 +97,9 @@ graph LR
 * `crates/wikimolgen2_wasm` is the part that runs in the page: SVG, figure composition and markup. It does not render.
 * `web/src/` is Vite and TypeScript: lookup, metadata, controls, downloads and the adapter that drives the renderer.
 * `web/public/vendor/` holds the renderer and the 2D engine, with provenance notes beside both builds.
+* `web/public/sw.js` keeps the shell, the app bundle and the 3D viewer for repeat and offline visits. The Vite build writes the hashed precache list.
 
-The renderer choice and its cost, including the missing WebGL2 fallback, are in [docs/ADR-0002-renderer-patinae.md](docs/ADR-0002-renderer-patinae.md). The earlier design is in [docs/ADR-0001-architecture.md](docs/ADR-0001-architecture.md), and the scope is in [docs/SPEC.md](docs/SPEC.md).
+The renderer choice and its cost, including the missing WebGL2 fallback, are in [docs/ADR-0002-renderer-patinae.md](docs/ADR-0002-renderer-patinae.md). The theme token model is in [docs/ADR-0003-theme-tokens.md](docs/ADR-0003-theme-tokens.md), the offline shell in [docs/ADR-0004-offline-shell.md](docs/ADR-0004-offline-shell.md). The earlier design is in [docs/ADR-0001-architecture.md](docs/ADR-0001-architecture.md), and the scope is in [docs/SPEC.md](docs/SPEC.md).
 
 ## Limits
 
@@ -102,6 +110,7 @@ The renderer choice and its cost, including the missing WebGL2 fallback, are in 
 * The live surface is opaque, so a live background gradient and true alpha are export-only or unavailable.
 * DailyMed sends no CORS header. openFDA serves the same labels.
 * A SMILES that PubChem does not know needs a conformer generator, which the app does not have.
+* The offline shell covers the app. PubChem, RCSB and the metadata services still need a connection.
 
 ## Licence
 
