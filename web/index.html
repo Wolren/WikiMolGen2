@@ -587,7 +587,12 @@
       ></textarea>
       <div class="batch-actions">
         <button id="batch-run" type="button" class="primary">Export figures</button>
+        <button id="batch-cancel" type="button" class="secondary" hidden>Cancel</button>
         <button id="batch-close" type="button" class="secondary">Close</button>
+      </div>
+      <div id="batch-progress-row" class="batch-progress-row" hidden>
+        <progress id="batch-progress-bar" max="1" value="0" aria-label="Batch progress"></progress>
+        <span id="batch-progress" class="hint" role="status" aria-live="polite"></span>
       </div>
       <ul id="batch-list" class="batch-list" hidden></ul>
     </dialog>

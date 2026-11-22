@@ -100,7 +100,7 @@ async function exportPng(): Promise<void> {
 
   try {
     const figure = await renderFigure(viewer, settings, name);
-    download(figure.name, figure.bytes);
+    downloadFigure(figure);
     dom.fileName.textContent = figure.name;
     setStatus(
       `Saved ${figure.name} at ${figure.width}x${figure.height} px, ${figure.marginPercent}% margin, ` +
@@ -242,6 +242,11 @@ function download(name: string, bytes: Uint8Array): void {
   link.click();
   // Revoking immediately can race the download in some browsers.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/** Save one rendered figure; a single export and a batch retry use this. */
+export function downloadFigure(figure: RenderedFigure): void {
+  download(figure.name, figure.bytes);
 }
 
 /** Wire the export controls once, after the document exists. */

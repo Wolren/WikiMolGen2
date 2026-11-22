@@ -187,7 +187,11 @@ export const dom = {
   batchDialog: required<HTMLDialogElement>("batch"),
   batchInput: required<HTMLTextAreaElement>("batch-input"),
   batchRun: required<HTMLButtonElement>("batch-run"),
+  batchCancel: required<HTMLButtonElement>("batch-cancel"),
   batchClose: required<HTMLButtonElement>("batch-close"),
+  batchProgressRow: required<HTMLElement>("batch-progress-row"),
+  batchProgress: required<HTMLElement>("batch-progress"),
+  batchProgressBar: required<HTMLProgressElement>("batch-progress-bar"),
   batchList: required<HTMLUListElement>("batch-list"),
 
   fileName: required<HTMLElement>("file-name"),

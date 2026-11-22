@@ -1347,6 +1347,50 @@ input[type="range"] {
   margin-top: 12px;
 }
 
+.batch-actions button {
+  margin-top: 0;
+}
+
+.batch-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.batch-progress-row progress {
+  flex: 1;
+  height: 6px;
+  accent-color: var(--accent);
+}
+
+.batch-progress-row .hint {
+  margin: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.batch-end {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: none;
+  margin-left: auto;
+}
+
+.batch-retry {
+  color: var(--accent);
+}
+
+.batch-retry:hover:not(:disabled) {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
+.batch-row[data-state="cancelled"] .batch-state {
+  color: var(--faint);
+}
+
 .batch-list {
   max-height: 220px;
   margin: 14px 0 0;
@@ -1358,6 +1402,7 @@ input[type="range"] {
 
 .batch-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
