@@ -1,92 +1,59 @@
 /**
- * Page controller: look a compound up, render it, and turn it into Wikipedia or
- * Commons markup.
+ * Page boot and the wiring that spans modules.
  *
  * The renderer is patinae, reached only through `renderer.ts`; everything else here is
  * DOM. The Rust side is authoritative for presets, figure framing and markup, so the page
  * asks it for the look list and for every generated string instead of duplicating those
- * rules here.
+ * rules here. Each panel owns its own wiring: lookup, view, output and looks are modules.
  */
 
-import init, {
-  chembox,
-  colorSchemesJson,
-  commonsInformation,
-  commonsUploadUrl,
-  drugbox,
-  licenseDetails,
-  licenseOptionsJson,
-  looksJson,
-  proteinLooksJson,
-} from "../pkg/wikimolgen2_wasm.js";
-import {
-  appliedLook,
-  bindAppearance,
-  markSettingsCustom,
-  renderSchemeOptions,
-  setColourAvailable,
-  syncAppearance,
-} from "./appearance.js";
+import init, { colorSchemesJson, looksJson } from "../pkg/wikimolgen2_wasm.js";
+import { appliedLook, bindAppearance, renderSchemeOptions, syncAppearance } from "./appearance.js";
 import {
   cloneLook,
   describe,
   dom,
-  exportName,
-  figureName,
-  isRendererFailed,
-  setBusy,
   setStatus,
   setTypedName,
   showStageError,
   state,
-  structureKind,
   withTimeout,
   type ColorSchemeInfo,
   type Look,
-    type ViewMode,
-  type StructureKindId,
 } from "./context.js";
 import {
-  buildDepiction,
   bindDepictionControls,
-  clearDepiction,
   loadDepictionSettings,
   saveDepictionSettings,
-  setDepictionAvailable,
-  showDepiction,
   syncDepictionControls,
 } from "./depiction.js";
-import { bindSuggestions } from "./suggest.js";
-import { bindBatch } from "./batch.js";
-import { AUTO_LICENSE, loadCommonsDetails, saveCommonsDetails } from "./commons.js";
 import { DEFAULT_DEPICTION_SETTINGS } from "./depiction-settings.js";
+import { renderLooks } from "./looks.js";
+import { loadFromInput } from "./lookup.js";
+import { refreshOutput, renderLicenseOptions, resetCommonsLicence } from "./output.js";
 import {
   applyOrientation,
   bindOrientation,
   loadOrientation,
   resetOrientation,
 } from "./orientation.js";
-import { bindExport, exportFigure } from "./figure.js";
-import { bindFullscreen } from "./fullscreen.js";
-import { bindKeyboard } from "./keyboard.js";
-import { bindSections } from "./panel.js";
-import { enrichCompound, LookupError, loadCompound } from "./pubchem.js";
-import type { Compound } from "./pubchem.js";
-import { linkRows } from "./links.js";
 import {
   DEFAULT_PROTEIN_OPTIONS,
   loadProteinOptions,
   saveProteinOptions,
 } from "./protein-options.js";
-import { ProteinError, loadProtein, pdbIdOf } from "./protein.js";
 import { Renderer, RendererUnavailable } from "./renderer.js";
+import { applyMode, queueDepiction, setMode, showEmptyStage, zoomScene } from "./view.js";
+import { bindBatch } from "./batch.js";
+import { bindExport, exportFigure } from "./figure.js";
+import { bindFullscreen } from "./fullscreen.js";
+import { bindKeyboard } from "./keyboard.js";
+import { bindSections } from "./panel.js";
+import { bindSuggestions } from "./suggest.js";
 import { bindTheme, stageTint } from "./theme.js";
 import { bindThemeDialog } from "./theme-dialog.js";
 import "./styles.css";
 import "./stage.css";
-
-/** The upload details the Commons block uses; the author starts from storage. */
-let commonsDetails = loadCommonsDetails();
 
 // The stored orientation must be in place before the first load frames the scene.
 state.orientation = loadOrientation();
@@ -94,21 +61,6 @@ state.orientation = loadOrientation();
 state.depictionSettings = loadDepictionSettings();
 // The protein switches are a renderer preference, like the drawing options.
 state.proteinOptions = loadProteinOptions();
-
-/** A later lookup cancels the metadata update of an earlier one. */
-/** The newest load owns the page; an older answer must not overwrite it. */
-let loadToken = 0;
-
-/** Put the lookup in the URL, so a figure can be linked and reopened. */
-function rememberQuery(identifier: string): void {
-  try {
-    const url = new URL(location.href);
-    url.searchParams.set("q", identifier);
-    history.replaceState(null, "", url);
-  } catch {
-    // A blocked history API only means the URL does not follow the lookup.
-  }
-}
 
 // A development-only handle: the end-to-end harness reads state from it. The production
 // build tree-shakes this branch because `import.meta.env.DEV` is false there.
@@ -186,593 +138,6 @@ async function boot(): Promise<void> {
   }
 }
 
-/** Say what to do with an empty stage; the overlay is also the busy and error surface. */
-function showEmptyStage(): void {
-  if (isRendererFailed() || state.compound !== null) return;
-  dom.stageMessage.classList.remove("busy", "error");
-  dom.stageMessage.classList.add("empty");
-  dom.stageText.textContent = "Load a compound, or paste a PDB ID, to draw a figure.";
-  dom.stageMessage.hidden = false;
-}
-
-/**
- * Bring the figure into view after a load on a stacked layout.
- *
- * In one column the controls come first, so the result is a screen below the button that
- * produced it. Only the narrow layout scrolls; on the two-column layout nothing moves.
- */
-function revealFigure(): void {
-  if (!window.matchMedia("(max-width: 1100px)").matches) return;
-  // The stage holds both views, so the scroll works in the 2D mode as well.
-  const stage = dom.viewerHost.closest(".stage");
-  stage?.scrollIntoView({ block: "center" });
-}
-
-// --- Compound lookup ---------------------------------------------------------------
-
-dom.form.addEventListener("submit", (event) => {
-  event.preventDefault();
-  void loadFromInput();
-});
-
-async function loadFromInput(): Promise<void> {
-  const identifier = dom.identifier.value.trim();
-  if (identifier === "") {
-    dom.identifier.focus();
-    return;
-  }
-
-  const token = ++loadToken;
-  const pdb = pdbIdOf(identifier);
-  if (pdb !== null) {
-    await loadProteinInput(pdb, token);
-    return;
-  }
-
-  setBusy(true, "Looking up…");
-  const started = performance.now();
-  try {
-    const result = await loadCompound(identifier);
-    if (token !== loadToken) return;
-
-    const wasProtein = state.protein !== null;
-    state.compound = result.compound;
-    state.compoundJson = JSON.stringify(result.compound);
-    // A compound load leaves the protein mode; a compound look the user chose stays.
-    if (wasProtein) {
-      state.protein = null;
-      state.looks = JSON.parse(looksJson()) as Look[];
-    }
-    if (wasProtein || state.look === null || !state.looks.some((look) => look.id === state.look?.id)) {
-      state.look = state.looks[0] === undefined ? null : cloneLook(state.looks[0]);
-    }
-
-    // The markup does not need a renderer: looking a compound up and generating wikitext
-    // is the half of this app that works without a GPU, so a failed renderer must not
-    // take it down with it. Each viewer step names itself, so a slow one is visible.
-    if (state.viewer !== null) {
-      setBusy(true, "Drawing…");
-      await state.viewer.loadStructure(result.structure.name, result.structure.bytes);
-      await state.viewer.setProteinOptions(null);
-      if (token !== loadToken) return;
-      setBusy(true, "Colouring…");
-      if (state.look !== null) await state.viewer.applyLook(appliedLook() ?? state.look);
-      if (token !== loadToken) return;
-      setBusy(true, "Framing…");
-      await applyOrientation(state.viewer);
-      if (token !== loadToken) return;
-      dom.exportButton.disabled = false;
-    }
-
-    // The flat record is kept for the 2D engine, which loads only when 2D first opens.
-    // The 7.39 MB RDKit module would otherwise slow every compound load.
-    state.depictionSource = result.depiction;
-    state.depiction = null;
-    dom.mode2d.disabled = result.depiction === null;
-    if (result.depiction === null) {
-      result.warnings.push("PubChem has no flat record for this compound, so 2D is unavailable.");
-    }
-    if (state.mode === "2d" && result.depiction === null) state.mode = "3d";
-
-    renderLooks();
-    syncAppearance();
-    refreshOutput();
-    const seconds = (performance.now() - started) / 1000;
-    const loadedName = state.compound?.name ?? identifier;
-    // Warnings went to the summary card that used to sit under the lookup form. The
-    // status line under the figure is the one place left that a user reads.
-    const warnings = result.warnings.length === 0 ? "" : ` ${result.warnings.join(" ")}`;
-    setStatus(`Loaded ${loadedName} in ${seconds.toFixed(2)} s.${warnings}`);
-    rememberQuery(identifier);
-    // The field is no longer the thing to type into; shortcuts should work now.
-    dom.identifier.blur();
-
-    // The figure is on the stage; the other sources only add markup fields after it.
-    void enrichCompound(result.compound)
-      .then(({ compound }) => {
-        if (token !== loadToken) return;
-        state.compound = compound;
-        state.compoundJson = JSON.stringify(compound);
-        refreshOutput();
-      })
-      .catch(() => {
-        // Metadata is a bonus; a failed source must not mark the load as failed.
-      });
-
-    // A second 2D open after a new load rebuilds the drawing. The first open waits for
-    // the engine, so the overlay stays until the SVG is ready.
-    if (state.mode === "2d" && state.depictionSource !== null) {
-      await showMode("2d");
-    } else {
-      applyMode();
-    }
-    revealFigure();
-  } catch (error) {
-    if (token !== loadToken) return;
-    if (error instanceof LookupError) {
-      setStatus(error.message, true);
-    } else {
-      setStatus(`Could not load the compound: ${describe(error)}`, true);
-    }
-  } finally {
-    if (token === loadToken) setBusy(false);
-  }
-}
-
-/** Resolve after `count` painted frames, so a timing claim includes the first image. */
-function nextFrames(count: number): Promise<void> {
-  return new Promise((resolve) => {
-    let left = count;
-    const step = (): void => {
-      left -= 1;
-      if (left <= 0) resolve();
-      else requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  });
-}
-
-/**
- * Fetch a PDB entry and show it as a cartoon coloured by secondary structure.
- *
- * The timer covers the fetch, the parse, the first styled frame and one more frame. That
- * is the interval a user waits for an image, not just for a parse.
- */
-async function loadProteinInput(id: string, token: number): Promise<void> {
-  const viewer = state.viewer;
-  if (viewer === null) {
-    setStatus("The 3D viewer is not available, so a protein cartoon cannot be drawn.", true);
-    return;
-  }
-  setBusy(true, `Fetching PDB ${id}…`);
-  dom.exportButton.disabled = true;
-  const started = performance.now();
-  try {
-    const record = await loadProtein(id);
-    if (token !== loadToken) return;
-    const fetched = performance.now();
-    setBusy(true, `Building ${id}…`);
-    const atoms = await viewer.loadStructure(record.name, record.bytes);
-    await viewer.setProteinOptions(state.proteinOptions);
-    if (token !== loadToken) return;
-    const parsed = performance.now();
-    state.looks = JSON.parse(proteinLooksJson()) as Look[];
-    state.look = state.looks[0] === undefined ? null : cloneLook(state.looks[0]);
-    if (state.look !== null) await viewer.applyLook(state.look);
-    const styled = performance.now();
-    await applyOrientation(viewer);
-    await nextFrames(2);
-    if (token !== loadToken) return;
-    const drawn = performance.now();
-    const seconds = (drawn - started) / 1000;
-    const sequence = viewer.sequenceSummary();
-
-    state.protein = { id, atoms, residues: sequence.residues, chains: sequence.chains, seconds };
-    state.compound = { name: id, synonyms: [id] };
-    state.compoundJson = JSON.stringify(state.compound);
-    state.depictionSource = null;
-    state.depiction = null;
-    state.mode = "3d";
-    dom.mode2d.disabled = true;
-
-    renderLooks();
-    syncAppearance();
-    applyMode();
-    revealFigure();
-    dom.exportButton.disabled = false;
-    dom.identifier.blur();
-    setStatus(
-      `Loaded ${id}: ${atoms} atoms, ${sequence.residues} residues in ${seconds.toFixed(2)} s ` +
-        `(fetch ${((fetched - started) / 1000).toFixed(2)}, load ${((parsed - fetched) / 1000).toFixed(2)}, ` +
-        `style ${((styled - parsed) / 1000).toFixed(2)}, draw ${((drawn - styled) / 1000).toFixed(2)}).`,
-    );
-    rememberQuery(id);
-  } catch (error) {
-    if (token !== loadToken) return;
-    if (error instanceof ProteinError) setStatus(error.message, true);
-    else setStatus(`Could not load ${id}: ${describe(error)}`, true);
-  } finally {
-    if (token === loadToken) setBusy(false);
-  }
-}
-
-// --- Style and camera ---------------------------------------------------------------
-
-function renderLooks(): void {
-  dom.looks.replaceChildren(
-    ...state.looks.map((look) => {
-      const label = document.createElement("label");
-      label.className = "look";
-      label.setAttribute("role", "radio");
-      const checked = state.look?.id === look.id;
-      label.setAttribute("aria-checked", String(checked));
-
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.name = "look";
-      input.value = look.id;
-      input.checked = checked;
-      input.addEventListener("change", () => void chooseLook(look));
-
-      const swatch = document.createElement("span");
-      swatch.className = "look-swatch";
-      swatch.dataset.style = look.style;
-      swatch.setAttribute("aria-hidden", "true");
-
-      const text = document.createElement("span");
-      text.className = "look-label";
-      text.textContent = look.label;
-
-      label.append(input, swatch, text);
-      return label;
-    }),
-  );
-}
-
-async function chooseLook(look: Look): Promise<void> {
-  // A copy, so the panel's edits never write back into the preset list.
-  state.look = cloneLook(look);
-  renderLooks();
-  syncAppearance();
-  markSettingsCustom();
-  // Nothing to re-style before a structure is loaded, and patinae treats a command
-  // against an empty scene as an error rather than a no-op.
-  if (state.viewer === null || state.compound === null) return;
-  try {
-    await state.viewer.applyLook(appliedLook() ?? look);
-    await applyOrientation(state.viewer);
-  } catch (error) {
-    setStatus(`Could not apply “${look.label}”: ${describe(error)}`, true);
-  }
-}
-
-// --- View mode ---------------------------------------------------------------------
-
-/** The 2D engine has been loaded once; later drawings skip the download message. */
-let engineLoaded = false;
-
-/** Rebuild an open 2D view after a drawing control changed, once per quiet spell. */
-let depictionTimer = 0;
-
-function queueDepiction(): void {
-  if (state.depictionSource === null) return;
-  if (state.mode !== "2d") {
-    // The next switch to 2D rebuilds with the new options.
-    state.depiction = null;
-    return;
-  }
-  window.clearTimeout(depictionTimer);
-  depictionTimer = window.setTimeout(() => {
-    void rebuildDepiction();
-  }, 120);
-}
-
-async function rebuildDepiction(): Promise<void> {
-  if (state.depictionSource === null) return;
-  const previous = state.depiction;
-  const inks = appliedLook()?.appearance.element_colors ?? [];
-  const name = state.compound?.name ?? state.depictionSource.name;
-  const built = await buildDepiction(
-    name,
-    state.depictionSource.bytes,
-    inks,
-    state.depictionSettings,
-  );
-  if (built.depiction === null) {
-    setStatus(`The 2D drawing failed: ${built.error}`, true);
-    state.depiction = previous;
-    return;
-  }
-  state.depiction = built.depiction;
-  if (state.mode === "2d") applyMode();
-}
-
-/**
- * Switch the stage. The first 2D open loads RDKit, so this is asynchronous.
- *
- * The build runs under the stage overlay. A failed engine falls back to the Rust parser
- * inside `buildDepiction`, so this returns without a drawing only when both fail.
- */
-async function showMode(mode: ViewMode): Promise<void> {
-  if (mode === "2d") {
-    if (state.protein !== null || state.depictionSource === null) return;
-    if (state.depiction === null) {
-      setBusy(
-        true,
-        engineLoaded
-          ? "Drawing the 2D view…"
-          : "Loading the RDKit 2D engine (7.4 MB)…",
-      );
-      try {
-        const inks = appliedLook()?.appearance.element_colors ?? [];
-        const name = state.compound?.name ?? state.depictionSource.name;
-        const built = await buildDepiction(
-          name,
-          state.depictionSource.bytes,
-          inks,
-          state.depictionSettings,
-        );
-        if (built.depiction === null) {
-          setStatus(`The 2D drawing failed: ${built.error}`, true);
-          return;
-        }
-        state.depiction = built.depiction;
-        engineLoaded = true;
-      } finally {
-        setBusy(false);
-      }
-    }
-  }
-  state.mode = mode;
-  applyMode();
-}
-
-/** Switch the stage, and ignore 2D when the record has no flat coordinates. */
-function setMode(mode: ViewMode): void {
-  if (mode === "2d" && dom.mode2d.disabled) return;
-  void showMode(mode);
-}
-
-/** Swap the stage between the 3D viewer and the inline drawing. */
-function applyMode(): void {
-  // A protein has no flat record, so the drawing mode is not offered.
-  if (state.protein !== null) state.mode = "3d";
-  const isProtein = state.protein !== null;
-  dom.proteinLabel.hidden = !isProtein;
-  dom.proteinControls.hidden = !isProtein;
-  const twoDimensional = state.mode === "2d";
-  dom.mode3d.setAttribute("aria-selected", String(!twoDimensional));
-  dom.mode2d.setAttribute("aria-selected", String(twoDimensional));
-  dom.mode2d.disabled = state.depictionSource === null || state.protein !== null;
-  dom.viewerHost.hidden = twoDimensional;
-  dom.depiction.hidden = !twoDimensional;
-  dom.viewerHost.setAttribute("role", "img");
-  dom.viewerHost.setAttribute(
-    "aria-label",
-    state.protein !== null
-      ? `${state.protein.id} protein cartoon`
-      : state.compound !== null
-        ? `${state.compound.name ?? "Compound"} 3D model`
-        : "3D molecular model",
-  );
-  // The view and appearance controls only act on a running 3D viewer.
-  const threeDimensional = !twoDimensional && !isRendererFailed();
-  setColourAvailable(threeDimensional);
-  setDepictionAvailable(twoDimensional);
-  dom.appearanceSection.hidden = !threeDimensional;
-  dom.viewSection.hidden = !threeDimensional;
-
-  if (twoDimensional) {
-    if (state.depiction !== null) {
-      const label = `${state.compound?.name ?? "Molecule"} skeletal structure`;
-      showDepiction(dom.depiction, state.depiction.svg, label);
-      const ink = state.depictionSettings.monochrome ? ", black and white" : "";
-      dom.stageNote.textContent =
-        state.depiction.engine === "rdkit"
-          ? `RDKit skeletal drawing${ink}`
-          : `Vector skeletal drawing${ink}`;
-    } else {
-      clearDepiction(dom.depiction);
-      dom.depiction.textContent = "Load a compound to see its 2D drawing.";
-      dom.stageNote.textContent = "";
-    }
-    // The drawing needs no GPU, so it can cover an error about the 3D viewer.
-    dom.stageMessage.hidden = true;
-  } else {
-    dom.stageNote.textContent =
-      state.protein === null
-        ? ""
-        : `${state.protein.id} cartoon, secondary structure colours`;
-    // The overlay doubles as the empty-stage hint and the error surface; a slow step
-    // owns it while it runs, so its own text must not be replaced here.
-    if (isRendererFailed()) dom.stageMessage.hidden = false;
-    else if (state.compound === null && !dom.stageMessage.classList.contains("busy")) {
-      showEmptyStage();
-    }
-  }
-
-  dom.exportButton.textContent = twoDimensional ? "Download SVG" : "Download PNG";
-  dom.exportButton.disabled =
-    state.compound === null ||
-    (twoDimensional ? state.depiction === null : state.viewer === null);
-  refreshOutput();
-}
-
-dom.mode3d.addEventListener("click", () => setMode("3d"));
-dom.mode2d.addEventListener("click", () => setMode("2d"));
-
-dom.projection.addEventListener("change", () => {
-  void state.viewer?.setProjection(dom.projection.value);
-});
-
-dom.frame.addEventListener("click", () => {
-  if (state.compound === null) return;
-  if (state.viewer !== null) void applyOrientation(state.viewer);
-});
-
-/** Zoom around the current framing; a no-op with nothing loaded. */
-function zoomScene(notches: number): void {
-  if (state.viewer === null || state.compound === null) return;
-  void state.viewer
-    .zoomBy(notches)
-    .catch((error) => setStatus(`Zoom failed: ${describe(error)}`, true));
-}
-
-dom.zoomIn.addEventListener("click", () => zoomScene(1));
-dom.zoomOut.addEventListener("click", () => zoomScene(-1));
-
-/** Fit the camera to a typed selection, then the zoom acts on that part. */
-async function zoomToSelection(): Promise<void> {
-  const selection = dom.zoomSelection.value.trim();
-  if (selection === "" || state.viewer === null || state.compound === null) return;
-  try {
-    await state.viewer.zoomTo(selection);
-    setStatus(`Zoomed to ${selection}.`);
-  } catch (error) {
-    setStatus(`Zoom failed: ${describe(error)}`, true);
-  }
-}
-
-dom.zoomSelectionGo.addEventListener("click", () => void zoomToSelection());
-dom.zoomSelection.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter") return;
-  event.preventDefault();
-  void zoomToSelection();
-});
-
-// The renderer maps a released wheel to clipping-plane changes and only zooms while a
-// button is held, so a plain wheel does nothing visible. A viewer is expected to zoom, so
-// take that case in the capture phase, before the canvas sees it, and leave the
-// wheel-while-dragging case to the renderer.
-dom.viewerHost.addEventListener(
-  "wheel",
-  (event) => {
-    if (event.buttons !== 0) return;
-    if (state.viewer === null || state.compound === null) return;
-    event.preventDefault();
-    event.stopPropagation();
-    zoomScene(event.deltaY < 0 ? 1 : -1);
-  },
-  { passive: false, capture: true },
-);
-
-// --- Wikitext ----------------------------------------------------------------------
-
-/** Copy one block, naming it in the status line. */
-function copyBlock(node: HTMLElement, label: string): void {
-  const text = node.textContent ?? "";
-  if (text === "") return;
-  void navigator.clipboard.writeText(text).then(
-    () => setStatus(`Copied the ${label}.`),
-    () => setStatus("The clipboard is not available in this browser.", true),
-  );
-}
-
-dom.copyDrugbox.addEventListener("click", () => copyBlock(dom.outputDrugbox, "drug infobox"));
-dom.copyChembox.addEventListener("click", () => copyBlock(dom.outputChembox, "chembox"));
-dom.copyCommons.addEventListener("click", () => copyBlock(dom.outputCommons, "Commons description"));
-
-/** Show the current name in the field, except while the user is typing in it. */
-function syncFileNameField(name: string | null): void {
-  dom.fileName.disabled = name === null;
-  dom.fileNameReset.disabled = name === null || name === figureName(structureKind());
-  if (name === null) {
-    dom.fileName.value = "";
-    return;
-  }
-  // The field owns the text while it has focus; rewriting it would move the caret.
-  if (document.activeElement !== dom.fileName) dom.fileName.value = name;
-}
-
-/** Settle the typed name, so the field shows what the markup and the download use. */
-function commitFileName(): void {
-  if (state.compound === null) return;
-  const name = exportName(structureKind());
-  setTypedName(name === figureName(structureKind()) ? "" : name);
-  dom.fileName.value = name;
-  refreshOutput();
-}
-
-dom.fileName.addEventListener("input", () => {
-  setTypedName(dom.fileName.value);
-  refreshOutput();
-});
-dom.fileName.addEventListener("blur", commitFileName);
-dom.fileName.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter") return;
-  event.preventDefault();
-  dom.fileName.blur();
-});
-dom.fileNameReset.addEventListener("click", () => {
-  setTypedName("");
-  dom.fileName.value = figureName(structureKind());
-  refreshOutput();
-  dom.fileName.focus();
-  dom.fileName.select();
-});
-
-dom.commonsAuthor.value = commonsDetails.author;
-dom.commonsAuthor.addEventListener("input", () => {
-  commonsDetails = { ...commonsDetails, author: dom.commonsAuthor.value };
-  saveCommonsDetails(commonsDetails);
-  refreshOutput();
-});
-
-/** Show the fields the chosen licence needs, and fill the custom one from storage. */
-function syncCommonsDetails(): void {
-  dom.commonsCustomField.hidden = commonsDetails.license !== "custom";
-  if (document.activeElement !== dom.commonsLicenseCustom) {
-    dom.commonsLicenseCustom.value = commonsDetails.custom;
-  }
-}
-
-/** The picker's choices: Auto, the six licences from Rust, then a custom template. */
-function renderLicenseOptions(): void {
-  const options = JSON.parse(licenseOptionsJson()) as { id: string; label: string }[];
-  const choices = [
-    { value: AUTO_LICENSE, label: "Auto (per view)" },
-    ...options.map((option) => ({ value: option.id, label: option.label })),
-    { value: "custom", label: "Custom template…" },
-  ];
-  dom.commonsLicense.replaceChildren(
-    ...choices.map((choice) => new Option(choice.label, choice.value)),
-  );
-  if (!choices.some((choice) => choice.value === commonsDetails.license)) {
-    commonsDetails = { ...commonsDetails, license: AUTO_LICENSE };
-  }
-  dom.commonsLicense.value = commonsDetails.license;
-  syncCommonsDetails();
-}
-
-/** The template and upload code for the stored choice, with a note when it is unusable. */
-function resolveLicense(kind: StructureKindId): { template: string; code: string } {
-  try {
-    const resolved = JSON.parse(licenseDetails(kind, commonsDetails.license, commonsDetails.custom)) as {
-      template: string;
-      code: string;
-    };
-    dom.commonsLicenseNote.hidden = true;
-    dom.commonsLicenseNote.textContent = "";
-    return resolved;
-  } catch (error) {
-    dom.commonsLicenseNote.hidden = false;
-    dom.commonsLicenseNote.textContent = `${describe(error)} Using the automatic licence.`;
-    return JSON.parse(licenseDetails(kind, AUTO_LICENSE, "")) as { template: string; code: string };
-  }
-}
-
-dom.commonsLicense.addEventListener("change", () => {
-  commonsDetails = { ...commonsDetails, license: dom.commonsLicense.value };
-  syncCommonsDetails();
-  saveCommonsDetails(commonsDetails);
-  refreshOutput();
-});
-dom.commonsLicenseCustom.addEventListener("input", () => {
-  commonsDetails = { ...commonsDetails, custom: dom.commonsLicenseCustom.value };
-  saveCommonsDetails(commonsDetails);
-  refreshOutput();
-});
-
 /** Copy the protein switches into the panel. */
 function syncProteinControls(): void {
   const options = state.proteinOptions;
@@ -832,10 +197,7 @@ function resetAllSettings(): void {
   dom.gradient.value = "none";
   dom.gradientBottom.value = "#dfe7f2";
 
-  commonsDetails = { ...commonsDetails, license: AUTO_LICENSE, custom: "" };
-  dom.commonsLicense.value = AUTO_LICENSE;
-  syncCommonsDetails();
-  saveCommonsDetails(commonsDetails);
+  resetCommonsLicence();
 
   setTypedName("");
   state.proteinOptions = { ...DEFAULT_PROTEIN_OPTIONS };
@@ -866,76 +228,6 @@ dom.resetAllCancel.addEventListener("click", () => {
   dom.resetAllConfirm.hidden = true;
 });
 dom.resetAllYes.addEventListener("click", resetAllSettings);
-
-/** Fill the identifier table, or hide the block when there is nothing to link. */
-function renderLinks(compound: Compound | null): void {
-  const rows = compound === null ? [] : linkRows(compound);
-  dom.blockLinks.hidden = rows.length === 0;
-  dom.linksBody.replaceChildren(
-    ...rows.map((row) => {
-      const tr = document.createElement("tr");
-      const label = document.createElement("th");
-      label.scope = "row";
-      label.textContent = row.label;
-      const value = document.createElement("td");
-      if (row.href === undefined) {
-        value.textContent = row.value;
-      } else {
-        const link = document.createElement("a");
-        link.href = row.href;
-        link.target = "_blank";
-        link.rel = "noreferrer";
-        link.textContent = row.value;
-        value.append(link);
-      }
-      tr.append(label, value);
-      return tr;
-    }),
-  );
-}
-
-function refreshOutput(): void {
-  // A protein has no drug or chem box; its Commons description is the useful output.
-  const protein = state.protein !== null;
-  dom.blockDrugbox.hidden = protein;
-  dom.blockChembox.hidden = protein;
-
-  if (state.compound === null) {
-    dom.outputDrugbox.textContent = "Load a compound to generate markup.";
-    dom.outputChembox.textContent = "";
-    dom.outputCommons.textContent = "";
-    syncFileNameField(null);
-    renderLinks(null);
-    dom.uploadCommons.hidden = true;
-    return;
-  }
-
-  const kind = structureKind();
-  const fileName = exportName(kind);
-  syncFileNameField(fileName);
-  renderLinks(state.compound);
-
-  // The two infoboxes and the upload description sit together: a figure needs the file
-  // description before the article gets the box that cites it.
-  dom.outputDrugbox.textContent = protein ? "" : drugbox(state.compoundJson, fileName);
-  dom.outputChembox.textContent = protein ? "" : chembox(state.compoundJson, fileName);
-  const today = new Date().toISOString().slice(0, 10);
-  const license = resolveLicense(kind);
-  const commons = commonsInformation(
-    state.compoundJson,
-    kind,
-    commonsDetails.author,
-    license.template,
-    today,
-  );
-  dom.outputCommons.textContent = commons;
-
-  // The upload action belongs to the Commons description, under the text it sends.
-  dom.uploadCommons.href = commonsUploadUrl(fileName, commons, license.code);
-  dom.uploadCommons.hidden = false;
-}
-
-// --- Small helpers -----------------------------------------------------------------
 
 bindTheme();
 bindThemeDialog();
