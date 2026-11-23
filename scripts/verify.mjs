@@ -21,6 +21,8 @@ const PORT = Number(args.port ?? 4173);
 const COMPOUND = args.compound ?? "aspirin";
 const verbose = args.verbose === "true";
 const smoke = args.smoke === "true";
+// Headless Chrome has no GPU here, so this mode expects the renderer to fail.
+const noGpu = args["no-gpu"] === "true";
 const EXTRA_FLAGS = args.flags ? args.flags.split("|").filter(Boolean) : [];
 const CHROME = args.chrome ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 
@@ -267,13 +269,15 @@ const stageReady = await poll(async () => {
 
 const stageText = await evaluate(session, "document.getElementById('stage-message')?.textContent ?? ''");
 if (stageReady === null) failures.push("renderer never finished starting");
-if (stageReady !== null && !stageReady.ready) failures.push(`renderer did not start: ${stageText.trim()}`);
+if (stageReady !== null && !stageReady.ready && !noGpu) {
+  failures.push(`renderer did not start: ${stageText.trim()}`);
+}
 console.log(`renderer: ${stageReady?.ready ? "started" : "FAILED — " + stageText.trim()}`);
 console.log(`boot: ${((Date.now() - bootStart) / 1000).toFixed(2)} s from navigation to ready`);
 
 // The empty stage says what to do, and the long sections start folded.
 const emptyText = await evaluate(session, "document.getElementById('stage-text')?.textContent ?? ''");
-if (!emptyText.includes("Load a compound")) {
+if (!noGpu && !emptyText.includes("Load a compound")) {
   failures.push(`the empty stage reads "${emptyText.trim()}"`);
 }
 const sections = JSON.parse(
@@ -1283,12 +1287,12 @@ if (isProtein) {
     session,
     "document.getElementById('colour-controls').hidden === false",
   );
-  if (colourShown !== true) failures.push("the colour controls do not return in the 3D mode");
+  if (!noGpu && colourShown !== true) failures.push("the colour controls do not return in the 3D mode");
   const sectionsShown = await evaluate(
     session,
     "document.getElementById('section-appearance').hidden === false && document.getElementById('section-view').hidden === false",
   );
-  if (sectionsShown !== true) failures.push("the 3D-only sections do not return in 3D");
+  if (!noGpu && sectionsShown !== true) failures.push("the 3D-only sections do not return in 3D");
   const pngLabel = await evaluate(session, "document.getElementById('export').textContent");
   if (pngLabel.trim() !== "Download PNG") {
     failures.push(`the 3D toolbar offers "${pngLabel.trim()}"`);
@@ -1687,8 +1691,11 @@ const zoomed = await poll(async () => {
   const text = await evaluate(session, "document.getElementById('export-status').textContent ?? ''");
   return text.startsWith("Zoomed to") ? text : null;
 }, 15_000);
-if (zoomed === null) failures.push("zoom to a selection did not run");
-else console.log(`zoom selection: ${zoomed.slice(0, 60)}`);
+if (zoomed === null) {
+  if (!noGpu) failures.push("zoom to a selection did not run");
+} else {
+  console.log(`zoom selection: ${zoomed.slice(0, 60)}`);
+}
 await evaluate(session, "document.getElementById('frame').click(), true");
 await new Promise((done) => setTimeout(done, 400));
 
@@ -2170,7 +2177,15 @@ await poll(
 );
 await send("Page.reload", {}, session);
 const reloaded = await poll(
-  async () => (await evaluate(session, "document.documentElement.dataset.ready === '1'")) ? true : null,
+  async () =>
+    (await evaluate(
+      session,
+      noGpu
+        ? "document.getElementById('identifier') !== null"
+        : "document.documentElement.dataset.ready === '1'",
+    ))
+      ? true
+      : null,
   60_000,
 );
 if (reloaded !== true) {

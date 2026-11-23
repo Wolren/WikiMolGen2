@@ -81,7 +81,8 @@ node scripts/verify.mjs --url http://localhost:5173/ --headed true --gpu hardwar
 ```
 
 The smoke run skips the export, full screen, batch and deep-link checks. It is the fast
-loop while a page change is in progress.
+loop while a page change is in progress. Add `--no-gpu true` to expect the renderer
+failure, which lets a CI runner without a GPU check the markup, 2D and panel paths.
 
 ## How it works
 

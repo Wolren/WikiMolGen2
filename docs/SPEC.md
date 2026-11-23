@@ -318,4 +318,6 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 the browser-facing parts. The `--gpu hardware` flag matters: SwiftShader's flags remove the
 adapter this renderer needs, so a software run would report a failure that is about the
 flags rather than the app. Add `--smoke true` to skip the export, full screen, batch and
-deep-link checks while a page change is in progress.
+deep-link checks while a page change is in progress. Add `--no-gpu true` on a runner
+without a GPU: the mode expects the renderer failure and still checks the markup, the 2D
+drawing and the panels.
