@@ -14,6 +14,11 @@ describe("linkRows", () => {
       smiles: "CC(=O)OC1=CC=CC=C1C(=O)O",
       iupac_name: "2-acetoxybenzoic acid",
       molecular_formula: "C9H8O4",
+      chebi_id: "CHEBI:15365",
+      chembl_id: "CHEMBL25",
+      kegg_id: "D00109",
+      unii: "R16CO5Y76E",
+      pubchem_substance: "1983",
     });
     const byLabel = new Map(rows.map((row) => [row.label, row]));
     expect(byLabel.get("PubChem CID")?.href).toBe(
@@ -24,7 +29,16 @@ describe("linkRows", () => {
       "https://www.chemspider.com/Chemical-Structure.2157.html",
     );
     expect(byLabel.get("DrugBank")?.href).toBe("https://go.drugbank.com/drugs/DB00945");
-    expect(byLabel.get("CAS")?.href).toBeUndefined();
+    expect(byLabel.get("CAS")?.href).toBe(
+      "https://commonchemistry.cas.org/detail?cas_rn=50-78-2",
+    );
+    expect(byLabel.get("ChEBI")?.href).toBe(
+      "https://www.ebi.ac.uk/chebi/searchId.do?chebiId=CHEBI%3A15365",
+    );
+    expect(byLabel.get("ChEMBL")?.href).toBe(
+      "https://www.ebi.ac.uk/chembl/compound_report_card/CHEMBL25/",
+    );
+    expect(byLabel.get("KEGG")?.href).toBe("https://www.genome.jp/entry/D00109");
     expect(rows.map((row) => row.label)).toEqual([
       "PubChem CID",
       "CAS",
@@ -35,7 +49,12 @@ describe("linkRows", () => {
       "Formula",
       "Wikidata",
       "ChemSpider",
+      "ChEBI",
+      "ChEMBL",
       "DrugBank",
+      "KEGG",
+      "UNII",
+      "PubChem substance",
     ]);
   });
 

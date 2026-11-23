@@ -25,6 +25,7 @@ import {
   type DepictionPreset,
 } from "./depiction-presets.js";
 import { depictWithRdkit } from "./rdkit.js";
+import { newId, uniqueName } from "./names.js";
 
 /** Nominal canvas size. The drawing is vector, so this only sets the viewBox. */
 const DEPICTION_WIDTH = 900;
@@ -198,10 +199,13 @@ export function bindDepictionControls(onChange: () => void): void {
     dom.depictionPresetName.focus();
   });
   dom.depictionPresetNameSave.addEventListener("click", () => {
-    const name = dom.depictionPresetName.value.trim().slice(0, 40);
+    const name = uniqueName(dom.depictionPresetName.value, [
+      ...BUILTIN_DEPICTION_PRESETS.map((preset) => preset.name),
+      ...savedPresets.map((preset) => preset.name),
+    ]);
     if (name === "") return;
     const preset: DepictionPreset = {
-      id: `saved-${Date.now()}`,
+      id: newId("saved"),
       name,
       settings: captureDepiction(state.depictionSettings),
     };

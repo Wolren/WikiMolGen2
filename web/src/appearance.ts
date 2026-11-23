@@ -28,6 +28,7 @@ import {
 import type { SavedPreset } from "./presets.js";
 import { downloadText } from "./files.js";
 import { colourFileText, parseColourFile } from "./colour-scheme.js";
+import { newId, uniqueName } from "./names.js";
 
 /** Apply appearance changes once per frame, not once per input event. */
 let applyScheduled = false;
@@ -209,12 +210,14 @@ function confirmPresetName(): void {
   const name = dom.presetName.value.trim();
   const look = state.look;
   if (name === "" || look === null || naming === null) return;
+  const builtin = BUILTIN_PRESETS.map((preset) => preset.label);
 
   if (naming === "new") {
+    const unique = uniqueName(name, [...builtin, ...savedPresets.map((preset) => preset.name)]);
     const saved: SavedPreset = {
-      id: `saved-${Date.now()}`,
-      name,
-      label: name,
+      id: newId("saved"),
+      name: unique,
+      label: unique,
       description: "Saved preset.",
       appearance: captureSettings(look.appearance),
       quality: Number(dom.exportQuality.value),
@@ -223,17 +226,20 @@ function confirmPresetName(): void {
     saveSavedPresets(savedPresets);
     renderSettingsPresets();
     dom.settingsPreset.value = saved.id;
+    dom.settingsPresetNote.textContent = `Saved preset: ${unique}.`;
   } else {
     const current = savedPresets.find((preset) => preset.id === dom.settingsPreset.value);
     if (current === undefined) return;
-    current.name = name;
-    current.label = name;
+    const others = savedPresets.filter((preset) => preset.id !== current.id);
+    const unique = uniqueName(name, [...builtin, ...others.map((preset) => preset.name)]);
+    current.name = unique;
+    current.label = unique;
     saveSavedPresets(savedPresets);
     renderSettingsPresets();
     dom.settingsPreset.value = current.id;
+    dom.settingsPresetNote.textContent = `Saved preset: ${unique}.`;
   }
 
-  dom.settingsPresetNote.textContent = `Saved preset: ${name}.`;
   updatePresetButtons();
   closeNameRow();
 }
@@ -508,15 +514,22 @@ function importPresets(): void {
         dom.settingsPresetNote.textContent = result.error;
         return;
       }
-      const stamp = Date.now();
-      const imported: SavedPreset[] = result.presets.map((preset, index) => ({
-        id: `saved-${stamp}-${index}`,
-        name: preset.name,
-        label: preset.name,
-        description: "Imported preset.",
-        appearance: preset.appearance,
-        quality: preset.quality,
-      }));
+      const taken = [
+        ...BUILTIN_PRESETS.map((preset) => preset.label),
+        ...savedPresets.map((preset) => preset.name),
+      ];
+      const imported: SavedPreset[] = result.presets.map((preset) => {
+        const name = uniqueName(preset.name, taken);
+        taken.push(name);
+        return {
+          id: newId("saved"),
+          name,
+          label: name,
+          description: "Imported preset.",
+          appearance: preset.appearance,
+          quality: preset.quality,
+        };
+      });
       savedPresets = [...savedPresets, ...imported];
       saveSavedPresets(savedPresets);
       renderSettingsPresets();

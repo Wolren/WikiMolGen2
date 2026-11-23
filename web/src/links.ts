@@ -23,6 +23,11 @@ export function linkRows(compound: Compound): LinkRow[] {
     if (text === "") return;
     rows.push(href === undefined ? { label, value: text } : { label, value: text, href });
   };
+  /** A link for a value that may be absent or blank. */
+  const link = (value: string | undefined, build: (id: string) => string): string | undefined => {
+    const text = (value ?? "").trim();
+    return text === "" ? undefined : build(text);
+  };
 
   if (compound.cid !== undefined) {
     add(
@@ -31,7 +36,14 @@ export function linkRows(compound: Compound): LinkRow[] {
       `https://pubchem.ncbi.nlm.nih.gov/compound/${compound.cid}`,
     );
   }
-  add("CAS", compound.cas_number);
+  add(
+    "CAS",
+    compound.cas_number,
+    link(
+      compound.cas_number,
+      (id) => `https://commonchemistry.cas.org/detail?cas_rn=${encodeURIComponent(id)}`,
+    ),
+  );
   add("InChI", compound.inchi);
   add("InChIKey", compound.inchikey);
   add("SMILES", compound.smiles);
@@ -51,8 +63,22 @@ export function linkRows(compound: Compound): LinkRow[] {
       ? undefined
       : `https://www.chemspider.com/Chemical-Structure.${compound.chemspider_id}.html`,
   );
-  add("ChEBI", compound.chebi_id);
-  add("ChEMBL", compound.chembl_id);
+  add(
+    "ChEBI",
+    compound.chebi_id,
+    link(compound.chebi_id, (id) => {
+      const code = id.toUpperCase().startsWith("CHEBI:") ? id : `CHEBI:${id}`;
+      return `https://www.ebi.ac.uk/chebi/searchId.do?chebiId=${encodeURIComponent(code)}`;
+    }),
+  );
+  add(
+    "ChEMBL",
+    compound.chembl_id,
+    link(
+      compound.chembl_id,
+      (id) => `https://www.ebi.ac.uk/chembl/compound_report_card/${encodeURIComponent(id)}/`,
+    ),
+  );
   add(
     "DrugBank",
     compound.drugbank_id,
@@ -60,7 +86,11 @@ export function linkRows(compound: Compound): LinkRow[] {
       ? undefined
       : `https://go.drugbank.com/drugs/${compound.drugbank_id}`,
   );
-  add("KEGG", compound.kegg_id);
+  add(
+    "KEGG",
+    compound.kegg_id,
+    link(compound.kegg_id, (id) => `https://www.genome.jp/entry/${encodeURIComponent(id)}`),
+  );
   add("UNII", compound.unii);
   add("PubChem substance", compound.pubchem_substance);
   return rows;
