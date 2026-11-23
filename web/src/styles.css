@@ -384,6 +384,31 @@ body {
   display: none;
 }
 
+/* The recent strip sits under the status line: one chip per lookup. */
+.recent-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.recent-figures button {
+  max-width: 220px;
+  padding: 3px 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-figures button:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
 .panel {
   min-height: 0;
   overflow-y: auto;

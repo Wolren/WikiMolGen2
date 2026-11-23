@@ -469,6 +469,41 @@ const loaded = await poll(async () => {
 if (loaded === null) failures.push("no load status appeared");
 else console.log(`status: ${loaded.slice(0, 160)}`);
 
+// The recent strip holds the lookup, and a chip reopens it without a retype.
+const recentStrip = JSON.parse(
+  await evaluate(
+    session,
+    `(() => JSON.stringify({
+       shown: document.getElementById('recent-figures').hidden === false,
+       labels: [...document.querySelectorAll('#recent-figures button')].map(
+         (button) => button.textContent ?? '',
+       ),
+     }))()`,
+  ),
+);
+if (recentStrip.shown !== true || recentStrip.labels.length !== 1) {
+  failures.push(`the recent strip reads ${JSON.stringify(recentStrip)}`);
+}
+await evaluate(
+  session,
+  `(() => {
+     document.getElementById('export-status').textContent = '';
+     document.querySelector('#recent-figures button').click();
+     return true;
+   })()`,
+);
+const reopened = await poll(async () => {
+  const text = await evaluate(session, "document.getElementById('export-status').textContent ?? ''");
+  return text.includes("Loaded") ? text : null;
+}, 90_000);
+if (reopened === null) failures.push("a recent chip does not reload its figure");
+const recentCount = await evaluate(
+  session,
+  "document.querySelectorAll('#recent-figures button').length",
+);
+if (recentCount !== 1) failures.push(`the recent strip holds ${recentCount} entries after a reload`);
+else console.log(`recent: ${JSON.stringify(recentStrip.labels)}`);
+
 // A protein has no drug box and no flat record, so the compound-only checks below skip.
 const isProtein = await evaluate(
   session,
@@ -872,6 +907,39 @@ else {
   if (importedCount !== 1) failures.push(`the import added ${importedCount} presets`);
   console.log(`preset import: ${JSON.stringify(presetImport)}`);
 }
+
+// A repeated import suffixes the name instead of showing two identical labels.
+await evaluate(
+  session,
+  `(() => {
+     const file = new File(
+       [JSON.stringify({
+         kind: 'wikimolgen2-presets',
+         version: 1,
+         presets: [{ name: 'Imported firm', appearance: { stick_radius: 0.2 }, quality: 2 }],
+       })],
+       'presets.json',
+       { type: 'application/json' },
+     );
+     const input = document.getElementById('preset-file');
+     const transfer = new DataTransfer();
+     transfer.items.add(file);
+     input.files = transfer.files;
+     input.dispatchEvent(new Event('change', { bubbles: true }));
+     return true;
+   })()`,
+);
+const duplicateImport = await poll(async () => {
+  const names = JSON.parse(
+    await evaluate(
+      session,
+      "JSON.stringify([...document.getElementById('settings-preset').options].map((option) => option.textContent ?? ''))",
+    ),
+  );
+  return names.includes("Imported firm 2") ? names : null;
+}, 10_000);
+if (duplicateImport === null) failures.push("a repeated preset import gains no suffix");
+else console.log(`preset duplicate: ${JSON.stringify(duplicateImport)}`);
 await evaluate(
   session,
   `(() => {
@@ -1142,7 +1210,7 @@ if (isProtein) {
   );
   await new Promise((done) => setTimeout(done, 300));
 
-  // A 2D preset adopts its option set, then saves and deletes under a name.
+  // A 2D preset adopts its option set, and a repeated name gains a suffix.
   const drawingPreset = JSON.parse(
     await evaluate(
       session,
@@ -1155,13 +1223,25 @@ if (isProtein) {
            label: document.getElementById('depiction-label-size').value,
            padding: document.getElementById('depiction-padding').value,
          };
-         document.getElementById('depiction-preset-save').click();
-         const rowShown = document.getElementById('depiction-preset-name-row').hidden === false;
-         document.getElementById('depiction-preset-name').value = 'Verify 2D';
-         document.getElementById('depiction-preset-name-save').click();
+         const saveNamed = (name) => {
+           document.getElementById('depiction-preset-save').click();
+           const rowShown = document.getElementById('depiction-preset-name-row').hidden === false;
+           const input = document.getElementById('depiction-preset-name');
+           input.value = name;
+           document.getElementById('depiction-preset-name-save').click();
+           return rowShown;
+         };
+         const rowShown = saveNamed('Verify 2D');
+         saveNamed('Verify 2D');
          const saved = [...select.options].map((option) => option.textContent);
          const selected = select.selectedOptions[0]?.textContent ?? '';
          document.getElementById('depiction-preset-delete').click();
+         const first = [...select.options].find((option) => option.textContent === 'Verify 2D');
+         if (first !== undefined) {
+           select.value = first.value;
+           select.dispatchEvent(new Event('change', { bubbles: true }));
+           document.getElementById('depiction-preset-delete').click();
+         }
          const afterDelete = [...select.options].map((option) => option.textContent);
          return JSON.stringify({ applied, rowShown, saved, selected, afterDelete, custom: select.value });
        })()`,
@@ -1173,10 +1253,13 @@ if (isProtein) {
   }
   if (drawingPreset.rowShown !== true) failures.push("the 2D preset name row does not open");
   if (!drawingPreset.saved.includes("Verify 2D")) failures.push("saving a 2D preset adds no option");
-  if (drawingPreset.selected !== "Verify 2D") {
-    failures.push(`saving a 2D preset selects ${drawingPreset.selected}`);
+  if (!drawingPreset.saved.includes("Verify 2D 2")) {
+    failures.push("a repeated 2D preset name gains no suffix");
   }
-  if (drawingPreset.afterDelete.includes("Verify 2D")) {
+  if (drawingPreset.selected !== "Verify 2D 2") {
+    failures.push(`saving a repeated 2D preset selects ${drawingPreset.selected}`);
+  }
+  if (drawingPreset.afterDelete.some((name) => name.startsWith("Verify 2D"))) {
     failures.push("deleting a 2D preset leaves its option");
   }
   if (drawingPreset.custom !== "custom") failures.push("deleting a 2D preset leaves it selected");

@@ -341,83 +341,89 @@
             </div>
             <p class="hint">Zero keeps RDKit's automatic size. The Rust fallback honours only the monochrome switch.</p>
 
-            <h3 class="group-label">Layout</h3>
-            <div class="compact-control">
-              <label class="field-label" for="depiction-rotate">
-                Rotation <output id="depiction-rotate-value">Off</output>
-              </label>
-              <input id="depiction-rotate" type="range" min="-180" max="180" step="5" value="0" />
-            </div>
-            <div class="compact-control">
-              <label class="field-label" for="depiction-bond-length">
-                Bond length <output id="depiction-bond-length-value">Auto</output>
-              </label>
-              <input id="depiction-bond-length" type="range" min="0" max="80" step="2" value="0" />
-            </div>
-            <div class="compact-control">
-              <label class="field-label" for="depiction-padding">
-                Padding <output id="depiction-padding-value">Auto</output>
-              </label>
-              <input id="depiction-padding" type="range" min="0" max="0.3" step="0.01" value="0" />
-            </div>
-            <div class="compact-control">
-              <label class="field-label" for="depiction-label-padding">
-                Label padding <output id="depiction-label-padding-value">Auto</output>
-              </label>
-              <input id="depiction-label-padding" type="range" min="0" max="1" step="0.05" value="0" />
-            </div>
-            <div class="compact-control">
-              <label class="field-label" for="depiction-bond-offset">
-                Multi-bond offset <output id="depiction-bond-offset-value">Auto</output>
-              </label>
-              <input id="depiction-bond-offset" type="range" min="0" max="0.5" step="0.05" value="0" />
-            </div>
+            <details class="sub-section">
+              <summary>Layout</summary>
+              <div class="compact-control">
+                <label class="field-label" for="depiction-rotate">
+                  Rotation <output id="depiction-rotate-value">Off</output>
+                </label>
+                <input id="depiction-rotate" type="range" min="-180" max="180" step="5" value="0" />
+              </div>
+              <div class="compact-control">
+                <label class="field-label" for="depiction-bond-length">
+                  Bond length <output id="depiction-bond-length-value">Auto</output>
+                </label>
+                <input id="depiction-bond-length" type="range" min="0" max="80" step="2" value="0" />
+              </div>
+              <div class="compact-control">
+                <label class="field-label" for="depiction-padding">
+                  Padding <output id="depiction-padding-value">Auto</output>
+                </label>
+                <input id="depiction-padding" type="range" min="0" max="0.3" step="0.01" value="0" />
+              </div>
+              <div class="compact-control">
+                <label class="field-label" for="depiction-label-padding">
+                  Label padding <output id="depiction-label-padding-value">Auto</output>
+                </label>
+                <input id="depiction-label-padding" type="range" min="0" max="1" step="0.05" value="0" />
+              </div>
+              <div class="compact-control">
+                <label class="field-label" for="depiction-bond-offset">
+                  Multi-bond offset <output id="depiction-bond-offset-value">Auto</output>
+                </label>
+                <input id="depiction-bond-offset" type="range" min="0" max="0.5" step="0.05" value="0" />
+              </div>
+            </details>
 
-            <h3 class="group-label">Annotations</h3>
-            <label class="checkbox compact"><input id="depiction-stereo" type="checkbox" /> Stereo labels (R/S)</label>
-            <label class="checkbox compact"><input id="depiction-radicals" type="checkbox" /> Radicals</label>
-            <label class="checkbox compact"><input id="depiction-chiral" type="checkbox" /> Chiral flag</label>
-            <label class="checkbox compact"><input id="depiction-atom-tags" type="checkbox" /> Atom map numbers</label>
-            <label class="checkbox compact"><input id="depiction-hide-labels" type="checkbox" /> Hide atom labels</label>
-            <label class="checkbox compact"><input id="depiction-explicit-methyl" type="checkbox" /> Explicit methyl</label>
-            <label class="checkbox compact"><input id="depiction-comic" type="checkbox" /> Comic style</label>
-            <label class="compact-field" for="depiction-legend">
-              Legend
-              <input
-                id="depiction-legend"
-                type="text"
-                maxlength="200"
-                autocomplete="off"
-                spellcheck="false"
-                placeholder="Shown under the drawing"
-              />
-            </label>
+            <details class="sub-section">
+              <summary>Annotations</summary>
+              <label class="checkbox compact"><input id="depiction-stereo" type="checkbox" /> Stereo labels (R/S)</label>
+              <label class="checkbox compact"><input id="depiction-radicals" type="checkbox" /> Radicals</label>
+              <label class="checkbox compact"><input id="depiction-chiral" type="checkbox" /> Chiral flag</label>
+              <label class="checkbox compact"><input id="depiction-atom-tags" type="checkbox" /> Atom map numbers</label>
+              <label class="checkbox compact"><input id="depiction-hide-labels" type="checkbox" /> Hide atom labels</label>
+              <label class="checkbox compact"><input id="depiction-explicit-methyl" type="checkbox" /> Explicit methyl</label>
+              <label class="checkbox compact"><input id="depiction-comic" type="checkbox" /> Comic style</label>
+              <label class="compact-field" for="depiction-legend">
+                Legend
+                <input
+                  id="depiction-legend"
+                  type="text"
+                  maxlength="200"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="Shown under the drawing"
+                />
+              </label>
+            </details>
 
-            <h3 class="group-label">Highlights</h3>
-            <label class="compact-field" for="depiction-highlight-atoms">
-              Atom indices
-              <input
-                id="depiction-highlight-atoms"
-                type="text"
-                autocomplete="off"
-                spellcheck="false"
-                placeholder="e.g. 0,3,5"
-              />
-            </label>
-            <label class="compact-field" for="depiction-highlight-bonds">
-              Bond indices
-              <input
-                id="depiction-highlight-bonds"
-                type="text"
-                autocomplete="off"
-                spellcheck="false"
-                placeholder="e.g. 1,2"
-              />
-            </label>
-            <label class="compact-field" for="depiction-highlight-color">
-              Highlight colour
-              <input id="depiction-highlight-color" type="color" value="#ff8888" />
-            </label>
+            <details class="sub-section">
+              <summary>Highlights</summary>
+              <label class="compact-field" for="depiction-highlight-atoms">
+                Atom indices
+                <input
+                  id="depiction-highlight-atoms"
+                  type="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="e.g. 0,3,5"
+                />
+              </label>
+              <label class="compact-field" for="depiction-highlight-bonds">
+                Bond indices
+                <input
+                  id="depiction-highlight-bonds"
+                  type="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="e.g. 1,2"
+                />
+              </label>
+              <label class="compact-field" for="depiction-highlight-color">
+                Highlight colour
+                <input id="depiction-highlight-color" type="color" value="#ff8888" />
+              </label>
+            </details>
           </div>
 
           <p id="colour-note" class="hint" hidden>
@@ -602,6 +608,7 @@
         </section>
 
         <p id="export-status" class="hint figure-status" role="status"></p>
+        <div id="recent-figures" class="recent-figures" aria-label="Recent figures" hidden></div>
 
         <aside class="panel output" aria-label="Wikitext">
           <div class="output-header">

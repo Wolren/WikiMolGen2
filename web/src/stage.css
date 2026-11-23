@@ -297,6 +297,26 @@
   color: var(--muted);
 }
 
+/* A nested fold inside a panel section: the same labels, less height. */
+.sub-section {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.sub-section > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sub-section[open] > summary {
+  margin-bottom: 8px;
+}
+
 /* The identifier table is reference data: one narrow label column, mono values. */
 .links-table {
   width: 100%;

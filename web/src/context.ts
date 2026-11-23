@@ -178,6 +178,7 @@ export const dom = {
   exportScaleBar: required<HTMLInputElement>("export-scalebar"),
   exportButton: required<HTMLButtonElement>("export"),
   exportStatus: required<HTMLParagraphElement>("export-status"),
+  recentFigures: required<HTMLElement>("recent-figures"),
   viewerHost: required<HTMLElement>("viewer"),
   depiction: required<HTMLDivElement>("depiction"),
   depictionControls: required<HTMLElement>("depiction-controls"),

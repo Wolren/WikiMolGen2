@@ -13,10 +13,45 @@ import { applyOrientation } from "./orientation.js";
 import { refreshOutput } from "./output.js";
 import { enrichCompound, LookupError, loadCompound } from "./pubchem.js";
 import { ProteinError, loadProtein, pdbIdOf } from "./protein.js";
+import { addRecent, loadRecent, saveRecent, type RecentFigure } from "./recent.js";
 import { applyMode, showMode } from "./view.js";
 
 /** The newest load owns the page; an older answer must not overwrite it. */
 let loadToken = 0;
+
+/** The last few figures, newest first; the strip under the status line shows them. */
+let recent: RecentFigure[] = loadRecent();
+
+/** Draw the recent strip, or hide it when there is nothing to reopen. */
+function renderRecent(): void {
+  dom.recentFigures.hidden = recent.length === 0;
+  dom.recentFigures.replaceChildren(
+    ...recent.map((entry) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = entry.label;
+      button.title = `Open ${entry.label}`;
+      button.dataset.identifier = entry.identifier;
+      return button;
+    }),
+  );
+}
+
+function rememberRecent(entry: RecentFigure): void {
+  recent = addRecent(recent, entry);
+  saveRecent(recent);
+  renderRecent();
+}
+
+dom.recentFigures.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest("button");
+  const identifier = button?.dataset.identifier ?? "";
+  if (identifier === "") return;
+  dom.identifier.value = identifier;
+  void loadFromInput();
+});
+
+renderRecent();
 
 /** Put the lookup in the URL, so a figure can be linked and reopened. */
 function rememberQuery(identifier: string): void {
@@ -108,6 +143,11 @@ export async function loadFromInput(): Promise<void> {
     refreshOutput();
     const seconds = (performance.now() - started) / 1000;
     const loadedName = state.compound?.name ?? identifier;
+    rememberRecent({
+      identifier,
+      kind: state.mode === "2d" ? "two_d" : "three_d",
+      label: loadedName,
+    });
     // The status line under the figure is the one place a user reads.
     const warnings = result.warnings.length === 0 ? "" : ` ${result.warnings.join(" ")}`;
     setStatus(`Loaded ${loadedName} in ${seconds.toFixed(2)} s.${warnings}`);
@@ -201,6 +241,7 @@ async function loadProteinInput(id: string, token: number): Promise<void> {
     state.depiction = null;
     state.mode = "3d";
     dom.mode2d.disabled = true;
+    rememberRecent({ identifier: id, kind: "protein", label: id });
 
     renderLooks();
     syncAppearance();

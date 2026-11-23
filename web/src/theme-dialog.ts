@@ -8,6 +8,7 @@
  */
 
 import { required } from "./context.js";
+import { downloadText } from "./files.js";
 import {
   BUILTIN_THEMES,
   TOKEN_VARIABLES,
@@ -348,13 +349,7 @@ async function copySelectedLink(): Promise<void> {
 function exportSelected(): void {
   const theme = selectedCustom();
   if (theme === undefined) return;
-  const blob = new Blob([themeFileText(theme)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${slug(theme.name)}.json`;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  downloadText(`${slug(theme.name)}.json`, themeFileText(theme));
   note.textContent = `Exported ${theme.name}.`;
 }
 
