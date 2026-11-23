@@ -84,6 +84,10 @@ reach; a load then scrolls the figure into view.
 | Protein 2D or sequence view | A cartoon is the useful figure for an article | A sequence panel and a depiction path |
 | Element labels in 3D by symbol | The renderer's label expression has no element field; atom names are the substitute | A renderer label expression, or browser-side projection |
 | Two-sided lighting, stick and sphere quality | patinae carries them as session fields, and its `set` registry rejects the names. These stay session fields | A patinae registry fix, or a session-level setter |
+| ACS 1996 drawing style | The vendored MinimalLib build has no entry point for it, so its individual options are exposed instead | A MinimalLib build with `SetACS1996Mode`, or a Rust port of the preset |
+| Hydrophobicity, occupancy and per-chain rainbow protein colouring | patinae's documented `color` modes are element, chain, ss, b-factor, residue and index | A renderer colour mode |
+| Per-ligand representation styling | patinae's `set` takes an object name, not an atom selection, for stick radius and transparency | A renderer selection-level setter |
+| Preview history | The v1 strip worked around Streamlit's rerun model; a figure is one lookup away here | A thumbnail cache, if it earns the memory |
 
 ## Contracts
 
@@ -267,7 +271,7 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 
 ## Acceptance
 
-* `cargo test -p wikimolgen2_core` passes natively (62 tests at the time of writing).
+* `cargo test -p wikimolgen2_core` passes natively (66 tests at the time of writing).
 * `cd web; npm test` passes the 45 unit tests for colour maths, theme files, the network
   client, the Commons details, preset and colour files, the drawing options, the identifier
   rows and the protein switches.
