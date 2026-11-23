@@ -306,6 +306,24 @@
           </div>
 
           <div id="depiction-controls" hidden>
+            <label class="field-label" for="depiction-preset">Preset</label>
+            <div class="preset-row">
+              <select id="depiction-preset"></select>
+              <button id="depiction-preset-save" type="button" class="secondary">Save</button>
+              <button id="depiction-preset-delete" type="button" class="secondary" disabled>Delete</button>
+            </div>
+            <div id="depiction-preset-name-row" class="preset-name-row" hidden>
+              <input
+                id="depiction-preset-name"
+                type="text"
+                placeholder="Preset name"
+                aria-label="2D preset name"
+                maxlength="40"
+                autocomplete="off"
+              />
+              <button id="depiction-preset-name-save" type="button" class="secondary">Save</button>
+              <button id="depiction-preset-name-cancel" type="button" class="secondary">Cancel</button>
+            </div>
             <label class="checkbox compact">
               <input id="depiction-monochrome" type="checkbox" /> Black and white
             </label>
@@ -518,6 +536,15 @@
           </div>
           <label class="checkbox compact"><input id="antialias" type="checkbox" checked /> Smooth edges</label>
 
+          <h3 class="group-label" id="protein-label">Protein</h3>
+          <div id="protein-controls">
+            <label class="checkbox compact"><input id="protein-ligand" type="checkbox" /> Show ligand</label>
+            <label class="checkbox compact"><input id="protein-water" type="checkbox" /> Show waters</label>
+            <label class="checkbox compact"><input id="protein-labels" type="checkbox" /> Ligand residue labels</label>
+            <label class="checkbox compact"><input id="protein-fancy-helices" type="checkbox" checked /> Fancy helices</label>
+            <label class="checkbox compact"><input id="protein-flat-sheets" type="checkbox" checked /> Flat sheets</label>
+          </div>
+
           <div class="reset-row">
             <button type="button" class="link-button" id="appearance-reset-open">Reset sliders</button>
           </div>
@@ -528,6 +555,15 @@
           </div>
 
         </details>
+
+        <div class="reset-row">
+          <button type="button" class="link-button" id="reset-all-open">Reset all settings</button>
+        </div>
+        <div id="reset-all-confirm" class="preset-name-row reset-confirm" hidden>
+          <p id="reset-all-question" class="hint">Reset every setting on this page?</p>
+          <button type="button" class="secondary" id="reset-all-yes">Reset</button>
+          <button type="button" class="secondary" id="reset-all-cancel">Cancel</button>
+        </div>
 
         <details id="shortcuts" class="shortcuts">
           <summary>Keyboard shortcuts</summary>
@@ -655,6 +691,15 @@
             <a id="upload-commons" class="upload-link" href="#" target="_blank" rel="noreferrer" hidden>
               Upload to Commons
             </a>
+          </section>
+
+          <section id="block-links" class="output-block">
+            <div class="output-title">
+              <h2>Chemical links</h2>
+            </div>
+            <table class="links-table">
+              <tbody id="links-body"></tbody>
+            </table>
           </section>
         </aside>
       </section>

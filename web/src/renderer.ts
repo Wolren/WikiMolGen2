@@ -11,6 +11,8 @@
  * repository, not a package we install.
  */
 
+import type { ProteinOptions } from "./protein-options.js";
+
 /** One element colour override, mirrored from `wikimolgen2_core::style::ElementColor`. */
 export interface ElementColor {
   element: string;
@@ -454,6 +456,47 @@ export class Renderer {
     for (const command of representationCommands(look)) await this.run(command);
     await this.applyColoring(look);
     await this.applyAppearance(look);
+    await this.applyProteinOptions();
+  }
+
+  /** What a protein shows beside the cartoon; `null` for a compound. */
+  private proteinOptions: ProteinOptions | null = null;
+
+  /**
+   * Set what a protein shows beside the cartoon.
+   *
+   * {@link applyLook} hides every representation, so the extras are re-applied after each
+   * look change rather than sent once at load.
+   */
+  async setProteinOptions(options: ProteinOptions | null): Promise<void> {
+    this.proteinOptions = options;
+    await this.applyProteinOptions();
+  }
+
+  /** Show or hide the ligand and the waters, label the ligand, and shape the cartoon. */
+  private async applyProteinOptions(): Promise<void> {
+    const options = this.proteinOptions;
+    if (options === null) return;
+    await this.once(
+      "cartoon_fancy_helices",
+      `set cartoon_fancy_helices, ${options.fancyHelices ? 1 : 0}`,
+    );
+    await this.once(
+      "cartoon_flat_sheets",
+      `set cartoon_flat_sheets, ${options.flatSheets ? 1 : 0}`,
+    );
+    // An empty selection is not an error in patinae, but it logs "0 atoms" as one.
+    if (this.count("organic") > 0) {
+      await this.run(options.ligand ? "show sticks, organic" : "hide organic");
+      if (options.residueLabels) {
+        await this.run("label organic, resn");
+      } else {
+        await this.runQuiet("hide labels, organic");
+      }
+    }
+    if (this.count("resn HOH") > 0) {
+      await this.run(options.water ? "show sticks, resn HOH" : "hide resn HOH");
+    }
   }
 
   /**

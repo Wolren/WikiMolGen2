@@ -7,7 +7,23 @@
  */
 
 import { depictSvg } from "../pkg/wikimolgen2_wasm.js";
-import { dom, state, type DepictionSettings } from "./context.js";
+import { dom, state } from "./context.js";
+import {
+  DEFAULT_DEPICTION_SETTINGS,
+  MAX_BOND_WIDTH,
+  MAX_LABEL_SIZE,
+  MAX_LEGEND,
+  clampValue,
+  normaliseDepictionSettings,
+  type DepictionSettings,
+} from "./depiction-settings.js";
+import {
+  BUILTIN_DEPICTION_PRESETS,
+  captureDepiction,
+  loadDepictionPresets,
+  saveDepictionPresets,
+  type DepictionPreset,
+} from "./depiction-presets.js";
 import { depictWithRdkit } from "./rdkit.js";
 
 /** Nominal canvas size. The drawing is vector, so this only sets the viewBox. */
@@ -16,32 +32,6 @@ const DEPICTION_HEIGHT = 700;
 /** Empty border as a fraction of the width, for the Rust fallback. */
 const DEPICTION_MARGIN = 0.06;
 const STORAGE_KEY = "wikimolgen2.depiction";
-const MAX_BOND_WIDTH = 8;
-const MAX_LABEL_SIZE = 36;
-const MAX_LEGEND = 200;
-
-export const DEFAULT_DEPICTION_SETTINGS: DepictionSettings = {
-  monochrome: false,
-  bondWidth: 0,
-  labelSize: 0,
-  stereo: false,
-  radicals: false,
-  chiralFlag: false,
-  atomTags: false,
-  hideLabels: false,
-  explicitMethyl: false,
-  comic: false,
-  legend: "",
-  highlightAtoms: "",
-  highlightBonds: "",
-  highlightColor: "#ff8888",
-  rotate: 0,
-  bondLength: 0,
-  padding: 0,
-  labelPadding: 0,
-  bondOffset: 0,
-};
-
 export type DepictionEngine = "rdkit" | "rust";
 
 export interface Depiction {
@@ -59,46 +49,15 @@ export interface DepictionResult {
 /** A failed RDKit load is not retried for every drawing in the session. */
 let rdkitUnavailable = false;
 
-function clamp(value: unknown, min: number, max: number): number {
-  const parsed = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(parsed)) return 0;
-  return Math.max(min, Math.min(max, parsed));
-}
-
 /** Read the saved drawing options, ignoring anything that no longer has the right shape. */
 export function loadDepictionSettings(): DepictionSettings {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as unknown;
-    if (typeof raw !== "object" || raw === null) return { ...DEFAULT_DEPICTION_SETTINGS };
-    const record = raw as Record<string, unknown>;
-    const on = (key: string): boolean => record[key] === true;
-    return {
-      monochrome: on("monochrome"),
-      bondWidth: clamp(record.bondWidth, 0, MAX_BOND_WIDTH),
-      labelSize: clamp(record.labelSize, 0, MAX_LABEL_SIZE),
-      stereo: on("stereo"),
-      radicals: on("radicals"),
-      chiralFlag: on("chiralFlag"),
-      atomTags: on("atomTags"),
-      hideLabels: on("hideLabels"),
-      explicitMethyl: on("explicitMethyl"),
-      comic: on("comic"),
-      legend: typeof record.legend === "string" ? record.legend.slice(0, MAX_LEGEND) : "",
-      highlightAtoms: typeof record.highlightAtoms === "string" ? record.highlightAtoms : "",
-      highlightBonds: typeof record.highlightBonds === "string" ? record.highlightBonds : "",
-      highlightColor: typeof record.highlightColor === "string" ? record.highlightColor : "#ff8888",
-      rotate: clamp(record.rotate, -180, 180),
-      bondLength: clamp(record.bondLength, 0, 80),
-      padding: clamp(record.padding, 0, 0.3),
-      labelPadding: clamp(record.labelPadding, 0, 1),
-      bondOffset: clamp(record.bondOffset, 0, 0.5),
-    };
+    return normaliseDepictionSettings(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null"));
   } catch {
     // A blocked store or bad JSON only means the defaults for this visit.
     return { ...DEFAULT_DEPICTION_SETTINGS };
   }
 }
-
 export function saveDepictionSettings(settings: DepictionSettings): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -110,8 +69,8 @@ export function saveDepictionSettings(settings: DepictionSettings): void {
 function readControls(): DepictionSettings {
   return {
     monochrome: dom.depictionMonochrome.checked,
-    bondWidth: clamp(dom.depictionBondWidth.value, 0, MAX_BOND_WIDTH),
-    labelSize: clamp(dom.depictionLabelSize.value, 0, MAX_LABEL_SIZE),
+    bondWidth: clampValue(dom.depictionBondWidth.value, 0, MAX_BOND_WIDTH),
+    labelSize: clampValue(dom.depictionLabelSize.value, 0, MAX_LABEL_SIZE),
     stereo: dom.depictionStereo.checked,
     radicals: dom.depictionRadicals.checked,
     chiralFlag: dom.depictionChiral.checked,
@@ -123,11 +82,11 @@ function readControls(): DepictionSettings {
     highlightAtoms: dom.depictionHighlightAtoms.value,
     highlightBonds: dom.depictionHighlightBonds.value,
     highlightColor: dom.depictionHighlightColor.value,
-    rotate: clamp(dom.depictionRotate.value, -180, 180),
-    bondLength: clamp(dom.depictionBondLength.value, 0, 80),
-    padding: clamp(dom.depictionPadding.value, 0, 0.3),
-    labelPadding: clamp(dom.depictionLabelPadding.value, 0, 1),
-    bondOffset: clamp(dom.depictionBondOffset.value, 0, 0.5),
+    rotate: clampValue(dom.depictionRotate.value, -180, 180),
+    bondLength: clampValue(dom.depictionBondLength.value, 0, 80),
+    padding: clampValue(dom.depictionPadding.value, 0, 0.3),
+    labelPadding: clampValue(dom.depictionLabelPadding.value, 0, 1),
+    bondOffset: clampValue(dom.depictionBondOffset.value, 0, 0.5),
   };
 }
 
@@ -182,12 +141,89 @@ export function setDepictionAvailable(available: boolean): void {
 /** Wire the drawing controls; `onChange` schedules a redraw of an open 2D view. */
 export function bindDepictionControls(onChange: () => void): void {
   syncDepictionControls();
+  let savedPresets: DepictionPreset[] = loadDepictionPresets();
+
+  /** The selected preset when it is one of the user's saved entries. */
+  const selectedSaved = (): DepictionPreset | undefined =>
+    savedPresets.find((preset) => preset.id === dom.depictionPreset.value);
+
+  const updateButtons = (): void => {
+    dom.depictionPresetDelete.disabled = selectedSaved() === undefined;
+  };
+
+  const renderPresets = (): void => {
+    const selected = dom.depictionPreset.value;
+    dom.depictionPreset.replaceChildren(
+      new Option("Custom", "custom"),
+      ...BUILTIN_DEPICTION_PRESETS.map((preset) => new Option(preset.name, preset.id)),
+      ...savedPresets.map((preset) => new Option(preset.name, preset.id)),
+    );
+    const known = [...dom.depictionPreset.options].some((option) => option.value === selected);
+    dom.depictionPreset.value = known ? selected : "custom";
+    updateButtons();
+  };
+
+  /** Adopt a preset's whole option set, and redraw an open 2D view. */
+  const applyPreset = (id: string): void => {
+    const preset = [...BUILTIN_DEPICTION_PRESETS, ...savedPresets].find(
+      (entry) => entry.id === id,
+    );
+    if (preset === undefined) return;
+    state.depictionSettings = { ...preset.settings };
+    saveDepictionSettings(state.depictionSettings);
+    syncDepictionControls();
+    onChange();
+  };
+
   const apply = (): void => {
     state.depictionSettings = readControls();
     saveDepictionSettings(state.depictionSettings);
     syncOutputs();
+    if (dom.depictionPreset.value !== "custom") dom.depictionPreset.value = "custom";
+    updateButtons();
     onChange();
   };
+
+  dom.depictionPreset.addEventListener("change", () => {
+    if (dom.depictionPreset.value === "custom") {
+      updateButtons();
+      return;
+    }
+    applyPreset(dom.depictionPreset.value);
+    updateButtons();
+  });
+  dom.depictionPresetSave.addEventListener("click", () => {
+    dom.depictionPresetNameRow.hidden = false;
+    dom.depictionPresetName.value = "";
+    dom.depictionPresetName.focus();
+  });
+  dom.depictionPresetNameSave.addEventListener("click", () => {
+    const name = dom.depictionPresetName.value.trim().slice(0, 40);
+    if (name === "") return;
+    const preset: DepictionPreset = {
+      id: `saved-${Date.now()}`,
+      name,
+      settings: captureDepiction(state.depictionSettings),
+    };
+    savedPresets = [...savedPresets, preset];
+    saveDepictionPresets(savedPresets);
+    renderPresets();
+    dom.depictionPreset.value = preset.id;
+    dom.depictionPresetNameRow.hidden = true;
+    updateButtons();
+  });
+  dom.depictionPresetNameCancel.addEventListener("click", () => {
+    dom.depictionPresetNameRow.hidden = true;
+  });
+  dom.depictionPresetDelete.addEventListener("click", () => {
+    savedPresets = savedPresets.filter((preset) => preset.id !== dom.depictionPreset.value);
+    saveDepictionPresets(savedPresets);
+    renderPresets();
+    dom.depictionPreset.value = "custom";
+    updateButtons();
+  });
+
+  renderPresets();
   dom.depictionMonochrome.addEventListener("change", apply);
   for (const input of [
     dom.depictionBondWidth,

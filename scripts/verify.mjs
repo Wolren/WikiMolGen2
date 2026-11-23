@@ -504,6 +504,48 @@ if (!isProtein) {
   }
 }
 
+// 2b. The identifier table lists the compound's public links.
+const identifierTable = JSON.parse(
+  await evaluate(
+    session,
+    `(() => {
+       const rows = [...document.querySelectorAll('#links-body tr')];
+       return JSON.stringify({
+         shown: document.getElementById('block-links').hidden === false,
+         count: rows.length,
+         pubchem: rows
+           .map((row) => row.querySelector('a'))
+           .find((node) => node !== null && node.href.includes('pubchem.ncbi.nlm.nih.gov'))
+           ?.href ?? '',
+         insecure: rows
+           .map((row) => row.querySelector('a')?.href ?? 'https://x')
+           .filter((href) => !href.startsWith('https://')).length,
+       });
+     })()`,
+  ),
+);
+console.log(`identifiers: ${JSON.stringify(identifierTable)}`);
+if (isProtein === false) {
+  if (identifierTable.shown !== true) failures.push("the identifier table is hidden");
+  if (identifierTable.count < 6) failures.push(`the identifier table lists ${identifierTable.count} rows`);
+  if (!identifierTable.pubchem.includes("/compound/")) {
+    failures.push("the identifier table has no PubChem link");
+  }
+  if (identifierTable.insecure > 0) failures.push("an identifier link is not https");
+}
+
+// 2c. The protein switches only belong to a protein figure.
+const proteinSwitches = await evaluate(
+  session,
+  "document.getElementById('protein-controls').hidden === false",
+);
+if (isProtein === true && proteinSwitches !== true) {
+  failures.push("the protein switches are hidden on a protein");
+}
+if (isProtein === false && proteinSwitches !== false) {
+  failures.push("the protein switches show on a compound");
+}
+
 // Each box carries its copy action in its own top-right corner.
 const copyButtons = await evaluate(
   session,
@@ -1095,6 +1137,58 @@ if (isProtein) {
        const length = document.getElementById('depiction-bond-length');
        length.value = '0';
        length.dispatchEvent(new Event('input', { bubbles: true }));
+       return true;
+     })()`,
+  );
+  await new Promise((done) => setTimeout(done, 300));
+
+  // A 2D preset adopts its option set, then saves and deletes under a name.
+  const drawingPreset = JSON.parse(
+    await evaluate(
+      session,
+      `(() => {
+         const select = document.getElementById('depiction-preset');
+         select.value = 'wikipedia-2d';
+         select.dispatchEvent(new Event('change', { bubbles: true }));
+         const applied = {
+           length: document.getElementById('depiction-bond-length').value,
+           label: document.getElementById('depiction-label-size').value,
+           padding: document.getElementById('depiction-padding').value,
+         };
+         document.getElementById('depiction-preset-save').click();
+         const rowShown = document.getElementById('depiction-preset-name-row').hidden === false;
+         document.getElementById('depiction-preset-name').value = 'Verify 2D';
+         document.getElementById('depiction-preset-name-save').click();
+         const saved = [...select.options].map((option) => option.textContent);
+         const selected = select.selectedOptions[0]?.textContent ?? '';
+         document.getElementById('depiction-preset-delete').click();
+         const afterDelete = [...select.options].map((option) => option.textContent);
+         return JSON.stringify({ applied, rowShown, saved, selected, afterDelete, custom: select.value });
+       })()`,
+    ),
+  );
+  console.log(`2d preset: ${JSON.stringify(drawingPreset)}`);
+  if (drawingPreset.applied.length !== "40" || drawingPreset.applied.label !== "18") {
+    failures.push(`the 2D preset applies ${JSON.stringify(drawingPreset.applied)}`);
+  }
+  if (drawingPreset.rowShown !== true) failures.push("the 2D preset name row does not open");
+  if (!drawingPreset.saved.includes("Verify 2D")) failures.push("saving a 2D preset adds no option");
+  if (drawingPreset.selected !== "Verify 2D") {
+    failures.push(`saving a 2D preset selects ${drawingPreset.selected}`);
+  }
+  if (drawingPreset.afterDelete.includes("Verify 2D")) {
+    failures.push("deleting a 2D preset leaves its option");
+  }
+  if (drawingPreset.custom !== "custom") failures.push("deleting a 2D preset leaves it selected");
+
+  await evaluate(
+    session,
+    `(() => {
+       for (const id of ['depiction-bond-length', 'depiction-label-size', 'depiction-padding']) {
+         const input = document.getElementById(id);
+         input.value = '0';
+         input.dispatchEvent(new Event('input', { bubbles: true }));
+       }
        return true;
      })()`,
   );
@@ -1724,6 +1818,68 @@ const shot = await send("Page.captureScreenshot", { format: "png" }, session);
 await mkdir(dirname(OUT), { recursive: true });
 await writeFile(OUT, Buffer.from(shot.result.data, "base64"));
 console.log(`screenshot: ${OUT}`);
+
+// 3e. Reset all settings puts every panel back to a first visit.
+const resetAll = JSON.parse(
+  await evaluate(
+    session,
+    `(() => {
+       const radius = document.getElementById('stick-radius');
+       radius.value = '0.4';
+       radius.dispatchEvent(new Event('input', { bubbles: true }));
+       const width = document.getElementById('export-width');
+       width.value = '2000';
+       width.dispatchEvent(new Event('input', { bubbles: true }));
+       const rotate = document.getElementById('depiction-rotate');
+       rotate.value = '45';
+       rotate.dispatchEvent(new Event('input', { bubbles: true }));
+       const licence = document.getElementById('commons-license');
+       licence.value = 'pd-self';
+       licence.dispatchEvent(new Event('change', { bubbles: true }));
+       const name = document.getElementById('file-name');
+       name.value = 'Reset me';
+       name.dispatchEvent(new Event('input', { bubbles: true }));
+       name.blur();
+       const fancy = document.getElementById('protein-fancy-helices');
+       fancy.checked = false;
+       fancy.dispatchEvent(new Event('change', { bubbles: true }));
+       const flat = document.getElementById('protein-flat-sheets');
+       flat.checked = false;
+       flat.dispatchEvent(new Event('change', { bubbles: true }));
+       document.getElementById('reset-all-open').click();
+       const asked = document.getElementById('reset-all-confirm').hidden === false;
+       document.getElementById('reset-all-yes').click();
+       return JSON.stringify({
+         asked,
+         radius: document.getElementById('stick-radius').value,
+         width: document.getElementById('export-width').value,
+         rotate: document.getElementById('depiction-rotate').value,
+         licence: document.getElementById('commons-license').value,
+         name: document.getElementById('file-name').value,
+         note: document.getElementById('settings-preset-note').textContent,
+         confirmHidden: document.getElementById('reset-all-confirm').hidden,
+         fancy: document.getElementById('protein-fancy-helices').checked,
+         flat: document.getElementById('protein-flat-sheets').checked,
+       });
+     })()`,
+  ),
+);
+console.log(`reset all: ${JSON.stringify(resetAll)}`);
+if (resetAll.asked !== true) failures.push("the full reset does not ask first");
+if (resetAll.radius !== "0.2") failures.push(`the full reset leaves stick radius ${resetAll.radius}`);
+if (resetAll.width !== "1600") failures.push(`the full reset leaves width ${resetAll.width}`);
+if (resetAll.rotate !== "0") failures.push(`the full reset leaves rotation ${resetAll.rotate}`);
+if (resetAll.licence !== "auto") failures.push(`the full reset leaves licence ${resetAll.licence}`);
+if (resetAll.name === "Reset me" || !resetAll.name.endsWith(".png")) {
+  failures.push(`the full reset leaves the file name ${resetAll.name}`);
+}
+if (resetAll.note !== "All settings reset.") {
+  failures.push(`the full reset note reads ${resetAll.note}`);
+}
+if (resetAll.confirmHidden !== true) failures.push("the full reset confirm stays open");
+if (resetAll.fancy !== true || resetAll.flat !== true) {
+  failures.push(`the full reset leaves the cartoon shape ${resetAll.fancy}/${resetAll.flat}`);
+}
 
 // A 2D screenshot leaves the canvas hidden; the full-screen check needs the 3D stage.
 if (args["2d"]) {

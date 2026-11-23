@@ -7,6 +7,8 @@
 
 import { commonsFileName, figureFileName } from "../pkg/wikimolgen2_wasm.js";
 import type { Depiction } from "./depiction.js";
+import type { DepictionSettings } from "./depiction-settings.js";
+import type { ProteinOptions } from "./protein-options.js";
 import type { Compound } from "./pubchem.js";
 import type { Appearance, Renderer } from "./renderer.js";
 
@@ -54,47 +56,7 @@ export interface Orientation {
 }
 export type ViewMode = "3d" | "2d";
 
-/** The 2D drawing options, kept apart from the 3D appearance. */
-export interface DepictionSettings {
-  /** Draw every atom in black, for a print or high-contrast figure. */
-  monochrome: boolean;
-  /** Bond line width in drawing units; 0 keeps RDKit's default. */
-  bondWidth: number;
-  /** Fixed atom label size in drawing units; 0 keeps RDKit's scaling. */
-  labelSize: number;
-  /** Show R/S labels beside the stereo centres. */
-  stereo: boolean;
-  /** Show unpaired-electron dots. */
-  radicals: boolean;
-  /** Show the chiral flag. */
-  chiralFlag: boolean;
-  /** Show atom map numbers. */
-  atomTags: boolean;
-  /** Hide every atom label, for a skeleton-only figure. */
-  hideLabels: boolean;
-  /** Draw the methyl carbon and its hydrogens explicitly. */
-  explicitMethyl: boolean;
-  /** RDKit's hand-drawn comic style. */
-  comic: boolean;
-  /** A line of text under the drawing; empty for none. */
-  legend: string;
-  /** Atom indices to highlight, as typed; empty for none. */
-  highlightAtoms: string;
-  /** Bond indices to highlight, as typed; empty for none. */
-  highlightBonds: string;
-  /** The highlight ink, `#rrggbb`. */
-  highlightColor: string;
-  /** Turn the drawing, in degrees; 0 keeps RDKit's layout. */
-  rotate: number;
-  /** Fixed bond length in drawing units; 0 keeps RDKit's scaling. */
-  bondLength: number;
-  /** Page padding as a fraction; 0 keeps RDKit's default. */
-  padding: number;
-  /** Extra label padding as a fraction; 0 keeps RDKit's default. */
-  labelPadding: number;
-  /** Distance between multiple bond lines; 0 keeps RDKit's default. */
-  bondOffset: number;
-}
+export type { DepictionSettings } from "./depiction-settings.js";
 
 export const dom = {
   form: required<HTMLFormElement>("lookup"),
@@ -169,6 +131,13 @@ export const dom = {
   projection: required<HTMLSelectElement>("projection"),
   frame: required<HTMLButtonElement>("frame"),
   appearanceSection: required<HTMLElement>("section-appearance"),
+  proteinLabel: required<HTMLElement>("protein-label"),
+  proteinControls: required<HTMLElement>("protein-controls"),
+  proteinLigand: required<HTMLInputElement>("protein-ligand"),
+  proteinWater: required<HTMLInputElement>("protein-water"),
+  proteinLabels: required<HTMLInputElement>("protein-labels"),
+  proteinFancyHelices: required<HTMLInputElement>("protein-fancy-helices"),
+  proteinFlatSheets: required<HTMLInputElement>("protein-flat-sheets"),
   viewSection: required<HTMLElement>("section-view"),
   settingsPreset: required<HTMLSelectElement>("settings-preset"),
   presetSave: required<HTMLButtonElement>("preset-save"),
@@ -182,6 +151,10 @@ export const dom = {
   appearanceResetQuestion: required<HTMLElement>("appearance-reset-question"),
   appearanceResetYes: required<HTMLButtonElement>("appearance-reset-yes"),
   appearanceResetCancel: required<HTMLButtonElement>("appearance-reset-cancel"),
+  resetAllOpen: required<HTMLButtonElement>("reset-all-open"),
+  resetAllConfirm: required<HTMLElement>("reset-all-confirm"),
+  resetAllYes: required<HTMLButtonElement>("reset-all-yes"),
+  resetAllCancel: required<HTMLButtonElement>("reset-all-cancel"),
   presetDelete: required<HTMLButtonElement>("preset-delete"),
   presetExport: required<HTMLButtonElement>("preset-export"),
   presetImport: required<HTMLButtonElement>("preset-import"),
@@ -234,6 +207,13 @@ export const dom = {
   depictionLabelPaddingValue: required<HTMLOutputElement>("depiction-label-padding-value"),
   depictionBondOffset: required<HTMLInputElement>("depiction-bond-offset"),
   depictionBondOffsetValue: required<HTMLOutputElement>("depiction-bond-offset-value"),
+  depictionPreset: required<HTMLSelectElement>("depiction-preset"),
+  depictionPresetSave: required<HTMLButtonElement>("depiction-preset-save"),
+  depictionPresetDelete: required<HTMLButtonElement>("depiction-preset-delete"),
+  depictionPresetNameRow: required<HTMLElement>("depiction-preset-name-row"),
+  depictionPresetName: required<HTMLInputElement>("depiction-preset-name"),
+  depictionPresetNameSave: required<HTMLButtonElement>("depiction-preset-name-save"),
+  depictionPresetNameCancel: required<HTMLButtonElement>("depiction-preset-name-cancel"),
   mode3d: required<HTMLButtonElement>("mode-3d"),
   mode2d: required<HTMLButtonElement>("mode-2d"),
   stageNote: required<HTMLElement>("stage-note"),
@@ -270,6 +250,8 @@ export const dom = {
   blockDrugbox: required<HTMLElement>("block-drugbox"),
   blockChembox: required<HTMLElement>("block-chembox"),
   uploadCommons: required<HTMLAnchorElement>("upload-commons"),
+  blockLinks: required<HTMLElement>("block-links"),
+  linksBody: required<HTMLTableSectionElement>("links-body"),
 };
 
 /** A name typed into the file-name field, with the generated name it replaced. */
@@ -293,6 +275,8 @@ export interface AppState {
   depictionSource: { name: string; bytes: Uint8Array } | null;
   depiction: Depiction | null;
   depictionSettings: DepictionSettings;
+  /** What a protein shows beside the cartoon; ignored for a compound. */
+  proteinOptions: ProteinOptions;
   protein: { id: string; atoms: number; residues: number; chains: number; seconds: number } | null;
   orientation: Orientation;
 }
@@ -328,6 +312,13 @@ export const state: AppState = {
     padding: 0,
     labelPadding: 0,
     bondOffset: 0,
+  },
+  proteinOptions: {
+    ligand: false,
+    water: false,
+    residueLabels: false,
+    fancyHelices: true,
+    flatSheets: true,
   },
   protein: null,
   orientation: { preset: "free", x: 10, y: 20, z: 0 },

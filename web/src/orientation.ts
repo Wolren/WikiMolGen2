@@ -72,6 +72,13 @@ function saveOrientation(): void {
   }
 }
 
+/** Put the free camera and the house tilt back, in the state, the store and the panel. */
+export function resetOrientation(): void {
+  state.orientation = { preset: "free", x: 10, y: 20, z: 0 };
+  saveOrientation();
+  syncOrientation();
+}
+
 /** Paint the select and the custom inputs from the state. */
 function syncOrientation(): void {
   dom.orientation.value = state.orientation.preset;

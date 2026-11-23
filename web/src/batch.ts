@@ -79,6 +79,7 @@ async function loadIntoViewer(
   if (pdb !== null) {
     const record = await loadProtein(pdb);
     await viewer.loadStructure(record.name, record.bytes);
+    await viewer.setProteinOptions(state.proteinOptions);
     const sequence = viewer.sequenceSummary();
     state.protein = {
       id: pdb,
@@ -101,6 +102,7 @@ async function loadIntoViewer(
 
   const result = await loadCompound(identifier);
   await viewer.loadStructure(result.structure.name, result.structure.bytes);
+  await viewer.setProteinOptions(null);
   state.protein = null;
   state.compound = result.compound;
   state.compoundJson = JSON.stringify(result.compound);

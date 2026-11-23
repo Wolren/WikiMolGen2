@@ -46,16 +46,38 @@ import {
     type ViewMode,
   type StructureKindId,
 } from "./context.js";
-import { buildDepiction, bindDepictionControls, clearDepiction, loadDepictionSettings, setDepictionAvailable, showDepiction } from "./depiction.js";
+import {
+  buildDepiction,
+  bindDepictionControls,
+  clearDepiction,
+  loadDepictionSettings,
+  saveDepictionSettings,
+  setDepictionAvailable,
+  showDepiction,
+  syncDepictionControls,
+} from "./depiction.js";
 import { bindSuggestions } from "./suggest.js";
 import { bindBatch } from "./batch.js";
 import { AUTO_LICENSE, loadCommonsDetails, saveCommonsDetails } from "./commons.js";
-import { applyOrientation, bindOrientation, loadOrientation } from "./orientation.js";
+import { DEFAULT_DEPICTION_SETTINGS } from "./depiction-settings.js";
+import {
+  applyOrientation,
+  bindOrientation,
+  loadOrientation,
+  resetOrientation,
+} from "./orientation.js";
 import { bindExport, exportFigure } from "./figure.js";
 import { bindFullscreen } from "./fullscreen.js";
 import { bindKeyboard } from "./keyboard.js";
 import { bindSections } from "./panel.js";
 import { enrichCompound, LookupError, loadCompound } from "./pubchem.js";
+import type { Compound } from "./pubchem.js";
+import { linkRows } from "./links.js";
+import {
+  DEFAULT_PROTEIN_OPTIONS,
+  loadProteinOptions,
+  saveProteinOptions,
+} from "./protein-options.js";
 import { ProteinError, loadProtein, pdbIdOf } from "./protein.js";
 import { Renderer, RendererUnavailable } from "./renderer.js";
 import { bindTheme, stageTint } from "./theme.js";
@@ -70,6 +92,8 @@ let commonsDetails = loadCommonsDetails();
 state.orientation = loadOrientation();
 // The 2D drawing options are independent of the 3D look and survive a reload.
 state.depictionSettings = loadDepictionSettings();
+// The protein switches are a renderer preference, like the drawing options.
+state.proteinOptions = loadProteinOptions();
 
 /** A later lookup cancels the metadata update of an earlier one. */
 /** The newest load owns the page; an older answer must not overwrite it. */
@@ -229,6 +253,7 @@ async function loadFromInput(): Promise<void> {
     if (state.viewer !== null) {
       setBusy(true, "Drawing…");
       await state.viewer.loadStructure(result.structure.name, result.structure.bytes);
+      await state.viewer.setProteinOptions(null);
       if (token !== loadToken) return;
       setBusy(true, "Colouring…");
       if (state.look !== null) await state.viewer.applyLook(appliedLook() ?? state.look);
@@ -328,6 +353,7 @@ async function loadProteinInput(id: string, token: number): Promise<void> {
     const fetched = performance.now();
     setBusy(true, `Building ${id}…`);
     const atoms = await viewer.loadStructure(record.name, record.bytes);
+    await viewer.setProteinOptions(state.proteinOptions);
     if (token !== loadToken) return;
     const parsed = performance.now();
     state.looks = JSON.parse(proteinLooksJson()) as Look[];
@@ -511,6 +537,9 @@ function setMode(mode: ViewMode): void {
 function applyMode(): void {
   // A protein has no flat record, so the drawing mode is not offered.
   if (state.protein !== null) state.mode = "3d";
+  const isProtein = state.protein !== null;
+  dom.proteinLabel.hidden = !isProtein;
+  dom.proteinControls.hidden = !isProtein;
   const twoDimensional = state.mode === "2d";
   dom.mode3d.setAttribute("aria-selected", String(!twoDimensional));
   dom.mode2d.setAttribute("aria-selected", String(twoDimensional));
@@ -744,6 +773,127 @@ dom.commonsLicenseCustom.addEventListener("input", () => {
   refreshOutput();
 });
 
+/** Copy the protein switches into the panel. */
+function syncProteinControls(): void {
+  const options = state.proteinOptions;
+  dom.proteinLigand.checked = options.ligand;
+  dom.proteinWater.checked = options.water;
+  dom.proteinLabels.checked = options.residueLabels;
+  dom.proteinFancyHelices.checked = options.fancyHelices;
+  dom.proteinFlatSheets.checked = options.flatSheets;
+}
+
+/** Push the protein switches to the viewer, when a protein owns the stage. */
+function applyProteinOptions(): void {
+  if (state.protein === null || state.viewer === null) return;
+  void state.viewer
+    .setProteinOptions(state.proteinOptions)
+    .catch((error) => setStatus(`Could not update the protein view: ${describe(error)}`, true));
+}
+
+function readProteinControls(): void {
+  state.proteinOptions = {
+    ligand: dom.proteinLigand.checked,
+    water: dom.proteinWater.checked,
+    residueLabels: dom.proteinLabels.checked,
+    fancyHelices: dom.proteinFancyHelices.checked,
+    flatSheets: dom.proteinFlatSheets.checked,
+  };
+  saveProteinOptions(state.proteinOptions);
+  applyProteinOptions();
+}
+
+for (const input of [
+  dom.proteinLigand,
+  dom.proteinWater,
+  dom.proteinLabels,
+  dom.proteinFancyHelices,
+  dom.proteinFlatSheets,
+]) {
+  input.addEventListener("change", readProteinControls);
+}
+syncProteinControls();
+
+/** Put every control back to what a first visit shows, keeping the loaded figure. */
+function resetAllSettings(): void {
+  state.depictionSettings = { ...DEFAULT_DEPICTION_SETTINGS };
+  saveDepictionSettings(state.depictionSettings);
+  syncDepictionControls();
+  resetOrientation();
+
+  dom.exportWidth.value = "1600";
+  dom.exportQuality.value = "4";
+  dom.exportMargin.value = "6";
+  dom.exportMarginValue.textContent = "6%";
+  dom.exportTransparent.checked = true;
+  dom.exportLabels.checked = false;
+  dom.exportScaleBar.checked = false;
+  dom.background.value = "#ffffff";
+  dom.gradient.value = "none";
+  dom.gradientBottom.value = "#dfe7f2";
+
+  commonsDetails = { ...commonsDetails, license: AUTO_LICENSE, custom: "" };
+  dom.commonsLicense.value = AUTO_LICENSE;
+  syncCommonsDetails();
+  saveCommonsDetails(commonsDetails);
+
+  setTypedName("");
+  state.proteinOptions = { ...DEFAULT_PROTEIN_OPTIONS };
+  saveProteinOptions(state.proteinOptions);
+  syncProteinControls();
+  applyProteinOptions();
+  const look = state.looks[0];
+  state.look = look === undefined ? null : cloneLook(look);
+  renderLooks();
+  syncAppearance();
+  dom.settingsPreset.value = "custom";
+  dom.settingsPresetNote.textContent = "All settings reset.";
+  dom.resetAllConfirm.hidden = true;
+  refreshOutput();
+  applyMode();
+  if (state.viewer !== null && state.compound !== null && state.look !== null) {
+    void state.viewer
+      .applyLook(appliedLook() ?? state.look)
+      .then(() => (state.viewer === null ? undefined : applyOrientation(state.viewer)))
+      .catch((error) => setStatus(`Could not reset the figure: ${describe(error)}`, true));
+  }
+}
+
+dom.resetAllOpen.addEventListener("click", () => {
+  dom.resetAllConfirm.hidden = false;
+});
+dom.resetAllCancel.addEventListener("click", () => {
+  dom.resetAllConfirm.hidden = true;
+});
+dom.resetAllYes.addEventListener("click", resetAllSettings);
+
+/** Fill the identifier table, or hide the block when there is nothing to link. */
+function renderLinks(compound: Compound | null): void {
+  const rows = compound === null ? [] : linkRows(compound);
+  dom.blockLinks.hidden = rows.length === 0;
+  dom.linksBody.replaceChildren(
+    ...rows.map((row) => {
+      const tr = document.createElement("tr");
+      const label = document.createElement("th");
+      label.scope = "row";
+      label.textContent = row.label;
+      const value = document.createElement("td");
+      if (row.href === undefined) {
+        value.textContent = row.value;
+      } else {
+        const link = document.createElement("a");
+        link.href = row.href;
+        link.target = "_blank";
+        link.rel = "noreferrer";
+        link.textContent = row.value;
+        value.append(link);
+      }
+      tr.append(label, value);
+      return tr;
+    }),
+  );
+}
+
 function refreshOutput(): void {
   // A protein has no drug or chem box; its Commons description is the useful output.
   const protein = state.protein !== null;
@@ -755,6 +905,7 @@ function refreshOutput(): void {
     dom.outputChembox.textContent = "";
     dom.outputCommons.textContent = "";
     syncFileNameField(null);
+    renderLinks(null);
     dom.uploadCommons.hidden = true;
     return;
   }
@@ -762,6 +913,7 @@ function refreshOutput(): void {
   const kind = structureKind();
   const fileName = exportName(kind);
   syncFileNameField(fileName);
+  renderLinks(state.compound);
 
   // The two infoboxes and the upload description sit together: a figure needs the file
   // description before the article gets the box that cites it.

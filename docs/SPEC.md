@@ -43,12 +43,12 @@ reach; a load then scrolls the figure into view.
 | Lookup by name, CID or SMILES | Name and CID resolve directly; a SMILES is resolved through PubChem's structure search, so only compounds PubChem knows work |
 | Protein lookup | A four-character PDB ID (for example `1CRN`) or a `pdb:` prefix fetches the entry from RCSB and draws a cartoon |
 | 3D structure | PubChem's 3D record; a compound without one falls back to its 2D record and says so |
-| 2D depiction | RDKit's MinimalLib draws the skeletal SVG with canonical layout, stereo and element colours, or black and white. Bond width and label size are adjustable. The SVG has no background and carries a title. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback and honours the monochrome switch |
-| Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by the N to C rainbow, the trans flag inks, secondary structure or chain. The finishes start from the WikiMolGen preset: CPK spheres, grey sticks, a white page |
-| Colour | Styles the 3D figure: colour by element, chain, residue type, the N to C rainbow, secondary structure, B-factor or a single ink. Seven element palettes: CPK (default), Jmol, RasMol, ChemDraw, VMD, print inks and dark figure. Sticks follow the atoms or take one flat ink. A cartoon takes three secondary-structure inks. Per-element overrides sit on top of the palette. The panel steps aside in the 2D view; the drawing bakes the scheme's element inks when it is built |
+| 2D depiction | RDKit's MinimalLib draws the skeletal SVG with canonical layout, stereo and element colours, or black and white. Bond width, label size, rotation, fixed bond length, padding, label padding, multiple-bond offset, R/S labels, radicals, chiral flag, atom map numbers, hidden labels, explicit methyl, comic style, a legend and atom or bond highlights are sent to the drawing engine. Two drawing presets (Wikipedia 2D, Compact 2D) and saved ones sit in the panel; a manual change flips the row to Custom. The SVG has no background and carries a title. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback and honours the monochrome switch |
+| Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by the N to C rainbow, the trans flag inks, secondary structure or chain. A protein figure offers ligand, water, ligand-residue-label, fancy-helix and flat-sheet switches, which survive a reload. The finishes start from the WikiMolGen preset: CPK spheres, grey sticks, a white page |
+| Colour | Styles the 3D figure: colour by element, chain, residue type, the N to C rainbow, secondary structure, B-factor or a single ink. Seven element palettes: CPK (default), Jmol, RasMol, ChemDraw, VMD, print inks and dark figure. Sticks follow the atoms or take one flat ink. A cartoon takes three secondary-structure inks. Per-element overrides sit on top of the palette, and a colour file exports or imports the palette, the stick ink and the overrides as JSON. The panel steps aside in the 2D view; the drawing bakes the scheme's element inks when it is built |
 | View | Projection, zoom and re-frame, orientation presets (wiki 10°/20°, front, side, top) with custom X, Y and Z angles, and zoom to a selection |
-| Appearance | A Preset row applies the original Wikipedia settings and the matching supersample; Save captures the current settings as a named preset in localStorage, Rename changes a saved name, Delete removes a saved one, and any manual change flips the row to Custom. Grouped as shape, light, effects and surface: stick radius, sphere size, valence and its size, the five light values, three transparencies, blending, depth cue with fog and fog start, ambient occlusion with strength and radius, soft shadows with strength, outline and width, smooth edges. Background and gradient are export settings. A two-step Reset sliders at the end restores the look's own appearance; the colour scheme stays. The colour scheme is the separate colour preset |
-| Controls | View comes first, then export, style, colour and appearance. Every category starts folded, and an opened one stays open across reloads |
+| Appearance | A Preset row applies the original Wikipedia settings and the matching supersample; Save captures the current settings as a named preset in localStorage, Rename changes a saved name, Delete removes a saved one, and any manual change flips the row to Custom. Presets export and import as a tagged JSON file, which keeps only the fields a preset owns. Grouped as shape, light, effects and surface: stick radius, sphere size, valence and its size, the five light values, three transparencies, blending, depth cue with fog and fog start, ambient occlusion with strength and radius, soft shadows with strength, outline and width, smooth edges. Background and gradient are export settings. A two-step Reset sliders at the end restores the look's own appearance; the colour scheme stays. The colour scheme is the separate colour preset |
+| Controls | View comes first, then export, style, colour and appearance. Every category starts folded, and an opened one stays open across reloads. A two-step Reset all settings at the end puts every control back to a first visit, keeping the loaded figure, the saved presets and the author |
 | Figures | The figure toolbar holds the 3D/2D switch, full screen and the download. The stage keeps a height rather than sharing the leftover space, so the molecule is drawn large and the column scrolls |
 | Navigation | Viewer's own mouse controls, zoom buttons, re-frame, full screen, and keyboard shortcuts |
 | Links | A lookup is written to `?q=` and read back on boot, so a figure can be shared or reloaded |
@@ -58,8 +58,9 @@ reach; a load then scrolls the figure into view.
 | Metadata | PubChem properties, Wikidata identifiers and ATC codes, Wikipedia clinical fields and an openFDA drug label, merged into the infobox and chembox fields. The page does not display them in a panel |
 | `{{Infobox drug}}` | Field names, section order and escaping as the template expects, including ATC, routes and legal status |
 | `{{Chembox}}` | Nested sections: identifiers, properties, pharmacology, hazards |
-| Commons | An editable file name above the panel, then `{{Information}}` plus licence block and a pre-filled upload URL; the licence follows the structure kind. A typed name keeps only the characters Commons accepts and takes the kind's extension (`.svg` for 2D, `.png` otherwise), and Reset returns the generated name |
-| Outputs | The file-name field, then the drug infobox, the chembox and the Commons upload text stacked in one panel, in that order. Each box has a Copy action in its top-right corner; the Commons block carries the Upload to Commons link under its text; a protein shows the Commons text only |
+| Commons | An editable file name, author and licence above the panel, then `{{Information}}` plus licence block and a pre-filled upload URL; the licence follows the structure kind unless the picker overrides it, and a custom template body is accepted with the problems named. A typed name keeps only the characters Commons accepts and takes the kind's extension (`.svg` for 2D, `.png` otherwise), and Reset returns the generated name |
+| Outputs | The file-name field, then the drug infobox, the chembox, the Commons upload text and the identifier table stacked in one panel, in that order. Each box has a Copy action in its top-right corner; the Commons block carries the Upload to Commons link under its text; a protein shows the Commons text only |
+| Identifiers | The compound's PubChem CID, CAS, InChI, InChIKey, SMILES, IUPAC name, formula, Wikidata, ChemSpider, ChEBI, ChEMBL, DrugBank, KEGG, UNII and PubChem substance in one table, each present value linked to its public page |
 | Keyboard | `Ctrl+Enter` load, `2`/`3` view, `E` export, `F` frame, `+`/`-` zoom, `/` focus, `?` help |
 | Theme | System, six fixed palettes (Light, Paper, Contrast, Dark, Slate and Midnight) and saved custom themes. The picker previews every palette with a miniature of the page; a custom theme is built from five colours, derives the rest with 4.5:1 contrast floors, and is named. Themes can be duplicated, copied as a link, or exported and imported as JSON; open tabs follow storage changes. The choice persists and applies before the first paint, and System resolves to Contrast when the OS asks for more contrast. The stage follows the theme tint |
 | Accessibility | A reduced-motion rule stops the spinner and the transitions. The 3D host and the 2D SVG carry accessible names, the SVG carries a title, every control has a label, and the dialogs trap focus natively |
@@ -267,13 +268,23 @@ scripts/dev-env.ps1     toolchain paths for this workstation
 ## Acceptance
 
 * `cargo test -p wikimolgen2_core` passes natively (62 tests at the time of writing).
-* `cd web; npm test` passes the 22 unit tests for colour maths, theme files and the
-  network client.
+* `cd web; npm test` passes the 45 unit tests for colour maths, theme files, the network
+  client, the Commons details, preset and colour files, the drawing options, the identifier
+  rows and the protein switches.
 * `cargo build --target wasm32-unknown-unknown -p wikimolgen2_wasm` produces the module.
 * The page loads, accepts `aspirin`, shows a molecule, and all three outputs produce markup
   that parses as balanced templates.
 * A typed file name renames the infoboxes, the upload link and the download, and Reset
   returns the generated name.
+* A typed author and a picked licence reach the Commons text and the upload link; a custom
+  template is used as typed, and a broken one names its problem.
+* A preset file and a colour file add their presets and colours, and a stray JSON is
+  refused with a sentence.
+* The identifier table lists the compound's links, and every link is https.
+* The 2D switches change the drawing: a legend, stereo labels, hidden labels, an atom
+  highlight, a bond highlight, a rotation and a fixed bond length.
+* Reset all settings restores the sliders, the export width, the 2D options, the licence,
+  the generated file name and the protein switches, after asking once.
 * The field offers the shortlist on focus, finds aspirin and 1CRN by name, and a row click loads the entry.
 * Export at 1600 px writes a 1600 px wide PNG with 6 percent margins and no clipped atoms.
 * The 2D view draws a transparent RDKit SVG under 100 KB and downloads it. The monochrome
