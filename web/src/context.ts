@@ -306,7 +306,7 @@ export const state: AppState = {
     hideLabels: false,
     explicitMethyl: false,
     comic: false,
-    acs1996: false,
+    acs1996: true,
     relayout: false,
     legend: "",
     highlightAtoms: "",

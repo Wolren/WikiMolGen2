@@ -31,10 +31,11 @@ export const BUILTIN_DEPICTION_PRESETS: DepictionPreset[] = [
     },
   },
   {
-    id: "wikipedia-2d",
-    name: "Wikipedia 2D",
+    id: "colour-2d",
+    name: "Colour 2D",
     settings: {
       ...DEFAULT_DEPICTION_SETTINGS,
+      acs1996: false,
       bondLength: 40,
       labelSize: 18,
       padding: 0.05,
@@ -45,6 +46,7 @@ export const BUILTIN_DEPICTION_PRESETS: DepictionPreset[] = [
     name: "Compact 2D",
     settings: {
       ...DEFAULT_DEPICTION_SETTINGS,
+      acs1996: false,
       bondLength: 30,
       labelSize: 14,
       padding: 0.03,

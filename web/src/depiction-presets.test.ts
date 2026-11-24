@@ -19,6 +19,7 @@ describe("parseDepictionPresets", () => {
   });
 
   it("keeps the ACS and re-layout switches", () => {
+    expect(DEFAULT_DEPICTION_SETTINGS.acs1996).toBe(true);
     const settings = normaliseDepictionSettings({ acs1996: true, relayout: true });
     expect(settings.acs1996).toBe(true);
     expect(settings.relayout).toBe(true);
@@ -42,10 +43,11 @@ describe("parseDepictionPresets", () => {
   it("ships the three built-in templates with distinct ids", () => {
     expect(BUILTIN_DEPICTION_PRESETS.map((preset) => preset.id)).toEqual([
       "acs-1996",
-      "wikipedia-2d",
+      "colour-2d",
       "compact-2d",
     ]);
     expect(BUILTIN_DEPICTION_PRESETS[0]?.settings.acs1996).toBe(true);
+    expect(BUILTIN_DEPICTION_PRESETS[1]?.settings.acs1996).toBe(false);
     expect(BUILTIN_DEPICTION_PRESETS[1]?.settings.bondLength).toBeGreaterThan(0);
   });
 });
