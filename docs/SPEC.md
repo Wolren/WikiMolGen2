@@ -43,7 +43,7 @@ reach; a load then scrolls the figure into view.
 | Lookup by name, CID or SMILES | Name and CID resolve directly; a SMILES is resolved through PubChem's structure search, so only compounds PubChem knows work |
 | Protein lookup | A four-character PDB ID (for example `1CRN`) or a `pdb:` prefix fetches the entry from RCSB and draws a cartoon |
 | 3D structure | PubChem's 3D record; a compound without one falls back to its 2D record and says so |
-| 2D depiction | RDKit's MinimalLib draws the skeletal SVG with canonical layout, stereo and element colours, or black and white. Bond width, label size, rotation, fixed bond length, padding, label padding, multiple-bond offset, R/S labels, radicals, chiral flag, atom map numbers, hidden labels, explicit methyl, comic style, a legend and atom or bond highlights are sent to the drawing engine; the panel folds Layout, Annotations and Highlights. Two drawing presets (Wikipedia 2D, Compact 2D) and saved ones sit in the panel; a manual change flips the row to Custom and a repeated name gains a number. The SVG has no background and carries a title. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback and honours the monochrome switch |
+| 2D depiction | RDKit's MinimalLib draws the skeletal SVG with PubChem's 2D layout, stereo and element colours, or black and white. CoordGen lays out only a 3D or coordinate-free record. Bond width, label size, rotation, fixed bond length, padding, label padding, multiple-bond offset, R/S labels, radicals, chiral flag, atom map numbers, hidden labels, explicit methyl, comic style, a legend and atom or bond highlights are sent to the drawing engine; the panel folds Layout, Annotations and Highlights. Two drawing presets (Wikipedia 2D, Compact 2D) and saved ones sit in the panel; a manual change flips the row to Custom and a repeated name gains a number. The SVG has no background and carries a title. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback and honours the monochrome switch |
 | Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by the N to C rainbow, the trans flag inks, secondary structure or chain. A protein figure offers ligand, water, ligand-residue-label, fancy-helix and flat-sheet switches, which survive a reload. The finishes start from the WikiMolGen preset: CPK spheres, grey sticks, a white page |
 | Colour | Styles the 3D figure: colour by element, chain, residue type, the N to C rainbow, secondary structure, B-factor or a single ink. Seven element palettes: CPK (default), Jmol, RasMol, ChemDraw, VMD, print inks and dark figure. Sticks follow the atoms or take one flat ink. A cartoon takes three secondary-structure inks. Per-element overrides sit on top of the palette, and a colour file exports or imports the palette, the stick ink and the overrides as JSON. The panel steps aside in the 2D view; the drawing bakes the scheme's element inks when it is built |
 | View | Projection, zoom and re-frame, orientation presets (wiki 10°/20°, front, side, top) with custom X, Y and Z angles, and zoom to a selection |
@@ -222,10 +222,11 @@ bottom margin from the Å per pixel that the camera reports through `get_view`.
 ### Depiction (RDKit → SVG)
 
 `depictWithRdkit(sdf, width, height)` calls RDKit's `get_mol`, removes the explicit
-hydrogens, runs `set_new_coords` and calls `get_svg_with_highlights` with
-`clearBackground: false`. The result has no background rectangle. The parsed mol is kept
-while the same record is redrawn, so a control change does not run CoordGen again. The
-7.39 MB MinimalLib loads on first 2D use from `web/public/vendor/rdkit`.
+hydrogens, and calls `get_svg_with_highlights` with `clearBackground: false`. A record that
+already carries a 2D layout keeps PubChem's coordinates; `set_new_coords` runs CoordGen
+only when the record is 3D or has none. The result has no background rectangle. The parsed
+mol is kept while the same record is redrawn, so a control change does not lay out again.
+The 7.39 MB MinimalLib loads on first 2D use from `web/public/vendor/rdkit`.
 
 The drawing options map to MinimalLib keys. `monochrome` fills `atomColourPalette` with
 black for every atomic number, `bondWidth` sets `bondLineWidth`, and `labelSize` sets

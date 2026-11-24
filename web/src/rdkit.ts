@@ -11,6 +11,7 @@ import { atomicNumber, rgbTriple } from "./elements.js";
 /** The subset of RDKit's `Mol` this app uses. */
 interface RdkitMol {
   is_valid(): boolean;
+  /** 0 with no conformer, 2 for a 2D layout, 3 for 3D coordinates. */
   has_coords(): number;
   remove_hs_in_place(): boolean;
   set_new_coords(useCoordGen?: boolean): boolean;
@@ -124,8 +125,8 @@ export interface RdkitDrawOptions {
 /**
  * Draw a mol block with RDKit and return its SVG.
  *
- * `set_new_coords` lays the molecule out with RDKit. It also gives a clean depiction for
- * a record whose coordinates are 3D or missing. If CoordGen is present, RDKit uses it.
+ * `set_new_coords` lays the molecule out with CoordGen, but only for a record without a
+ * 2D layout. PubChem's deposited layout is curated, and CoordGen knots C60.
  */
 export async function depictWithRdkit(
   sdf: Uint8Array,
@@ -150,7 +151,8 @@ export async function depictWithRdkit(
     // PubChem records carry explicit hydrogens; a skeletal drawing keeps them implicit.
     try {
       parsed.remove_hs_in_place();
-      parsed.set_new_coords(true);
+      // CoordGen knots C60 and spreads macrocycles; PubChem's 2D layout is curated.
+      if (parsed.has_coords() !== 2) parsed.set_new_coords(true);
     } catch (error) {
       parsed.delete();
       throw error;
