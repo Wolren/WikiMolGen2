@@ -325,6 +325,9 @@
               <button id="depiction-preset-name-cancel" type="button" class="secondary">Cancel</button>
             </div>
             <label class="checkbox compact">
+              <input id="depiction-acs" type="checkbox" /> ACS 1996 style
+            </label>
+            <label class="checkbox compact">
               <input id="depiction-monochrome" type="checkbox" /> Black and white
             </label>
             <div class="compact-control">
@@ -339,7 +342,7 @@
               </label>
               <input id="depiction-label-size" type="range" min="0" max="36" step="1" value="0" />
             </div>
-            <p class="hint">Zero keeps RDKit's automatic size. The Rust fallback honours only the monochrome switch.</p>
+            <p class="hint">Zero keeps RDKit's automatic size. ACS 1996 sets the layout and label sizes itself. The Rust fallback honours only the monochrome switch.</p>
 
             <details class="sub-section">
               <summary>Layout</summary>
@@ -373,6 +376,9 @@
                 </label>
                 <input id="depiction-bond-offset" type="range" min="0" max="0.5" step="0.05" value="0" />
               </div>
+              <label class="checkbox compact">
+                <input id="depiction-relayout" type="checkbox" /> Re-layout with CoordGen
+              </label>
             </details>
 
             <details class="sub-section">

@@ -23,6 +23,14 @@ export interface DepictionPreset {
 /** The v1 drawing templates, as starting points for the RDKit engine. */
 export const BUILTIN_DEPICTION_PRESETS: DepictionPreset[] = [
   {
+    id: "acs-1996",
+    name: "ACS 1996",
+    settings: {
+      ...DEFAULT_DEPICTION_SETTINGS,
+      acs1996: true,
+    },
+  },
+  {
     id: "wikipedia-2d",
     name: "Wikipedia 2D",
     settings: {

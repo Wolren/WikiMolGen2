@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BUILTIN_DEPICTION_PRESETS, parseDepictionPresets } from "./depiction-presets.js";
-import { DEFAULT_DEPICTION_SETTINGS } from "./depiction-settings.js";
+import { DEFAULT_DEPICTION_SETTINGS, normaliseDepictionSettings } from "./depiction-settings.js";
 
 describe("parseDepictionPresets", () => {
   it("round-trips a stored list and fills missing options", () => {
@@ -15,6 +15,13 @@ describe("parseDepictionPresets", () => {
     expect(presets[0]?.settings.highlightColor).toBe(
       DEFAULT_DEPICTION_SETTINGS.highlightColor,
     );
+    expect(presets[0]?.settings.acs1996).toBe(false);
+  });
+
+  it("keeps the ACS and re-layout switches", () => {
+    const settings = normaliseDepictionSettings({ acs1996: true, relayout: true });
+    expect(settings.acs1996).toBe(true);
+    expect(settings.relayout).toBe(true);
   });
 
   it("drops entries without an id or a name", () => {
@@ -32,11 +39,13 @@ describe("parseDepictionPresets", () => {
     expect(parseDepictionPresets('{"presets":[]}')).toEqual([]);
   });
 
-  it("ships the two built-in templates with distinct ids", () => {
+  it("ships the three built-in templates with distinct ids", () => {
     expect(BUILTIN_DEPICTION_PRESETS.map((preset) => preset.id)).toEqual([
+      "acs-1996",
       "wikipedia-2d",
       "compact-2d",
     ]);
-    expect(BUILTIN_DEPICTION_PRESETS[0]?.settings.bondLength).toBeGreaterThan(0);
+    expect(BUILTIN_DEPICTION_PRESETS[0]?.settings.acs1996).toBe(true);
+    expect(BUILTIN_DEPICTION_PRESETS[1]?.settings.bondLength).toBeGreaterThan(0);
   });
 });

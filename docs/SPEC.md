@@ -43,7 +43,7 @@ reach; a load then scrolls the figure into view.
 | Lookup by name, CID or SMILES | Name and CID resolve directly; a SMILES is resolved through PubChem's structure search, so only compounds PubChem knows work |
 | Protein lookup | A four-character PDB ID (for example `1CRN`) or a `pdb:` prefix fetches the entry from RCSB and draws a cartoon |
 | 3D structure | PubChem's 3D record; a compound without one falls back to its 2D record and says so |
-| 2D depiction | RDKit's MinimalLib draws the skeletal SVG with PubChem's 2D layout, stereo and element colours, or black and white. CoordGen lays out only a 3D or coordinate-free record. Bond width, label size, rotation, fixed bond length, padding, label padding, multiple-bond offset, R/S labels, radicals, chiral flag, atom map numbers, hidden labels, explicit methyl, comic style, a legend and atom or bond highlights are sent to the drawing engine; the panel folds Layout, Annotations and Highlights. Two drawing presets (Wikipedia 2D, Compact 2D) and saved ones sit in the panel; a manual change flips the row to Custom and a repeated name gains a number. The SVG has no background and carries a title. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback and honours the monochrome switch |
+| 2D depiction | RDKit's MinimalLib draws the skeletal SVG with PubChem's 2D layout, stereo and element colours, or black and white. CoordGen lays out only a 3D or coordinate-free record, and the re-layout switch runs it on demand. The ACS 1996 switch reproduces RDKit's journal preset: black atoms, 14.4 px bonds, 10 px labels, 0.6 px lines, 18% multiple-bond offset and 6.6% label padding; the drawing is auto-sized and fitted to the canvas. Bond width, label size, rotation, fixed bond length, padding, label padding, multiple-bond offset, R/S labels, radicals, chiral flag, atom map numbers, hidden labels, explicit methyl, comic style, a legend and atom or bond highlights are sent to the drawing engine; the panel folds Layout, Annotations and Highlights. Three drawing presets (ACS 1996, Wikipedia 2D, Compact 2D) and saved ones sit in the panel; a manual change flips the row to Custom and a repeated name gains a number. The SVG has no background and carries a title. The 7.39 MB module loads on first 2D use. A Rust V2000 parser is the fallback and honours the monochrome switch |
 | Styles | Publication, Flat and Dark finishes of ball-and-stick; space filling, licorice and stick; protein cartoons by the N to C rainbow, the trans flag inks, secondary structure or chain. A protein figure offers ligand, water, ligand-residue-label, fancy-helix and flat-sheet switches, which survive a reload. The finishes start from the WikiMolGen preset: CPK spheres, grey sticks, a white page |
 | Colour | Styles the 3D figure: colour by element, chain, residue type, the N to C rainbow, secondary structure, B-factor or a single ink. Seven element palettes: CPK (default), Jmol, RasMol, ChemDraw, VMD, print inks and dark figure. Sticks follow the atoms or take one flat ink. A cartoon takes three secondary-structure inks. Per-element overrides sit on top of the palette, and a colour file exports or imports the palette, the stick ink and the overrides as JSON. The panel steps aside in the 2D view; the drawing bakes the scheme's element inks when it is built |
 | View | Projection, zoom and re-frame, orientation presets (wiki 10°/20°, front, side, top) with custom X, Y and Z angles, and zoom to a selection |
@@ -84,7 +84,6 @@ reach; a load then scrolls the figure into view.
 | Protein 2D or sequence view | A cartoon is the useful figure for an article | A sequence panel and a depiction path |
 | Element labels in 3D by symbol | The renderer's label expression has no element field; atom names are the substitute | A renderer label expression, or browser-side projection |
 | Two-sided lighting, stick and sphere quality | patinae carries them as session fields, and its `set` registry rejects the names. These stay session fields | A patinae registry fix, or a session-level setter |
-| ACS 1996 drawing style | The vendored MinimalLib build has no entry point for it, so its individual options are exposed instead | A MinimalLib build with `SetACS1996Mode`, or a Rust port of the preset |
 | Hydrophobicity, occupancy and per-chain rainbow protein colouring | patinae's documented `color` modes are element, chain, ss, b-factor, residue and index | A renderer colour mode |
 | Per-ligand representation styling | patinae's `set` takes an object name, not an atom selection, for stick radius and transparency | A renderer selection-level setter |
 | Preview history | The v1 strip worked around Streamlit's rerun model; a figure is one lookup away here | A thumbnail cache, if it earns the memory |
@@ -224,14 +223,23 @@ bottom margin from the Å per pixel that the camera reports through `get_view`.
 `depictWithRdkit(sdf, width, height)` calls RDKit's `get_mol`, removes the explicit
 hydrogens, and calls `get_svg_with_highlights` with `clearBackground: false`. A record that
 already carries a 2D layout keeps PubChem's coordinates; `set_new_coords` runs CoordGen
-only when the record is 3D or has none. The result has no background rectangle. The parsed
-mol is kept while the same record is redrawn, so a control change does not lay out again.
-The 7.39 MB MinimalLib loads on first 2D use from `web/public/vendor/rdkit`.
+only when the record is 3D or has none, or when the re-layout switch asks for it. The result
+has no background rectangle. The parsed mol is kept while the same record is redrawn, so a
+control change does not lay out again. The 7.39 MB MinimalLib loads on first 2D use from
+`web/public/vendor/rdkit`.
 
 The drawing options map to MinimalLib keys. `monochrome` fills `atomColourPalette` with
 black for every atomic number, `bondWidth` sets `bondLineWidth`, and `labelSize` sets
 `fixedFontSize`; zero keeps RDKit's default. The SVG gains a `<title>`; the in-page root
 also carries `role="img"` and an `aria-label`.
+
+The ACS 1996 switch applies the values of RDKit's `setACS1996Options`, because this
+MinimalLib build has no entry point for the preset. Bond line width is 0.6, fixed bond
+length is 14.4 divided by the record's mean bond length, fixed font size is 10, the
+multiple-bond offset is 0.18, label padding is 0.066, page padding is 0.05, and every atom
+is black. RDKit owns the canvas size; the caller fits the resulting `viewBox` to 900 x 700.
+Rotation, the legend and atom or bond highlights still apply. The layout and annotation
+controls stand aside while ACS is on.
 
 `depictSvg(sdf, width, margin, labels, monochrome, name)` is the Rust fallback. It parses
 a V2000 mol block and returns an SVG. Hydrogens are implicit. Heteroatoms are always

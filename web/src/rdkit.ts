@@ -15,6 +15,7 @@ interface RdkitMol {
   has_coords(): number;
   remove_hs_in_place(): boolean;
   set_new_coords(useCoordGen?: boolean): boolean;
+  get_molblock(): string;
   get_svg_with_highlights(details: string): string;
   delete(): void;
 }
@@ -111,6 +112,10 @@ export interface RdkitDrawOptions {
   hideLabels?: boolean;
   explicitMethyl?: boolean;
   comic?: boolean;
+  /** The ACS 1996 journal style, using the values RDKit's SetACS1996Mode applies. */
+  acs1996?: boolean;
+  /** Redraw the deposited 2D coordinates with CoordGen. */
+  relayout?: boolean;
   legend?: string;
   highlightAtoms?: string;
   highlightBonds?: string;
@@ -152,7 +157,7 @@ export async function depictWithRdkit(
     try {
       parsed.remove_hs_in_place();
       // CoordGen knots C60 and spreads macrocycles; PubChem's 2D layout is curated.
-      if (parsed.has_coords() !== 2) parsed.set_new_coords(true);
+      if (options.relayout === true || parsed.has_coords() !== 2) parsed.set_new_coords(true);
     } catch (error) {
       parsed.delete();
       throw error;
@@ -160,10 +165,22 @@ export async function depictWithRdkit(
     cachedMol = { key: text, mol: parsed };
     mol = parsed;
   }
+  const acs = options.acs1996 === true;
   // No white rectangle: the page tint shows through the drawing.
   const details: Record<string, unknown> = { width, height, clearBackground: false };
+  if (acs) {
+    // RDKit's SetACS1996Mode: 14.4 px bonds, 10 px labels, 0.6 px lines, 18% offsets.
+    details.width = -1;
+    details.height = -1;
+    details.fixedBondLength = 14.4 / meanBondLength(mol.get_molblock());
+    details.fixedFontSize = 10;
+    details.bondLineWidth = 0.6;
+    details.multipleBondOffset = 0.18;
+    details.additionalAtomLabelPadding = 0.066;
+    details.padding = 0.05;
+  }
   const palette: Record<string, [number, number, number]> = {};
-  if (options.monochrome === true) {
+  if (acs || options.monochrome === true) {
     // A black entry for every element beats the default CPK fallback for an unlisted one.
     for (let atomic = 1; atomic <= 118; atomic += 1) palette[String(atomic)] = [0, 0, 0];
   } else {
@@ -174,15 +191,6 @@ export async function depictWithRdkit(
     }
   }
   if (Object.keys(palette).length > 0) details.atomColourPalette = palette;
-  if ((options.bondWidth ?? 0) > 0) details.bondLineWidth = options.bondWidth;
-  if ((options.labelSize ?? 0) > 0) details.fixedFontSize = Math.round(options.labelSize ?? 0);
-  if (options.stereo === true) details.addStereoAnnotation = true;
-  if (options.radicals === true) details.includeRadicals = true;
-  if (options.chiralFlag === true) details.includeChiralFlag = true;
-  if (options.atomTags === true) details.includeAtomTags = true;
-  if (options.hideLabels === true) details.noAtomLabels = true;
-  if (options.explicitMethyl === true) details.explicitMethyl = true;
-  if (options.comic === true) details.comicMode = true;
   const legend = (options.legend ?? "").trim();
   if (legend !== "") details.legend = legend;
   // MinimalLib takes the indices as arrays and one shared highlight ink, not colour maps.
@@ -194,13 +202,53 @@ export async function depictWithRdkit(
     if (atoms.length > 0) details.atoms = atoms;
     if (bonds.length > 0) details.bonds = bonds;
   }
-  // Each layout option at 0 keeps RDKit's own value, so an untouched panel draws as before.
   if ((options.rotate ?? 0) !== 0) details.rotate = options.rotate;
-  if ((options.bondLength ?? 0) > 0) details.fixedBondLength = options.bondLength;
-  if ((options.padding ?? 0) > 0) details.padding = options.padding;
-  if ((options.labelPadding ?? 0) > 0) details.additionalAtomLabelPadding = options.labelPadding;
-  if ((options.bondOffset ?? 0) > 0) details.multipleBondOffset = options.bondOffset;
+  // ACS 1996 owns the layout and labels, so only rotation and highlights reach it.
+  if (!acs) {
+    if ((options.bondWidth ?? 0) > 0) details.bondLineWidth = options.bondWidth;
+    if ((options.labelSize ?? 0) > 0) details.fixedFontSize = Math.round(options.labelSize ?? 0);
+    if (options.stereo === true) details.addStereoAnnotation = true;
+    if (options.radicals === true) details.includeRadicals = true;
+    if (options.chiralFlag === true) details.includeChiralFlag = true;
+    if (options.atomTags === true) details.includeAtomTags = true;
+    if (options.hideLabels === true) details.noAtomLabels = true;
+    if (options.explicitMethyl === true) details.explicitMethyl = true;
+    if (options.comic === true) details.comicMode = true;
+    // Each layout option at 0 keeps RDKit's own value, so an untouched panel draws as before.
+    if ((options.bondLength ?? 0) > 0) details.fixedBondLength = options.bondLength;
+    if ((options.padding ?? 0) > 0) details.padding = options.padding;
+    if ((options.labelPadding ?? 0) > 0) details.additionalAtomLabelPadding = options.labelPadding;
+    if ((options.bondOffset ?? 0) > 0) details.multipleBondOffset = options.bondOffset;
+  }
   return mol.get_svg_with_highlights(JSON.stringify(details));
+}
+
+/** Mean bond length in the record's own coordinates, for the ACS scale. */
+function meanBondLength(block: string): number {
+  const lines = block.split(/\r?\n/);
+  const counts = lines[3] ?? "";
+  const atoms = Number.parseInt(counts.slice(0, 3), 10);
+  const bonds = Number.parseInt(counts.slice(3, 6), 10);
+  if (!Number.isFinite(atoms) || !Number.isFinite(bonds) || atoms <= 0 || bonds <= 0) return 1;
+  const points: [number, number][] = [];
+  for (let index = 0; index < atoms; index += 1) {
+    const line = lines[4 + index] ?? "";
+    points.push([Number.parseFloat(line.slice(0, 10)), Number.parseFloat(line.slice(10, 20))]);
+  }
+  let total = 0;
+  let counted = 0;
+  for (let index = 0; index < bonds; index += 1) {
+    const line = lines[4 + atoms + index] ?? "";
+    const start = points[Number.parseInt(line.slice(0, 3), 10) - 1];
+    const end = points[Number.parseInt(line.slice(3, 6), 10) - 1];
+    if (start === undefined || end === undefined) continue;
+    const length = Math.hypot(start[0] - end[0], start[1] - end[1]);
+    if (length > 0) {
+      total += length;
+      counted += 1;
+    }
+  }
+  return counted > 0 ? total / counted : 1;
 }
 
 /** Indices from a comma or space separated list; anything else is ignored. */

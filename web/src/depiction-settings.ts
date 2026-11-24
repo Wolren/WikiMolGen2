@@ -27,6 +27,10 @@ export interface DepictionSettings {
   explicitMethyl: boolean;
   /** RDKit's hand-drawn comic style. */
   comic: boolean;
+  /** The ACS 1996 journal style: black, 14.4 px bonds, 10 px labels, 0.6 px lines. */
+  acs1996: boolean;
+  /** Redraw the deposited 2D coordinates with CoordGen. */
+  relayout: boolean;
   /** A line of text under the drawing; empty for none. */
   legend: string;
   /** Atom indices to highlight, as typed; empty for none. */
@@ -62,6 +66,8 @@ export const DEFAULT_DEPICTION_SETTINGS: DepictionSettings = {
   hideLabels: false,
   explicitMethyl: false,
   comic: false,
+  acs1996: false,
+  relayout: false,
   legend: "",
   highlightAtoms: "",
   highlightBonds: "",
@@ -95,6 +101,8 @@ export function normaliseDepictionSettings(raw: unknown): DepictionSettings {
     hideLabels: on("hideLabels"),
     explicitMethyl: on("explicitMethyl"),
     comic: on("comic"),
+    acs1996: on("acs1996"),
+    relayout: on("relayout"),
     legend: typeof record.legend === "string" ? record.legend.slice(0, MAX_LEGEND) : "",
     highlightAtoms: typeof record.highlightAtoms === "string" ? record.highlightAtoms : "",
     highlightBonds: typeof record.highlightBonds === "string" ? record.highlightBonds : "",

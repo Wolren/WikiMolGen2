@@ -79,6 +79,8 @@ function readControls(): DepictionSettings {
     hideLabels: dom.depictionHideLabels.checked,
     explicitMethyl: dom.depictionExplicitMethyl.checked,
     comic: dom.depictionComic.checked,
+    acs1996: dom.depictionAcs.checked,
+    relayout: dom.depictionRelayout.checked,
     legend: dom.depictionLegend.value.slice(0, MAX_LEGEND),
     highlightAtoms: dom.depictionHighlightAtoms.value,
     highlightBonds: dom.depictionHighlightBonds.value,
@@ -107,6 +109,30 @@ function syncOutputs(): void {
   dom.depictionPaddingValue.textContent = autoLabel(settings.padding, 2);
   dom.depictionLabelPaddingValue.textContent = autoLabel(settings.labelPadding, 2);
   dom.depictionBondOffsetValue.textContent = autoLabel(settings.bondOffset, 2);
+  lockAcsOverrides();
+}
+
+/** ACS 1996 owns these options, so the panel switches them off while it is on. */
+function lockAcsOverrides(): void {
+  const locked = state.depictionSettings.acs1996;
+  for (const input of [
+    dom.depictionMonochrome,
+    dom.depictionBondWidth,
+    dom.depictionLabelSize,
+    dom.depictionStereo,
+    dom.depictionRadicals,
+    dom.depictionChiral,
+    dom.depictionAtomTags,
+    dom.depictionHideLabels,
+    dom.depictionExplicitMethyl,
+    dom.depictionComic,
+    dom.depictionBondLength,
+    dom.depictionPadding,
+    dom.depictionLabelPadding,
+    dom.depictionBondOffset,
+  ]) {
+    input.disabled = locked;
+  }
 }
 
 /** Copy the settings into the panel. */
@@ -122,6 +148,8 @@ export function syncDepictionControls(): void {
   dom.depictionHideLabels.checked = settings.hideLabels;
   dom.depictionExplicitMethyl.checked = settings.explicitMethyl;
   dom.depictionComic.checked = settings.comic;
+  dom.depictionAcs.checked = settings.acs1996;
+  dom.depictionRelayout.checked = settings.relayout;
   dom.depictionLegend.value = settings.legend;
   dom.depictionHighlightAtoms.value = settings.highlightAtoms;
   dom.depictionHighlightBonds.value = settings.highlightBonds;
@@ -229,6 +257,8 @@ export function bindDepictionControls(onChange: () => void): void {
 
   renderPresets();
   dom.depictionMonochrome.addEventListener("change", apply);
+  dom.depictionAcs.addEventListener("change", apply);
+  dom.depictionRelayout.addEventListener("change", apply);
   for (const input of [
     dom.depictionBondWidth,
     dom.depictionLabelSize,
@@ -254,7 +284,11 @@ export function bindDepictionControls(onChange: () => void): void {
 }
 
 /** Give the SVG a document title, so a screen reader and a downloaded file both name it. */
-function withTitle(svg: string, title: string): string {
+function withTitle(
+  svg: string,
+  title: string,
+  fitTo?: { width: number; height: number },
+): string {
   const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
   const root = parsed.documentElement;
   if (parsed.querySelector("parsererror") !== null || root.localName !== "svg") return svg;
@@ -265,6 +299,21 @@ function withTitle(svg: string, title: string): string {
     const node = parsed.createElementNS("http://www.w3.org/2000/svg", "title");
     node.textContent = title;
     root.insertBefore(node, root.firstChild);
+  }
+  // RDKit's auto-sized ACS drawing carries its own viewBox; the canvas sets its display size.
+  if (fitTo !== undefined) {
+    const viewBox = root.getAttribute("viewBox");
+    if (viewBox === null) {
+      const naturalWidth = Number.parseFloat(root.getAttribute("width") ?? "");
+      const naturalHeight = Number.parseFloat(root.getAttribute("height") ?? "");
+      if (naturalWidth > 0 && naturalHeight > 0) {
+        root.setAttribute("viewBox", `0 0 ${naturalWidth} ${naturalHeight}`);
+      }
+    }
+    if (root.getAttribute("viewBox") !== null) {
+      root.setAttribute("width", `${fitTo.width}px`);
+      root.setAttribute("height", `${fitTo.height}px`);
+    }
   }
   return new XMLSerializer().serializeToString(root);
 }
@@ -281,6 +330,8 @@ export async function buildDepiction(
   settings: DepictionSettings = DEFAULT_DEPICTION_SETTINGS,
 ): Promise<DepictionResult> {
   const title = `${name === "" ? "Molecule" : name} skeletal structure`;
+  const canvas = { width: DEPICTION_WIDTH, height: DEPICTION_HEIGHT };
+  const fitTo = settings.acs1996 ? canvas : undefined;
   let rdkitError = "RDKit was skipped after an earlier failure";
   if (!rdkitUnavailable) {
     try {
@@ -295,6 +346,8 @@ export async function buildDepiction(
         hideLabels: settings.hideLabels,
         explicitMethyl: settings.explicitMethyl,
         comic: settings.comic,
+        acs1996: settings.acs1996,
+        relayout: settings.relayout,
         legend: settings.legend,
         highlightAtoms: settings.highlightAtoms,
         highlightBonds: settings.highlightBonds,
@@ -305,7 +358,7 @@ export async function buildDepiction(
         labelPadding: settings.labelPadding,
         bondOffset: settings.bondOffset,
       });
-      return { depiction: { svg: withTitle(svg, title), engine: "rdkit" }, error: null };
+      return { depiction: { svg: withTitle(svg, title, fitTo), engine: "rdkit" }, error: null };
     } catch (error) {
       rdkitUnavailable = true;
       rdkitError = error instanceof Error ? error.message : String(error);
