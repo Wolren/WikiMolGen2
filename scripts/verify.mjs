@@ -1016,15 +1016,74 @@ if (isProtein) {
   if (svgLabel.trim() !== "Download SVG") {
     failures.push(`the 2D toolbar offers "${svgLabel.trim()}"`);
   }
-  // The 2D engine bakes the scheme inks in, so the drawing must use the carbon ink.
+  // The 2D view starts in ACS 1996, with the layout controls locked.
+  const acsState = JSON.parse(
+    await evaluate(
+      session,
+      `(() => {
+         const acs = document.getElementById('depiction-acs');
+         const svg = document.querySelector('#depiction svg')?.outerHTML ?? '';
+         return JSON.stringify({
+           checked: acs.checked,
+           locked: document.getElementById('depiction-bond-width').disabled,
+           lines: svg.includes('stroke-width:0.6'),
+         });
+       })()`,
+    ),
+  );
+  if (acsState.checked !== true) failures.push("the 2D view does not start in ACS 1996");
+  if (acsState.locked !== true) failures.push("ACS 1996 leaves the layout controls enabled");
+  if (acsState.lines !== true) failures.push("the ACS 1996 drawing does not use 0.6 px lines");
+  console.log(`2d acs: ${JSON.stringify(acsState)}`);
+
+  // Wheel zoom and a double-click reset write the viewBox.
+  const zoomState = JSON.parse(
+    await evaluate(
+      session,
+      `(() => {
+         const host = document.getElementById('depiction');
+         const svg = host.querySelector('svg');
+         const before = svg.getAttribute('viewBox');
+         const box = svg.getBoundingClientRect();
+         svg.dispatchEvent(new WheelEvent('wheel', {
+           deltaY: -240,
+           clientX: box.left + box.width / 2,
+           clientY: box.top + box.height / 2,
+           bubbles: true,
+           cancelable: true,
+         }));
+         const after = svg.getAttribute('viewBox');
+         host.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+         return JSON.stringify({ before, after, reset: svg.getAttribute('viewBox') });
+       })()`,
+    ),
+  );
+  if (zoomState.after === zoomState.before) failures.push("the wheel does not zoom the 2D drawing");
+  if (zoomState.reset !== zoomState.before) failures.push("a double-click does not reset the 2D zoom");
+  console.log(`2d zoom: ${JSON.stringify(zoomState)}`);
+
+  // Turn ACS off, so the colour, label and preset checks below exercise the custom panel.
   const carbonInk = await evaluate(
     session,
     "document.querySelector('#element-colors input[aria-label=\"C colour\"]')?.value ?? ''",
   );
-  const svgText = await evaluate(
+  await evaluate(
     session,
-    "document.querySelector('#depiction svg')?.outerHTML ?? ''",
+    `(() => {
+       const acs = document.getElementById('depiction-acs');
+       acs.checked = false;
+       acs.dispatchEvent(new Event('change', { bubbles: true }));
+       return true;
+     })()`,
   );
+  const svgText =
+    (await poll(async () => {
+      const text = await evaluate(
+        session,
+        "document.querySelector('#depiction svg')?.outerHTML ?? ''",
+      );
+      return carbonInk !== "" && text.toLowerCase().includes(carbonInk.toLowerCase()) ? text : null;
+    }, 30_000)) ?? "";
   if (carbonInk !== "" && !svgText.toLowerCase().includes(carbonInk.toLowerCase())) {
     failures.push(`the 2D drawing does not use the carbon ink ${carbonInk}`);
   }
@@ -1220,7 +1279,7 @@ if (isProtein) {
       session,
       `(() => {
          const select = document.getElementById('depiction-preset');
-         select.value = 'wikipedia-2d';
+         select.value = 'colour-2d';
          select.dispatchEvent(new Event('change', { bubbles: true }));
          const applied = {
            length: document.getElementById('depiction-bond-length').value,
