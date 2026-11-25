@@ -25,6 +25,7 @@ import {
   type DepictionPreset,
 } from "./depiction-presets.js";
 import { depictWithRdkit } from "./rdkit.js";
+import { attachDepictionZoom, detachDepictionZoom } from "./depiction-zoom.js";
 import { newId, uniqueName } from "./names.js";
 
 /** Nominal canvas size. The drawing is vector, so this only sets the viewBox. */
@@ -49,6 +50,9 @@ export interface DepictionResult {
 
 /** A failed RDKit load is not retried for every drawing in the session. */
 let rdkitUnavailable = false;
+
+/** The SVG last placed in the stage, so a redraw of the same file keeps its zoom. */
+let shownSvg: string | null = null;
 
 /** Read the saved drawing options, ignoring anything that no longer has the right shape. */
 export function loadDepictionSettings(): DepictionSettings {
@@ -393,9 +397,14 @@ export function showDepiction(host: HTMLElement, svg: string, label: string): vo
   root.setAttribute("role", "img");
   root.setAttribute("aria-label", label);
   host.replaceChildren(root);
+  const changed = shownSvg !== svg;
+  shownSvg = svg;
+  attachDepictionZoom(host, changed);
 }
 
 export function clearDepiction(host: HTMLElement): void {
+  shownSvg = null;
+  detachDepictionZoom();
   host.replaceChildren();
 }
 

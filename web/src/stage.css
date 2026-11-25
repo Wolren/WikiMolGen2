@@ -119,6 +119,13 @@
   max-height: 100%;
   height: auto;
   background: transparent;
+  cursor: grab;
+  /* The drawing owns the pointer, so a drag pans it instead of the page. */
+  touch-action: none;
+}
+
+.depiction.is-panning svg {
+  cursor: grabbing;
 }
 
 /* RDKit draws black bonds and black atom labels. On a dark tint they become the ink.

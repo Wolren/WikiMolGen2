@@ -169,15 +169,7 @@ export async function depictWithRdkit(
   // No white rectangle: the page tint shows through the drawing.
   const details: Record<string, unknown> = { width, height, clearBackground: false };
   if (acs) {
-    // RDKit's SetACS1996Mode: 14.4 px bonds, 10 px labels, 0.6 px lines, 18% offsets.
-    details.width = -1;
-    details.height = -1;
-    details.fixedBondLength = 14.4 / meanBondLength(mol.get_molblock());
-    details.fixedFontSize = 10;
-    details.bondLineWidth = 0.6;
-    details.multipleBondOffset = 0.18;
-    details.additionalAtomLabelPadding = 0.066;
-    details.padding = 0.05;
+    Object.assign(details, acsDetails(meanBondLength(mol.get_molblock())));
   }
   const palette: Record<string, [number, number, number]> = {};
   if (acs || options.monochrome === true) {
@@ -221,6 +213,32 @@ export async function depictWithRdkit(
     if ((options.bondOffset ?? 0) > 0) details.multipleBondOffset = options.bondOffset;
   }
   return mol.get_svg_with_highlights(JSON.stringify(details));
+}
+
+/** RDKit's SetACS1996Mode values, with the bond length scaled to the record. */
+export interface AcsDetails {
+  width: number;
+  height: number;
+  fixedBondLength: number;
+  fixedFontSize: number;
+  bondLineWidth: number;
+  multipleBondOffset: number;
+  additionalAtomLabelPadding: number;
+  padding: number;
+}
+
+export function acsDetails(bondLength: number): AcsDetails {
+  const mean = bondLength > 0 ? bondLength : 1;
+  return {
+    width: -1,
+    height: -1,
+    fixedBondLength: 14.4 / mean,
+    fixedFontSize: 10,
+    bondLineWidth: 0.6,
+    multipleBondOffset: 0.18,
+    additionalAtomLabelPadding: 0.066,
+    padding: 0.05,
+  };
 }
 
 /** Mean bond length in the record's own coordinates, for the ACS scale. */

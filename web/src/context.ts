@@ -182,6 +182,7 @@ export const dom = {
   viewerHost: required<HTMLElement>("viewer"),
   depiction: required<HTMLDivElement>("depiction"),
   depictionControls: required<HTMLElement>("depiction-controls"),
+  colourHeading: required<HTMLElement>("colour-heading"),
   depictionAcs: required<HTMLInputElement>("depiction-acs"),
   depictionRelayout: required<HTMLInputElement>("depiction-relayout"),
   depictionMonochrome: required<HTMLInputElement>("depiction-monochrome"),

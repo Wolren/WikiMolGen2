@@ -616,6 +616,14 @@ button:disabled {
   box-shadow: none;
 }
 
+/* ACS 1996 disables the drawing controls it owns; they must read as inert. */
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .hint {
   margin: 8px 0 0;
   font-size: 12px;

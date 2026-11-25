@@ -140,6 +140,8 @@ export function applyMode(): void {
   // The view and appearance controls only act on a running 3D viewer.
   const threeDimensional = !twoDimensional && !isRendererFailed();
   setColourAvailable(threeDimensional);
+  // The colour section holds the drawing panel in 2D, so its name follows the mode.
+  dom.colourHeading.textContent = twoDimensional ? "Drawing" : "Colour";
   setDepictionAvailable(twoDimensional);
   dom.appearanceSection.hidden = !threeDimensional;
   dom.viewSection.hidden = !threeDimensional;
@@ -148,11 +150,10 @@ export function applyMode(): void {
     if (state.depiction !== null) {
       const label = `${state.compound?.name ?? "Molecule"} skeletal structure`;
       showDepiction(dom.depiction, state.depiction.svg, label);
-      const ink = state.depictionSettings.monochrome ? ", black and white" : "";
-      dom.stageNote.textContent =
-        state.depiction.engine === "rdkit"
-          ? `RDKit skeletal drawing${ink}`
-          : `Vector skeletal drawing${ink}`;
+      const acs = state.depiction.engine === "rdkit" && state.depictionSettings.acs1996;
+      const ink = !acs && state.depictionSettings.monochrome ? ", black and white" : "";
+      const style = acs ? "ACS 1996" : state.depiction.engine === "rdkit" ? "RDKit" : "Vector";
+      dom.stageNote.textContent = `${style} skeletal drawing${ink} · scroll to zoom, drag to pan`;
     } else {
       clearDepiction(dom.depiction);
       dom.depiction.textContent = "Load a compound to see its 2D drawing.";

@@ -27,6 +27,7 @@ import {
   saveDepictionSettings,
   syncDepictionControls,
 } from "./depiction.js";
+import { bindDepictionZoom } from "./depiction-zoom.js";
 import { DEFAULT_DEPICTION_SETTINGS } from "./depiction-settings.js";
 import { renderLooks } from "./looks.js";
 import { loadFromInput } from "./lookup.js";
@@ -62,8 +63,7 @@ state.depictionSettings = loadDepictionSettings();
 // The protein switches are a renderer preference, like the drawing options.
 state.proteinOptions = loadProteinOptions();
 
-// A development-only handle: the end-to-end harness reads state from it. The production
-// build tree-shakes this branch because `import.meta.env.DEV` is false there.
+// A development-only handle: the end-to-end harness reads state from it. Production drops it.
 if (import.meta.env.DEV) {
   (window as unknown as { __wikimolgen2?: unknown }).__wikimolgen2 = {
     state,
@@ -73,8 +73,7 @@ if (import.meta.env.DEV) {
 }
 
 async function boot(): Promise<void> {
-  // The module must be initialised before *any* export is called, including the
-  // preset list, which is generated in Rust.
+  // The wasm module must start before any export, including the Rust-generated preset list.
   try {
     await init();
   } catch (error) {
@@ -102,8 +101,7 @@ async function boot(): Promise<void> {
       "The renderer did not finish starting.",
     );
   } catch (error) {
-    // RendererUnavailable already carries a sentence a user can act on; anything else
-    // is a surprise and gets the generic line plus the detail.
+    // RendererUnavailable already carries an actionable sentence; anything else gets detail.
     if (error instanceof RendererUnavailable) {
       showStageError(error.message);
     } else {
@@ -119,17 +117,14 @@ async function boot(): Promise<void> {
 
   dom.stageMessage.hidden = true;
 
-  // patinae is WebGPU-only: there is no second backend to report, so the page says
-  // nothing about graphics. A browser without an adapter gets the error overlay.
+  // patinae is WebGPU-only: a browser without an adapter gets the error overlay.
   state.viewer.setStageTint(stageTint());
   applyMode();
 
-  // Compile the cartoon pipelines in the background: the first protein pays the cost on
-  // its own load, and the page is ready now rather than after three seconds of shaders.
+  // Warm the cartoon pipelines now, so the first protein skips the shader wait.
   void state.viewer.startWarmup();
   showEmptyStage();
-  // The end-to-end check waits on this rather than on the overlay, which now shows the
-  // empty-state hint until the first load.
+  // The end-to-end check waits on this attribute, because the overlay shows the empty hint.
   document.documentElement.dataset.ready = "1";
 
   if (requested.trim() !== "") {
@@ -234,6 +229,7 @@ bindThemeDialog();
 bindSections();
 bindSuggestions();
 bindDepictionControls(queueDepiction);
+bindDepictionZoom(dom.depiction);
 bindOrientation(() => {
   if (state.viewer === null || state.compound === null) return;
   void applyOrientation(state.viewer).catch((error) =>
